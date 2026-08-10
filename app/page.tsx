@@ -48,7 +48,15 @@ export default function MarketingHero() {
       <div 
         className="relative z-0 -mt-10 pt-20 -mx-3 sm:-mx-4 px-3 sm:px-4"
         style={{
-          background: 'linear-gradient(180deg, #cfe4f2 0%, #ffffff 50%, #ffffff 100%)'
+          background: `
+            linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 500px, rgba(255,255,255,1) 800px, rgba(255,255,255,1) 100%),
+            linear-gradient(180deg, rgba(207,228,242,0.85) 0%, rgba(207,228,242,0.85) 100%),
+            url('https://images.unsplash.com/photo-1509803874385-db7c23652552?q=80&w=2000&auto=format&fit=crop')
+          `,
+          backgroundColor: '#ffffff',
+          backgroundSize: '100% 1200px, 100% 1200px, cover',
+          backgroundPosition: 'top center',
+          backgroundRepeat: 'no-repeat'
         }}
       >
         <HowItWorks />
