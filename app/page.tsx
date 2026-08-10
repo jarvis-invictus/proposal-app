@@ -9,13 +9,13 @@ import { Footer } from '@/components/Footer';
 export default function MarketingHero() {
   return (
     <div 
-      className="min-h-screen w-full text-ink selection:bg-sky-deep selection:text-white p-3 sm:p-4 bg-[#f7f7f7]" 
+      className="min-h-screen w-full text-ink selection:bg-sky-deep selection:text-white p-3 sm:p-4 bg-white" 
       style={{ 
         fontFamily: 'var(--font-inter-tight), sans-serif'
       }}
     >
       {/* Hero Frame (Convix Style with Video Background) */}
-      <div className="relative w-full h-[calc(100vh-24px)] sm:h-[calc(100vh-32px)] overflow-hidden rounded-2xl sm:rounded-3xl shadow-xl bg-sky-deep">
+      <div className="relative z-10 w-full h-[calc(100vh-24px)] sm:h-[calc(100vh-32px)] overflow-hidden rounded-2xl sm:rounded-3xl shadow-xl bg-sky-deep">
         
         {/* Background Video */}
         <video
@@ -44,8 +44,13 @@ export default function MarketingHero() {
         </div>
       </div>
 
-      {/* Rest of the Page Content (Inherits the beautiful Sky Blue gradient background) */}
-      <div className="mt-8">
+      {/* Rest of the Page Content */}
+      <div 
+        className="relative z-0 -mt-10 pt-20 -mx-3 sm:-mx-4 px-3 sm:px-4"
+        style={{
+          background: 'linear-gradient(180deg, #cfe4f2 0%, #ffffff 30%, #ffffff 100%)'
+        }}
+      >
         <HowItWorks />
         <Features />
         <Testimonials />
