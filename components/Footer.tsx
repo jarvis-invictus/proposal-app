@@ -1,0 +1,53 @@
+import React from 'react';
+import Link from 'next/link';
+
+export function Footer() {
+  return (
+    <footer className="w-full relative z-10 pt-24 pb-8 px-4 border-t border-white/20">
+      <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between gap-12 mb-16">
+        
+        {/* Logo/Brand */}
+        <div>
+          <div className="font-serif italic text-[24px] font-medium tracking-tight text-ink mb-4">
+            Invictus
+          </div>
+          <p className="text-mist text-[14px] max-w-[200px]">
+            Proposals that practically write themselves.
+          </p>
+        </div>
+
+        {/* Links Columns */}
+        <div className="flex gap-12 sm:gap-24">
+          <div className="flex flex-col gap-3">
+            <h4 className="text-ink font-semibold text-[14px] mb-2">Product</h4>
+            <Link href="#features" className="text-mist text-[14px] hover:text-ink transition-colors">Features</Link>
+            <Link href="#pricing" className="text-mist text-[14px] hover:text-ink transition-colors">Pricing</Link>
+            <Link href="#" className="text-mist text-[14px] hover:text-ink transition-colors">Templates</Link>
+          </div>
+          
+          <div className="flex flex-col gap-3">
+            <h4 className="text-ink font-semibold text-[14px] mb-2">Company</h4>
+            <Link href="#" className="text-mist text-[14px] hover:text-ink transition-colors">About</Link>
+            <Link href="#" className="text-mist text-[14px] hover:text-ink transition-colors">Contact</Link>
+          </div>
+          
+          <div className="flex flex-col gap-3">
+            <h4 className="text-ink font-semibold text-[14px] mb-2">Legal</h4>
+            <Link href="#" className="text-mist text-[14px] hover:text-ink transition-colors">Privacy Policy</Link>
+            <Link href="#" className="text-mist text-[14px] hover:text-ink transition-colors">Terms of Service</Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Row */}
+      <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 pt-8 border-t border-mist/20">
+        <div className="text-mist text-[13px]">
+          © 2026 Invictus Proposals
+        </div>
+        <div className="text-mist text-[13px] font-medium tracking-wide">
+          Made in India
+        </div>
+      </div>
+    </footer>
+  );
+}

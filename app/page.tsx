@@ -1,9 +1,14 @@
 import { MarketingNavbar } from '@/components/MarketingNavbar';
 import { HeroContent } from '@/components/HeroContent';
+import { HowItWorks } from '@/components/HowItWorks';
+import { Features } from '@/components/Features';
+import { Testimonials } from '@/components/Testimonials';
+import { Pricing } from '@/components/Pricing';
+import { Footer } from '@/components/Footer';
 
 export default function MarketingHero() {
   return (
-    <div className="min-h-screen w-full" style={{ fontFamily: 'var(--font-inter-tight), sans-serif' }}>
+    <div className="min-h-screen w-full text-ink selection:bg-sky-deep selection:text-white" style={{ fontFamily: 'var(--font-inter-tight), sans-serif' }}>
       <div 
         className="relative w-full min-h-screen overflow-hidden rounded-none"
         style={{
@@ -17,6 +22,11 @@ export default function MarketingHero() {
       >
         <MarketingNavbar />
         <HeroContent />
+        <HowItWorks />
+        <Features />
+        <Testimonials />
+        <Pricing />
+        <Footer />
       </div>
     </div>
   );
