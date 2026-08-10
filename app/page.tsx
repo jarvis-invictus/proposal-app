@@ -48,7 +48,7 @@ export default function MarketingHero() {
       <div 
         className="relative z-0 -mt-10 pt-20 -mx-3 sm:-mx-4 px-3 sm:px-4"
         style={{
-          background: 'linear-gradient(180deg, #cfe4f2 0%, #ffffff 30%, #ffffff 100%)'
+          background: 'linear-gradient(180deg, #cfe4f2 0%, #ffffff 50%, #ffffff 100%)'
         }}
       >
         <HowItWorks />
