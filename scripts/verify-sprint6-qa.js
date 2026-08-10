@@ -5,8 +5,10 @@ require('dotenv').config({ path: '.env.local' });
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const API_URL = 'http://localhost:3000/api';
-
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const API_URL = `${BASE_URL}/api`;
+const VERCEL_BYPASS = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+const BYPASS_HEADER = VERCEL_BYPASS ? { 'x-vercel-protection-bypass': VERCEL_BYPASS } : {};
 async function verifyGoldenPath() {
   console.log('--- STARTING GOLDEN PATH REGRESSION PASS ---');
   
@@ -53,7 +55,7 @@ async function verifyGoldenPath() {
   console.log('3. Editor: Autosaving content updates...');
   const patchRes = await fetch(`${API_URL}/proposals/${prop.id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...BYPASS_HEADER },
     body: JSON.stringify({ content: { title: 'Updated Golden Proposal', clientName: 'Acme Corp' } })
   });
   if (!patchRes.ok) throw new Error('Failed to autosave ' + patchRes.status);
@@ -63,7 +65,7 @@ async function verifyGoldenPath() {
   console.log('4. Publish: Setting status to PUBLISHED...');
   const pubRes = await fetch(`${API_URL}/proposals/${prop.id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...BYPASS_HEADER },
     body: JSON.stringify({ status: 'PUBLISHED' })
   });
   if (!pubRes.ok) throw new Error('Failed to publish ' + pubRes.status);
@@ -71,14 +73,14 @@ async function verifyGoldenPath() {
 
   // 5. Public View
   console.log('5. Public View: Simulating visitor...');
-  const viewRes = await fetch(`${API_URL}/proposals/${slug}/view`, { method: 'POST' });
+  const viewRes = await fetch(`${API_URL}/proposals/${slug}/view`, { method: 'POST', headers: { ...BYPASS_HEADER } });
   if (!viewRes.ok) throw new Error('Failed to track view ' + viewRes.status);
   console.log('✅ Public view tracked.');
 
   // 6. Notification Check
   console.log('6. Notifications: Checking delivery...');
   const notifRes = await fetch(`${API_URL}/notifications`, {
-    headers: { 'Authorization': `Bearer ${token}` }
+    headers: { 'Authorization': `Bearer ${token}`, ...BYPASS_HEADER }
   });
   const notifData = await notifRes.json();
   if (notifData.notifications.length === 1 && notifData.notifications[0].proposals.slug === slug) {
@@ -93,8 +95,11 @@ async function verifyGoldenPath() {
   try {
     const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
+    if (VERCEL_BYPASS) {
+      await page.setExtraHTTPHeaders({ 'x-vercel-protection-bypass': VERCEL_BYPASS });
+    }
     // Verify the page loads successfully and exposes window.print logic
-    await page.goto(`http://localhost:3000/p/${slug}`);
+    await page.goto(`${BASE_URL}/p/${slug}`);
     await page.waitForSelector('h1:has-text("Updated Golden Proposal")');
     pdfRendered = true;
     await browser.close();
