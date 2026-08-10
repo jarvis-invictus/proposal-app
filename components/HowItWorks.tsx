@@ -1,19 +1,16 @@
 import React from 'react';
 
-const glassStyle = {
-  background: 'rgba(255, 255, 255, 0.55)',
-  backdropFilter: 'blur(18px)',
-  WebkitBackdropFilter: 'blur(18px)',
-  border: '1px solid rgba(255, 255, 255, 0.7)',
-  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.5)'
+const cardStyle = {
+  background: '#ffffff',
+  border: '1px solid rgba(0, 0, 0, 0.08)',
+  boxShadow: '0 12px 32px rgba(0, 0, 0, 0.03)',
+  borderRadius: '16px'
 };
 
-const smallGlassStyle = {
-  background: 'rgba(255, 255, 255, 0.45)',
-  backdropFilter: 'blur(14px)',
-  WebkitBackdropFilter: 'blur(14px)',
-  border: '1px solid rgba(255, 255, 255, 0.6)',
-  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.5)'
+const iconStyle = {
+  background: 'rgba(0, 0, 0, 0.03)',
+  border: '1px solid rgba(0, 0, 0, 0.05)',
+  color: '#171717'
 };
 
 const steps = [
@@ -47,17 +44,17 @@ export function HowItWorks() {
         {/* Horizontal connecting line (hidden on mobile, visible md+) */}
         <div className="hidden md:block absolute top-[22px] left-[15%] right-[15%] h-[1px] bg-mist/30" />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {steps.map((step, idx) => (
-            <div key={idx} className="relative flex flex-col items-center md:items-start text-center md:text-left z-10">
+            <div key={idx} className="relative flex flex-col p-8 text-left z-10" style={cardStyle}>
               <div 
-                className="w-11 h-11 rounded-full flex items-center justify-center text-[14px] text-mist font-medium mb-6"
-                style={smallGlassStyle}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-[15px] font-semibold mb-8"
+                style={iconStyle}
               >
                 {step.num}
               </div>
-              <h3 className="text-[18px] font-medium text-ink mb-3">{step.title}</h3>
-              <p className="text-[14px] text-slate leading-relaxed max-w-[280px]">
+              <h3 className="text-[20px] font-medium text-ink mb-3 tracking-tight">{step.title}</h3>
+              <p className="text-[15px] text-slate leading-relaxed">
                 {step.desc}
               </p>
             </div>

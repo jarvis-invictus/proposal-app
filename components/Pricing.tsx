@@ -1,19 +1,17 @@
 import React from 'react';
 import Link from 'next/link';
 
-const glassStyle = {
-  background: 'rgba(255, 255, 255, 0.55)',
-  backdropFilter: 'blur(18px)',
-  WebkitBackdropFilter: 'blur(18px)',
-  border: '1px solid rgba(255, 255, 255, 0.7)',
-  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.5), 0 20px 60px rgba(23, 23, 23, 0.05)',
+const cardStyle = {
+  background: '#ffffff',
+  border: '1px solid rgba(0, 0, 0, 0.08)',
+  boxShadow: '0 12px 32px rgba(0, 0, 0, 0.03)',
   borderRadius: '24px',
   padding: '36px'
 };
 
 const highlightStyle = {
-  ...glassStyle,
-  background: 'rgba(255, 255, 255, 0.65)',
+  ...cardStyle,
+  background: '#ffffff',
   border: '2px solid #171717',
 };
 
@@ -68,7 +66,7 @@ export function Pricing() {
         {plans.map((plan, idx) => (
           <div 
             key={idx} 
-            style={plan.highlight ? highlightStyle : glassStyle} 
+            style={plan.highlight ? highlightStyle : cardStyle} 
             className={`flex flex-col text-left relative ${plan.highlight ? 'lg:-translate-y-4' : ''}`}
           >
             {plan.badge && (
@@ -93,7 +91,7 @@ export function Pricing() {
               className={`text-center w-full rounded-full px-5 py-3 text-[15px] font-medium transition-all ${
                 plan.highlight 
                   ? 'bg-ink text-white hover:bg-black' 
-                  : 'bg-white/80 text-ink border border-white hover:bg-white'
+                  : 'bg-[rgba(0,0,0,0.03)] text-ink border border-[rgba(0,0,0,0.05)] hover:bg-[rgba(0,0,0,0.06)]'
               }`}
             >
               {plan.cta}

@@ -9,14 +9,13 @@ import { Footer } from '@/components/Footer';
 export default function MarketingHero() {
   return (
     <div 
-      className="min-h-screen w-full text-ink selection:bg-sky-deep selection:text-white p-3 sm:p-4" 
+      className="min-h-screen w-full text-ink selection:bg-sky-deep selection:text-white p-3 sm:p-4 bg-[#f7f7f7]" 
       style={{ 
-        fontFamily: 'var(--font-inter-tight), sans-serif',
-        background: 'linear-gradient(180deg, #cfe4f2 0%, #a9cbe6 40%, #8fb9dc 75%, #7cbcdc 100%)'
+        fontFamily: 'var(--font-inter-tight), sans-serif'
       }}
     >
       {/* Hero Frame (Convix Style with Video Background) */}
-      <div className="relative w-full h-[calc(100vh-24px)] sm:h-[calc(100vh-32px)] overflow-hidden rounded-2xl sm:rounded-3xl shadow-xl">
+      <div className="relative w-full h-[calc(100vh-24px)] sm:h-[calc(100vh-32px)] overflow-hidden rounded-2xl sm:rounded-3xl shadow-xl bg-sky-deep">
         
         {/* Background Video */}
         <video

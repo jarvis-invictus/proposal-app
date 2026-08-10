@@ -1,14 +1,12 @@
 import React from 'react';
 import { Palette, LayoutTemplate, Sparkles, IndianRupee } from 'lucide-react';
 
-const glassStyle = {
-  background: 'rgba(255, 255, 255, 0.55)',
-  backdropFilter: 'blur(18px)',
-  WebkitBackdropFilter: 'blur(18px)',
-  border: '1px solid rgba(255, 255, 255, 0.7)',
-  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.5), 0 20px 60px rgba(23, 23, 23, 0.05)',
+const cardStyle = {
+  background: '#ffffff',
+  border: '1px solid rgba(0, 0, 0, 0.08)',
+  boxShadow: '0 12px 32px rgba(0, 0, 0, 0.03)',
   borderRadius: '24px',
-  padding: '28px'
+  padding: '32px'
 };
 
 const features = [
@@ -47,10 +45,10 @@ export function Features() {
         {features.map((feat, idx) => {
           const Icon = feat.icon;
           return (
-            <div key={idx} style={glassStyle} className="flex flex-col text-left hover:scale-[1.02] transition-transform duration-300">
+            <div key={idx} style={cardStyle} className="flex flex-col text-left hover:scale-[1.02] transition-transform duration-300">
               <div 
                 className="w-[44px] h-[44px] rounded-full flex items-center justify-center mb-6"
-                style={{ background: 'rgba(23,23,23,0.06)' }}
+                style={{ background: 'rgba(23,23,23,0.04)' }}
               >
                 <Icon className="w-5 h-5 text-ink" />
               </div>
