@@ -1,6 +1,6 @@
 'use client';
 
-import { useChat } from '@ai-sdk/react';
+import { useChat } from 'ai/react';
 import { useState } from 'react';
 import { ProposalSummaryReview } from '@/components/ProposalSummaryReview';
 import { ProposalType } from '@/lib/schema/proposal';

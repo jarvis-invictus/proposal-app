@@ -7,7 +7,7 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
   const { messages } = await req.json();
 
-  const result = streamText({
+  const result = await streamText({
     model: openai('gpt-4o'),
     system: `You are an expert proposal generation assistant for freelancers and agencies.
 Your goal is to extract all necessary details to generate a high-quality, professional proposal.
@@ -31,12 +31,12 @@ If the user provides a very thorough transcript that already has all this info, 
           summary: z.string().describe('A comprehensive, structured summary of all the facts gathered for the proposal.'),
           isComplete: z.boolean().describe('Always set to true when calling this tool.')
         }),
-        execute: async ({ summary }) => {
+        execute: async ({ summary }: { summary: any }) => {
           return { status: 'ready_for_review', summary };
         },
       }),
     },
   });
 
-  return result.toDataStreamResponse();
+  return result.toAIStreamResponse();
 }
