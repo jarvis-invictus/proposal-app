@@ -6,7 +6,13 @@ export function Footer() {
     <footer 
       className="w-full relative z-10 pt-20 pb-8 px-8 sm:px-12 mt-24 mb-0 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden"
       style={{
-        background: 'linear-gradient(90deg, #cfe4f2 0%, #7cbcdc 100%)'
+        background: `
+          linear-gradient(90deg, rgba(207,228,242,0.9) 0%, rgba(124,188,220,0.85) 100%),
+          url('https://images.unsplash.com/photo-1509803874385-db7c23652552?q=80&w=2000&auto=format&fit=crop')
+        `,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
       }}
     >
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between gap-12 mb-16">
