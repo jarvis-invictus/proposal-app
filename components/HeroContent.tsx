@@ -1,15 +1,15 @@
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { SignatureCard } from './SignatureCard';
 
 export function HeroContent() {
   return (
     <div 
       className="flex flex-col items-center justify-center px-4 w-full"
-      style={{ minHeight: 'calc(100vh - 80px)' }} // roughly viewport minus navbar
+      style={{ minHeight: 'calc(100vh - 120px)' }}
     >
       {/* Badge */}
       <div 
+        className="animate-pop"
         style={{
           background: 'rgba(255, 255, 255, 0.55)',
           backdropFilter: 'blur(10px)',
@@ -30,7 +30,7 @@ export function HeroContent() {
 
       {/* Headline */}
       <h1 
-        className="text-center"
+        className="text-center animate-pop delay-100"
         style={{
           fontSize: 'clamp(36px, 6vw, 62px)',
           lineHeight: 1.08,
@@ -55,7 +55,7 @@ export function HeroContent() {
 
       {/* Subtitle */}
       <p 
-        className="text-center"
+        className="text-center animate-pop delay-200"
         style={{
           marginTop: '18px',
           fontSize: '16px',
@@ -69,6 +69,7 @@ export function HeroContent() {
 
       {/* CTA Row */}
       <div 
+        className="animate-pop delay-300"
         style={{
           marginTop: '30px',
           display: 'flex',
@@ -118,8 +119,6 @@ export function HeroContent() {
           See how it works
         </Link>
       </div>
-
-      <SignatureCard />
     </div>
   );
 }
