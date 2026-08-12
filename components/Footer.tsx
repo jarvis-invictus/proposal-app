@@ -20,7 +20,7 @@ export function Footer() {
         {/* Logo/Brand */}
         <div>
           <div className="flex items-center gap-2 mb-4">
-            <img src="/logo.png" alt="Marg Logo" className="h-7 w-auto object-contain" />
+            <img src="/logo.png" alt="Marg Logo" className="h-7 w-auto object-contain mix-blend-multiply" />
             <div className="font-serif italic text-[24px] font-medium tracking-tight text-ink">
               Marg
             </div>

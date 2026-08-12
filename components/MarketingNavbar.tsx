@@ -18,7 +18,7 @@ export function MarketingNavbar() {
       >
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="Marg Logo" className="h-6 w-auto object-contain" />
+          <img src="/logo.png" alt="Marg Logo" className="h-6 w-auto object-contain mix-blend-multiply" />
           <div 
             className="text-[#171717]"
             style={{
