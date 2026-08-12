@@ -17,15 +17,18 @@ export function MarketingNavbar() {
         }}
       >
         {/* Logo */}
-        <div 
-          className="text-[#171717]"
-          style={{
-            fontFamily: "'Instrument Serif', serif",
-            fontStyle: 'italic',
-            fontSize: '20px'
-          }}
-        >
-          Invictus
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="Marg Logo" className="h-6 w-auto object-contain" />
+          <div 
+            className="text-[#171717]"
+            style={{
+              fontFamily: "'Instrument Serif', serif",
+              fontStyle: 'italic',
+              fontSize: '20px'
+            }}
+          >
+            Marg
+          </div>
         </div>
         
         {/* Desktop Links */}

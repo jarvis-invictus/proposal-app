@@ -15,7 +15,7 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "Invictus Proposals",
+  title: "Marg",
   description: "AI-guided brand kits and proposals",
 };
 

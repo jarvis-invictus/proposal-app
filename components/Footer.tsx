@@ -19,8 +19,11 @@ export function Footer() {
         
         {/* Logo/Brand */}
         <div>
-          <div className="font-serif italic text-[24px] font-medium tracking-tight text-ink mb-4">
-            Invictus
+          <div className="flex items-center gap-2 mb-4">
+            <img src="/logo.png" alt="Marg Logo" className="h-7 w-auto object-contain" />
+            <div className="font-serif italic text-[24px] font-medium tracking-tight text-ink">
+              Marg
+            </div>
           </div>
           <p className="text-slate text-[14px] max-w-[200px]">
             Proposals that practically write themselves.
@@ -53,7 +56,7 @@ export function Footer() {
       {/* Bottom Row */}
       <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 pt-8 border-t border-[rgba(23,23,23,0.1)]">
         <div className="text-slate text-[13px]">
-          © 2026 Invictus Proposals
+          © 2026 Marg
         </div>
         <div className="text-slate text-[13px] font-medium tracking-wide">
           Made in India
