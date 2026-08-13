@@ -1,14 +1,6 @@
 import React from 'react';
 import { Palette, LayoutTemplate, Sparkles, IndianRupee } from 'lucide-react';
 
-const cardStyle = {
-  background: '#ffffff',
-  border: '1px solid rgba(0, 0, 0, 0.08)',
-  boxShadow: '0 12px 32px rgba(0, 0, 0, 0.03)',
-  borderRadius: '24px',
-  padding: '32px'
-};
-
 const features = [
   {
     icon: Palette,
@@ -34,7 +26,7 @@ const features = [
 
 export function Features() {
   return (
-    <section className="py-24 px-4 w-full max-w-5xl mx-auto relative z-10">
+    <section className="py-24 px-4 w-full max-w-5xl mx-auto relative z-10 screen-in delay-200">
       <div className="text-center mb-16">
         <h2 className="text-[clamp(32px,5vw,48px)] font-medium text-ink tracking-tight">
           Everything a proposal <span className="font-serif italic font-normal">needs</span>, nothing it doesn't
@@ -45,12 +37,14 @@ export function Features() {
         {features.map((feat, idx) => {
           const Icon = feat.icon;
           return (
-            <div key={idx} style={cardStyle} className="flex flex-col text-left hover:scale-[1.02] transition-transform duration-300">
+            <div 
+              key={idx} 
+              className={`flex flex-col text-left liquid hover-lift hover-lift-brand rounded-[20px] p-[32px] screen-in delay-${(idx + 1) * 100}`}
+            >
               <div 
-                className="w-[44px] h-[44px] rounded-full flex items-center justify-center mb-6"
-                style={{ background: 'rgba(23,23,23,0.04)' }}
+                className="w-[44px] h-[44px] rounded-[999px] flex items-center justify-center mb-6 bg-ink-04"
               >
-                <Icon className="w-5 h-5 text-ink" />
+                <Icon className="w-5 h-5 text-ink" strokeWidth={1.5} />
               </div>
               <h3 className="text-[16px] font-medium text-ink mb-2">{feat.title}</h3>
               <p className="text-[14px] text-slate leading-relaxed">

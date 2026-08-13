@@ -1,43 +1,86 @@
 @import "tailwindcss";
 
 :root {
-  --background: #cfe4f2;
-  --foreground: #171717;
+  --brand-wash: #eef5fa;
+  --brand-tint: #cfe4f2;
+  --brand: #7cbcdc;
+  --brand-deep: #2f7fbf;
+  --brand-ink: #17384f;
+  
+  --ink: #171717;
+  --ink-04: rgba(23, 23, 23, 0.04);
+  --ink-08: rgba(23, 23, 23, 0.08);
+  --ink-12: rgba(23, 23, 23, 0.12);
+  --ink-16: rgba(23, 23, 23, 0.16);
+
+  --slate: #3d4451;
+  --mist: #6b7280;
+  
+  --glass-card: rgba(255, 255, 255, 0.68);
+  
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 @theme inline {
-  --color-sky-light: #cfe4f2;
-  --color-sky-deep: #7cbcdc;
-  --color-ink: #171717;
-  --color-slate: #3d4451;
-  --color-mist: #6b7280;
-  --color-glass-white: rgba(255, 255, 255, 0.5);
+  --color-brand-wash: var(--brand-wash);
+  --color-brand-tint: var(--brand-tint);
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-ink: var(--brand-ink);
+  --color-ink: var(--ink);
+  --color-ink-04: var(--ink-04);
+  --color-ink-08: var(--ink-08);
+  --color-ink-12: var(--ink-12);
+  --color-ink-16: var(--ink-16);
+  --color-slate: var(--slate);
+  --color-mist: var(--mist);
   
   --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
 }
 
 body {
-  background: var(--color-sky-light);
-  color: var(--color-ink);
+  background: var(--brand-wash);
+  color: var(--ink);
   font-family: var(--font-sans);
 }
 
-@keyframes popIn {
-  from {
-    opacity: 0;
-    transform: translateY(16px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+/* Base Motion */
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-pop {
-  animation: popIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.screen-in {
+  animation: screenIn 560ms var(--ease-out-soft) forwards;
   opacity: 0;
 }
+
+/* Utilities */
+.hover-lift {
+  transition: transform 200ms var(--ease-spring), box-shadow 200ms var(--ease-spring), border-color 200ms var(--ease-spring);
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(47, 127, 191, 0.16);
+}
+.hover-lift-brand:hover {
+  border-color: var(--brand);
+}
+
+.liquid {
+  background: var(--glass-card);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--ink-08);
+}
+
+/* Maintain old pop animations for hero */
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-pop { animation: popIn 0.8s var(--ease-out-soft) forwards; opacity: 0; }
 .delay-100 { animation-delay: 100ms; }
 .delay-200 { animation-delay: 200ms; }
 .delay-300 { animation-delay: 300ms; }
