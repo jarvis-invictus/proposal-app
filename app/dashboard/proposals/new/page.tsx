@@ -2,12 +2,15 @@
 
 import { useChat } from 'ai/react';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ProposalSummaryReview } from '@/components/ProposalSummaryReview';
 import { ProposalType } from '@/lib/schema/proposal';
 
 export default function NewProposalPage() {
-  const [phase, setPhase] = useState<'intake' | 'review' | 'done'>('intake');
+  const router = useRouter();
+  const [phase, setPhase] = useState<'intake' | 'review' | 'saving' | 'error'>('intake');
   const [summary, setSummary] = useState('');
+  const [saveError, setSaveError] = useState('');
   const [generatedProposal, setGeneratedProposal] = useState<ProposalType | null>(null);
 
   const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
@@ -20,23 +23,63 @@ export default function NewProposalPage() {
   });
 
   const generateFinalProposal = async (finalSummary: string) => {
+    setPhase('saving');
     const res = await fetch('/api/generate-proposal', {
       method: 'POST',
       body: JSON.stringify({ summary: finalSummary }),
       headers: { 'Content-Type': 'application/json' },
     });
     const data = await res.json();
+    if (!res.ok) {
+      setGeneratedProposal(null);
+      setSaveError(data.error || 'Failed to generate the proposal.');
+      setPhase('error');
+      return;
+    }
     setGeneratedProposal(data);
-    setPhase('done');
+
+    // Persist the generated content and open it in the editor.
+    const saveRes = await fetch('/api/proposals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: data }),
+    });
+    const saved = await saveRes.json();
+    if (!saveRes.ok) {
+      setSaveError(saved.error || 'Failed to save the proposal.');
+      setPhase('error');
+      return;
+    }
+    router.push(`/dashboard/proposals/${saved.id}/edit`);
   };
 
-  if (phase === 'done' && generatedProposal) {
+  if (phase === 'saving') {
+    return (
+      <div className="max-w-3xl mx-auto mt-8 p-6 bg-white shadow-sm rounded-lg border border-gray-200 text-center text-gray-600">
+        Generating and saving your proposal…
+      </div>
+    );
+  }
+
+  if (phase === 'error') {
     return (
       <div className="max-w-3xl mx-auto mt-8 p-6 bg-white shadow-sm rounded-lg border border-gray-200">
-        <h2 className="text-2xl font-bold mb-4">Proposal Generated Successfully!</h2>
-        <pre className="bg-gray-50 p-4 rounded overflow-auto text-sm border border-gray-100">
-          {JSON.stringify(generatedProposal, null, 2)}
-        </pre>
+        <h2 className="text-xl font-bold mb-2 text-red-600">Couldn&apos;t save the proposal</h2>
+        <p className="text-sm text-gray-600 mb-4">{saveError}</p>
+        {generatedProposal && (
+          <>
+            <p className="text-sm text-gray-500 mb-2">The generated content is below — nothing was lost, it just didn&apos;t save. Try again or copy it manually.</p>
+            <pre className="bg-gray-50 p-4 rounded overflow-auto text-sm border border-gray-100">
+              {JSON.stringify(generatedProposal, null, 2)}
+            </pre>
+          </>
+        )}
+        <button
+          onClick={() => setPhase('review')}
+          className="mt-4 px-4 py-2 bg-gray-900 text-white rounded hover:bg-gray-800 text-sm font-medium"
+        >
+          Back to review
+        </button>
       </div>
     );
   }
