@@ -68,9 +68,15 @@ const EditableText = ({
     document.execCommand('insertText', false, text);
   }
 
+  // inline-block only makes sense for the default `span` usage (genuinely inline text, or a
+  // flex child) — forcing it on block-level tags like `p`/`div`/`h1` collapses adjacent fields
+  // onto the same line, since inline-level boxes don't get a line break between them by
+  // themselves (e.g. two stacked `<p>` name fields rendering as "Acme Corp.Acme Corp.").
+  const displayClass = Component === 'span' ? 'inline-block' : 'block'
+
   return (
     <Component
-      className={`outline-none focus:ring-2 focus:ring-[var(--brand)] focus:bg-[var(--brand-12)] rounded transition-colors break-words min-w-[20px] inline-block ${className}`}
+      className={`outline-none focus:ring-2 focus:ring-[var(--brand)] focus:bg-[var(--brand-12)] rounded transition-colors break-words min-w-[20px] ${displayClass} ${className}`}
       style={style}
       contentEditable
       suppressContentEditableWarning

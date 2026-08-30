@@ -240,3 +240,11 @@ body {
   --sky-deep:#7cbcdc;
   --gradient-hero:linear-gradient(180deg,var(--sky-light) 0%,var(--sky-deep) 100%);
 }
+
+/* PLACEHOLDER — not a design-handoff value. MicButton.tsx's "listening" state animates its three
+   bars with `pulse-bar`, but no keyframe of that name was ever defined anywhere in the handoff
+   (checked every tokens/*.css and every reference file). Without it the bars just sat static.
+   This is a simple opacity/scale pulse — no new duration or easing invented, MicButton's own
+   `animation: pulse-bar 900ms ${i*140}ms infinite ease-in-out` already supplies those. Needs a
+   design pass before being treated as final. */
+@keyframes pulse-bar{0%,100%{opacity:0.4;transform:scaleY(0.6)}50%{opacity:1;transform:scaleY(1)}}
