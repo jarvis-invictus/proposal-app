@@ -8,11 +8,18 @@ import { Icon } from '../ui/Icon';
  * `requestAnimationFrame` cannot run — correctness beats the animation.
  */
 export function useCountUp(target:number,duration=900):number{
-  const reduce=typeof window!=='undefined'&&window.matchMedia
-    &&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const skip=reduce||(typeof document!=='undefined'&&document.hidden);
-  const [n,setN]=React.useState(skip?target:0);
+  // Always starts at 0 on both the server render and the client's first render — reading
+  // document/window here (rather than inside the effect below) is what previously caused a
+  // hydration mismatch: SSR has no document.hidden to check and always renders 0, but a client
+  // whose tab happens to be backgrounded at first paint would compute skip=true and render
+  // target instead, so React would flag the two renders as disagreeing. Effects only ever run
+  // post-hydration, so checking there instead cannot mismatch — the correctness guarantee below
+  // (skip animation, jump straight to the real number) still holds, just one tick later.
+  const [n,setN]=React.useState(0);
   React.useEffect(()=>{
+    const reduce=typeof window!=='undefined'&&window.matchMedia
+      &&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const skip=reduce||(typeof document!=='undefined'&&document.hidden);
     // A tile showing the wrong figure is worse than one that doesn't animate: when motion is
     // unwanted or rAF won't run (hidden tab, print capture), land on the real number immediately.
     if(skip||typeof requestAnimationFrame!=='function'){setN(target);return;}
@@ -27,7 +34,7 @@ export function useCountUp(target:number,duration=900):number{
     // Safety net: if rAF is throttled and never delivers a frame, don't sit on a partial value.
     const failsafe=setTimeout(()=>{if(!settled)setN(target);},duration+400);
     return()=>{cancelAnimationFrame(raf);clearTimeout(failsafe);};
-  },[target,duration,skip]);
+  },[target,duration]);
   return n;
 }
 
