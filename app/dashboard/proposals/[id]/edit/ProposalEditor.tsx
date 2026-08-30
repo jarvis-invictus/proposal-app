@@ -145,9 +145,23 @@ const EditableNumber = ({
 export default function ProposalEditor({ initialProposal }: { initialProposal: any }) {
   const [proposal, setProposal] = useState(initialProposal)
   const [savingState, setSavingState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+
+  // Brand kit colors, if this proposal is linked to one (proposals.brand_kit_id, joined by the
+  // page's query). An explicit prior choice on the proposal itself always wins; the brand kit's
+  // primary color is the fallback for a proposal that's never had its theme touched; the old
+  // hardcoded indigo is the last resort for accounts with no brand kit at all yet.
+  const brandKitColors = initialProposal.brand_kits?.colors
+  const brandKitAccent = brandKitColors?.primary || '#171717'
   const [themeColor, setThemeColor] = useState(
-    initialProposal.content.themeColor || '#4F46E5' // Default Indigo
+    initialProposal.content.themeColor || brandKitColors?.primary || '#4F46E5' // Default Indigo
   )
+  const themeKit = brandKitColors
+    ? [
+        brandKitColors.primary && { hex: brandKitColors.primary, label: 'Primary' },
+        brandKitColors.secondary && { hex: brandKitColors.secondary, label: 'Secondary' },
+        brandKitColors.accent && { hex: brandKitColors.accent, label: 'Accent' },
+      ].filter(Boolean) as { hex: string; label: string }[]
+    : undefined
   const [showPdfExport, setShowPdfExport] = useState(false)
 
   const content = proposal.content
@@ -312,7 +326,8 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
       <div className="fixed top-24 right-8 z-50 print:hidden">
         <ThemeColorPicker
           value={themeColor}
-          brandColor={initialProposal.content.themeColor || '#4F46E5'}
+          brandColor={brandKitAccent}
+          kit={themeKit}
           align="right"
           onChange={(roles) => handleColorChange(roles.accent)}
         />
