@@ -31,7 +31,9 @@ export default function PublicProposalView({
   isOwner: boolean
 }) {
   const content = proposal.content
-  const themeColor = content.themeColor || '#4F46E5'
+  // Same fallback chain as the editor: an explicit choice on the proposal wins, then the
+  // linked brand kit's primary color, then the old hardcoded default for accounts with no kit.
+  const themeColor = content.themeColor || proposal.brand_kits?.colors?.primary || '#4F46E5'
 
   // View Tracking (only fire if not owner)
   useEffect(() => {

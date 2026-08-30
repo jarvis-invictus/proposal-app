@@ -66,14 +66,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No default template available' }, { status: 500 })
     }
 
-    // 4. Create the proposal
+    // 4. Resolve the account's brand kit (no kit-selection UI exists yet — most recent wins)
+    // and seed the new proposal's theme color from it so "set your brand once" actually
+    // does something on the very first proposal, instead of always defaulting to indigo.
+    const { data: brandKit } = await supabase
+      .from('brand_kits')
+      .select('id, colors')
+      .eq('account_id', userRow.account_id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const seededContent = brandKit?.colors?.primary
+      ? { ...content, themeColor: content.themeColor || brandKit.colors.primary }
+      : content
+
+    // 5. Create the proposal
     const { data: proposal, error } = await supabase
       .from('proposals')
       .insert({
         account_id: userRow.account_id,
         template_id: template.id,
+        brand_kit_id: brandKit?.id ?? null,
         status: 'DRAFT',
-        content,
+        content: seededContent,
         slug: slugify(content.title),
       })
       .select('id')
