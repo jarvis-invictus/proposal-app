@@ -1,50 +1,35 @@
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { Pill } from './ui/Pill';
 
 export function HeroContent() {
   return (
-    <div 
+    <div
       className="flex flex-col items-center justify-center px-4 w-full"
       style={{ minHeight: 'calc(100vh - 120px)' }}
     >
       {/* Badge */}
-      <div 
-        className="animate-pop"
-        style={{
-          background: 'rgba(255, 255, 255, 0.55)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          borderRadius: '999px',
-          padding: '6px 14px 6px 8px',
-          fontSize: '13px',
-          color: '#171717',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          marginBottom: '24px'
-        }}
-      >
-        <div style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#171717' }} />
-        <span style={{ fontWeight: 500 }}>Now with AI-guided brand kits</span>
+      <div className="animate-pop" style={{ marginBottom: '24px' }}>
+        <Pill dot>Now with AI-guided brand kits</Pill>
       </div>
 
       {/* Headline */}
-      <h1 
+      <h1
         className="text-center animate-pop delay-100"
         style={{
           fontSize: 'clamp(36px, 6vw, 62px)',
           lineHeight: 1.08,
           fontWeight: 500,
-          letterSpacing: '-0.02em',
-          color: '#171717',
+          letterSpacing: 'var(--tracking-tight)',
+          color: 'var(--ink)',
           maxWidth: '860px',
           margin: 0
         }}
       >
         Win more deals with proposals that practically write{' '}
-        <span 
+        <span
           style={{
-            fontFamily: "'Instrument Serif', serif",
+            fontFamily: 'var(--font-serif)',
             fontStyle: 'italic',
             fontWeight: 400
           }}
@@ -54,13 +39,13 @@ export function HeroContent() {
       </h1>
 
       {/* Subtitle */}
-      <p 
+      <p
         className="text-center animate-pop delay-200"
         style={{
           marginTop: '18px',
-          fontSize: '16px',
-          lineHeight: 1.6,
-          color: '#3d4451',
+          fontSize: 'var(--text-body)',
+          lineHeight: 'var(--leading-body)',
+          color: 'var(--slate)',
           maxWidth: '480px'
         }}
       >
@@ -68,7 +53,7 @@ export function HeroContent() {
       </p>
 
       {/* CTA Row */}
-      <div 
+      <div
         className="animate-pop delay-300"
         style={{
           marginTop: '30px',
@@ -79,27 +64,27 @@ export function HeroContent() {
           justifyContent: 'center'
         }}
       >
-        <Link 
+        <Link
           href="/dashboard"
           style={{
-            background: '#171717',
-            color: 'white',
-            borderRadius: '999px',
+            background: 'var(--ink)',
+            color: 'var(--text-inverse)',
+            borderRadius: 'var(--radius-pill)',
             padding: '13px 24px',
-            fontSize: '14px',
-            fontWeight: 500,
+            fontSize: 'var(--text-sm)',
+            fontWeight: 'var(--weight-medium)',
             display: 'flex',
             alignItems: 'center',
             gap: '10px'
           }}
         >
           Start closing deals
-          <div 
+          <div
             style={{
               background: 'rgba(255,255,255,0.15)',
               width: '22px',
               height: '22px',
-              borderRadius: '50%',
+              borderRadius: 'var(--radius-pill)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
@@ -108,12 +93,12 @@ export function HeroContent() {
             <ArrowRight style={{ width: '12px', height: '12px' }} />
           </div>
         </Link>
-        <Link 
+        <Link
           href="#demo"
           style={{
-            fontSize: '14px',
-            color: '#171717',
-            fontWeight: 500
+            fontSize: 'var(--text-sm)',
+            color: 'var(--ink)',
+            fontWeight: 'var(--weight-medium)'
           }}
         >
           See how it works

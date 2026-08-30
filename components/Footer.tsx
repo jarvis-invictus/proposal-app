@@ -1,13 +1,14 @@
 import React from 'react';
 import Link from 'next/link';
+import { Logo } from './ui/Logo';
 
 export function Footer() {
   return (
-    <footer 
+    <footer
       className="w-full relative z-10 pt-20 pb-8 px-8 sm:px-12 mt-24 mb-0 rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden"
       style={{
         background: `
-          linear-gradient(90deg, rgba(207,228,242,0.9) 0%, rgba(124,188,220,0.85) 100%),
+          linear-gradient(90deg, color-mix(in srgb, var(--brand-tint) 90%, transparent) 0%, color-mix(in srgb, var(--brand) 85%, transparent) 100%),
           url('https://images.unsplash.com/photo-1509803874385-db7c23652552?q=80&w=2000&auto=format&fit=crop')
         `,
         backgroundSize: 'cover',
@@ -16,14 +17,11 @@ export function Footer() {
       }}
     >
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between gap-12 mb-16">
-        
+
         {/* Logo/Brand */}
         <div>
-          <div className="flex items-center gap-2 mb-4">
-            <img src="/logo.png" alt="Marg Logo" className="h-7 w-auto object-contain mix-blend-multiply" />
-            <div className="font-serif italic text-[24px] font-medium tracking-tight text-ink">
-              Marg
-            </div>
+          <div className="mb-4">
+            <Logo size={22} wordmark label="Marg" />
           </div>
           <p className="text-slate text-[14px] max-w-[200px]">
             Proposals that practically write themselves.
