@@ -1,8 +1,12 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Check, Loader2, ArrowUp, ArrowDown, Palette } from 'lucide-react'
+import { Check, Loader2, ArrowUp, ArrowDown } from 'lucide-react'
 import { NotificationsDropdown } from '@/components/NotificationsDropdown'
+import { Button } from '@/components/ui/Button'
+import { IconButton } from '@/components/ui/IconButton'
+import { ThemeColorPicker } from '@/components/app/ThemeColorPicker'
+import { PdfExportModal, type PdfExportOptions } from '@/components/app/PdfExportModal'
 
 // Simple debounce hook for auto-saving
 function useDebounce<T extends (...args: any[]) => void>(
@@ -33,12 +37,14 @@ const EditableText = ({
   value,
   onChange,
   className = '',
+  style,
   multiline = false,
   as: Component = 'span'
 }: {
   value: string
   onChange: (newVal: string) => void
   className?: string
+  style?: React.CSSProperties
   multiline?: boolean
   as?: React.ElementType
 }) => {
@@ -64,7 +70,8 @@ const EditableText = ({
 
   return (
     <Component
-      className={`outline-none focus:ring-2 focus:ring-blue-500 focus:bg-blue-50/50 rounded transition-colors break-words min-w-[20px] inline-block ${className}`}
+      className={`outline-none focus:ring-2 focus:ring-[var(--brand)] focus:bg-[var(--brand-12)] rounded transition-colors break-words min-w-[20px] inline-block ${className}`}
+      style={style}
       contentEditable
       suppressContentEditableWarning
       onBlur={handleInput}
@@ -79,11 +86,13 @@ const EditableText = ({
 const EditableNumber = ({
   value,
   onChange,
-  className = ''
+  className = '',
+  style
 }: {
   value: number
   onChange: (newVal: number) => void
   className?: string
+  style?: React.CSSProperties
 }) => {
   const [isEditing, setIsEditing] = useState(false)
   const [tempVal, setTempVal] = useState(value.toString())
@@ -100,7 +109,8 @@ const EditableNumber = ({
       <input
         ref={inputRef}
         type="number"
-        className={`bg-transparent outline-none border-b border-blue-500 focus:ring-0 p-0 w-24 ${className}`}
+        className={`bg-transparent outline-none border-b focus:ring-0 p-0 w-24 ${className}`}
+        style={{ ...style, borderColor: 'var(--brand)' }}
         value={tempVal}
         onChange={(e) => setTempVal(e.target.value)}
         onBlur={() => {
@@ -123,7 +133,8 @@ const EditableNumber = ({
 
   return (
     <span
-      className={`cursor-text hover:bg-gray-100 rounded px-1 transition-colors ${className}`}
+      className={`cursor-text hover:bg-[var(--ink-06)] rounded px-1 transition-colors ${className}`}
+      style={style}
       onClick={() => setIsEditing(true)}
     >
       ${value.toLocaleString()}
@@ -137,8 +148,22 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
   const [themeColor, setThemeColor] = useState(
     initialProposal.content.themeColor || '#4F46E5' // Default Indigo
   )
+  const [showPdfExport, setShowPdfExport] = useState(false)
 
   const content = proposal.content
+
+  const PDF_SECTIONS = [
+    { id: 'addOns', label: 'Optional Add-ons' },
+    { id: 'timeline', label: 'Project Timeline' },
+    { id: 'terms', label: 'Terms & Conditions' },
+  ]
+
+  const handlePdfExport = (_opts: PdfExportOptions) => {
+    // No server-side PDF renderer exists yet — export falls back to the browser's print-to-PDF,
+    // same mechanism the public proposal page uses.
+    setShowPdfExport(false)
+    setTimeout(() => window.print(), 100)
+  }
 
   // Warn on unload if there are unsaved changes
   useEffect(() => {
@@ -252,84 +277,92 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
   }
 
   return (
-    <div className="relative min-h-screen pb-32">
-      
+    <div className="relative min-h-screen pb-32" style={{ background: 'var(--surface-page)' }}>
+
       {/* Editor Header */}
-      <div className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center sticky top-0 z-40">
-        <div className="flex items-center gap-4">
-          <h2 className="text-lg font-medium text-gray-900">Proposal Editor</h2>
-          <span className={`px-2 py-1 rounded text-xs font-medium ${proposal.status === 'PUBLISHED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+      <div className="print:hidden" style={{
+        position: 'sticky', top: 0, zIndex: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '16px 32px', background: 'var(--glass-quiet)', backdropFilter: 'var(--blur-glass)', WebkitBackdropFilter: 'var(--blur-glass)',
+        borderBottom: '1px solid var(--border-hairline)', fontFamily: 'var(--font-sans)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <h2 style={{ margin: 0, fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)', color: 'var(--text-primary)' }}>Proposal Editor</h2>
+          <span style={{
+            padding: '3px 9px', borderRadius: 'var(--radius-pill)', fontSize: 'var(--text-micro)', fontWeight: 'var(--weight-medium)',
+            background: proposal.status === 'PUBLISHED' ? 'var(--brand-12)' : 'transparent',
+            border: `1px solid ${proposal.status === 'PUBLISHED' ? 'var(--brand-38)' : 'var(--border-hairline)'}`,
+            color: proposal.status === 'PUBLISHED' ? 'var(--brand-deep)' : 'var(--text-muted)',
+          }}>
             {proposal.status}
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <NotificationsDropdown />
+          <Button variant="ghost" size="sm" icon="file-down" onClick={() => setShowPdfExport(true)}>Download PDF</Button>
           {proposal.status === 'PUBLISHED' && (
-            <button
-              onClick={copyLink}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-md transition-colors"
-            >
-              Copy Public Link
-            </button>
+            <Button variant="secondary" size="sm" icon="link" onClick={copyLink}>Copy Public Link</Button>
           )}
           {proposal.status === 'DRAFT' && (
-            <button
-              onClick={handlePublish}
-              className="text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-md transition-colors"
-            >
-              Publish
-            </button>
+            <Button variant="primary" size="sm" onClick={handlePublish}>Publish</Button>
           )}
-        </div>
-      </div>
-      {/* Floating Theme Control Panel */}
-      <div className="fixed top-24 right-8 bg-white shadow-xl rounded-lg border border-gray-200 p-4 z-50 flex flex-col gap-4">
-        <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-          <Palette className="w-4 h-4" /> Theme Color
-        </div>
-        <div className="flex gap-2">
-          {['#4F46E5', '#0F172A', '#10B981', '#F59E0B', '#EF4444'].map((color) => (
-            <button
-              key={color}
-              className={`w-8 h-8 rounded-full border-2 focus:outline-none ${themeColor === color ? 'border-gray-900 scale-110' : 'border-transparent hover:scale-105'}`}
-              style={{ backgroundColor: color }}
-              onClick={() => handleColorChange(color)}
-              title={color}
-            />
-          ))}
-          <input
-            type="color"
-            value={themeColor}
-            onChange={(e) => handleColorChange(e.target.value)}
-            className="w-8 h-8 p-0 border-0 rounded cursor-pointer"
-          />
         </div>
       </div>
 
+      {/* Floating Theme Control Panel */}
+      <div className="fixed top-24 right-8 z-50 print:hidden">
+        <ThemeColorPicker
+          value={themeColor}
+          brandColor={initialProposal.content.themeColor || '#4F46E5'}
+          align="right"
+          onChange={(roles) => handleColorChange(roles.accent)}
+        />
+      </div>
+
+      {/* Modal is designed to fill its nearest positioned ancestor — anchor that to the
+          viewport (not this long-scrolling document) so it doesn't land off-screen. */}
+      {showPdfExport && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
+          <PdfExportModal
+            open={showPdfExport}
+            onClose={() => setShowPdfExport(false)}
+            title={content.title}
+            accent={themeColor}
+            sections={PDF_SECTIONS}
+            onExport={handlePdfExport}
+          />
+        </div>
+      )}
+
       {/* Auto-save Status Indicator */}
-      <div className="fixed bottom-8 right-8 bg-white shadow-lg rounded-full px-4 py-2 flex items-center gap-2 z-50 border border-gray-100">
+      <div className="fixed bottom-8 right-8 z-50 print:hidden" style={{
+        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 'var(--radius-pill)',
+        background: 'var(--glass-panel)', backdropFilter: 'var(--blur-glass)', WebkitBackdropFilter: 'var(--blur-glass)',
+        border: '1px solid var(--border-hairline)', boxShadow: 'var(--shadow-raised)', fontFamily: 'var(--font-sans)',
+      }}>
         {savingState === 'saving' && (
           <>
-            <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
-            <span className="text-sm text-gray-500">Saving...</span>
+            <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--text-muted)' }} />
+            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Saving...</span>
           </>
         )}
         {savingState === 'saved' && (
           <>
-            <Check className="w-4 h-4 text-green-500" />
-            <span className="text-sm text-green-600">Saved</span>
+            <Check className="w-4 h-4" style={{ color: 'var(--brand-deep)' }} />
+            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--brand-deep)' }}>Saved</span>
           </>
         )}
         {savingState === 'idle' && (
-          <span className="text-sm text-gray-400">All changes saved</span>
+          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>All changes saved</span>
         )}
         {savingState === 'error' && (
-          <span className="text-sm font-medium text-red-500">Failed to save - Edit again to retry</span>
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--status-caution-text)' }}>Failed to save - Edit again to retry</span>
         )}
       </div>
 
       {/* Proposal Render */}
-      <div className="max-w-4xl mx-auto mt-12 bg-white shadow-2xl rounded-xl overflow-hidden print:shadow-none print:mt-0">
+      <div className="max-w-4xl mx-auto mt-12 print:shadow-none print:mt-0" style={{
+        background: 'var(--surface-card)', borderRadius: 'var(--radius-card-lg)', boxShadow: 'var(--shadow-modal)', overflow: 'hidden',
+      }}>
         {/* Header Section */}
         <div className="p-12 text-white" style={{ backgroundColor: themeColor }}>
           <EditableText
@@ -383,23 +416,19 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
 
         {/* Packages Section */}
         {content.packages && content.packages.length > 0 && (
-          <div className="p-12 border-b border-gray-100">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">Investment Options</h2>
+          <div className="p-12" style={{ borderBottom: '1px solid var(--border-hairline)' }}>
+            <h2 className="text-ink" style={{ fontSize: 'var(--text-h3)', fontWeight: 700, marginBottom: 32 }}>Investment Options</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {content.packages.map((pkg: any, idx: number) => (
                 <div
                   key={idx}
-                  className={`group relative border-2 rounded-xl p-6 ${pkg.popular ? 'border-transparent shadow-lg' : 'border-gray-100'}`}
-                  style={pkg.popular ? { borderColor: themeColor } : {}}
+                  className={`group relative rounded-xl p-6 ${pkg.popular ? 'shadow-lg' : ''}`}
+                  style={{ border: pkg.popular ? `2px solid ${themeColor}` : '1px solid var(--border-hairline)' }}
                 >
                   {/* Reorder controls visible on hover */}
                   <div className="absolute -left-3 top-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => moveArrayItem('packages', idx, 'up')} className="p-1 bg-white shadow rounded-full border border-gray-200 hover:bg-gray-50 disabled:opacity-30" disabled={idx === 0}>
-                      <ArrowUp className="w-3 h-3 text-gray-600" />
-                    </button>
-                    <button onClick={() => moveArrayItem('packages', idx, 'down')} className="p-1 bg-white shadow rounded-full border border-gray-200 hover:bg-gray-50 disabled:opacity-30" disabled={idx === content.packages.length - 1}>
-                      <ArrowDown className="w-3 h-3 text-gray-600" />
-                    </button>
+                    <IconButton icon="arrow-up" size="sm" variant="outline" label="Move package up" onClick={() => moveArrayItem('packages', idx, 'up')} disabled={idx === 0} />
+                    <IconButton icon="arrow-down" size="sm" variant="outline" label="Move package down" onClick={() => moveArrayItem('packages', idx, 'down')} disabled={idx === content.packages.length - 1} />
                   </div>
 
                   {pkg.popular && (
@@ -413,13 +442,15 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
 
                   <EditableText
                     as="h3"
-                    className="text-xl font-bold text-gray-900 mb-2 block"
+                    className="text-ink block"
+                    style={{ fontSize: 'var(--text-h4)', fontWeight: 700, marginBottom: 8 }}
                     value={pkg.name}
                     onChange={(v) => updateArrayItem('packages', idx, 'name', v)}
                   />
                   <EditableText
                     as="p"
-                    className="text-sm text-gray-600 mb-6 block min-h-[40px]"
+                    className="text-slate block"
+                    style={{ fontSize: 'var(--text-sm)', marginBottom: 24, minHeight: 40 }}
                     multiline
                     value={pkg.description}
                     onChange={(v) => updateArrayItem('packages', idx, 'description', v)}
@@ -427,12 +458,13 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
 
                   <div className="mb-6 flex items-baseline gap-2">
                     <EditableNumber
-                      className="text-3xl font-bold text-gray-900"
+                      className="text-ink"
+                      style={{ fontSize: 30, fontWeight: 700 }}
                       value={pkg.discountedPrice || pkg.price}
                       onChange={(v) => updateArrayItem('packages', idx, 'discountedPrice', v)}
                     />
                     {pkg.originalPrice && (
-                      <span className="text-lg text-gray-400 line-through">
+                      <span className="text-mist" style={{ fontSize: 'var(--text-body-lg)', textDecoration: 'line-through' }}>
                         <EditableNumber
                           value={pkg.originalPrice}
                           onChange={(v) => updateArrayItem('packages', idx, 'originalPrice', v)}
@@ -443,7 +475,7 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
 
                   <ul className="space-y-3">
                     {pkg.deliverables?.map((deliv: string, dIdx: number) => (
-                      <li key={dIdx} className="flex items-start gap-3 text-sm text-gray-700">
+                      <li key={dIdx} className="text-slate flex items-start gap-3" style={{ fontSize: 'var(--text-sm)' }}>
                         <Check className="w-5 h-5 shrink-0 mt-0.5" style={{ color: themeColor }} />
                         <EditableText
                           className="flex-1"
@@ -462,25 +494,21 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
 
         {/* Add-ons Section */}
         {content.addOns && content.addOns.length > 0 && (
-          <div className="p-12 border-b border-gray-100">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Optional Add-ons</h2>
+          <div className="p-12" style={{ borderBottom: '1px solid var(--border-hairline)' }}>
+            <h2 className="text-ink" style={{ fontSize: 'var(--text-h4)', fontWeight: 700, marginBottom: 24 }}>Optional Add-ons</h2>
             <div className="space-y-4">
               {content.addOns.map((addon: any, idx: number) => (
-                <div key={idx} className="group relative flex items-start justify-between p-4 rounded-lg bg-gray-50 border border-gray-100">
+                <div key={idx} className="group relative flex items-start justify-between rounded-lg p-4" style={{ background: 'var(--surface-sunken)', border: '1px solid var(--border-hairline)' }}>
                   <div className="absolute -left-3 top-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => moveArrayItem('addOns', idx, 'up')} className="p-1 bg-white shadow rounded-full border border-gray-200 hover:bg-gray-50 disabled:opacity-30" disabled={idx === 0}>
-                      <ArrowUp className="w-3 h-3 text-gray-600" />
-                    </button>
-                    <button onClick={() => moveArrayItem('addOns', idx, 'down')} className="p-1 bg-white shadow rounded-full border border-gray-200 hover:bg-gray-50 disabled:opacity-30" disabled={idx === content.addOns.length - 1}>
-                      <ArrowDown className="w-3 h-3 text-gray-600" />
-                    </button>
+                    <IconButton icon="arrow-up" size="sm" variant="outline" label="Move add-on up" onClick={() => moveArrayItem('addOns', idx, 'up')} disabled={idx === 0} />
+                    <IconButton icon="arrow-down" size="sm" variant="outline" label="Move add-on down" onClick={() => moveArrayItem('addOns', idx, 'down')} disabled={idx === content.addOns.length - 1} />
                   </div>
 
                   <div className="flex-1 pl-4">
-                    <EditableText as="h4" className="font-bold text-gray-900" value={addon.name} onChange={(v) => updateArrayItem('addOns', idx, 'name', v)} />
-                    <EditableText as="p" className="text-sm text-gray-600 mt-1" multiline value={addon.description} onChange={(v) => updateArrayItem('addOns', idx, 'description', v)} />
+                    <EditableText as="h4" className="text-ink" style={{ fontWeight: 700 }} value={addon.name} onChange={(v) => updateArrayItem('addOns', idx, 'name', v)} />
+                    <EditableText as="p" className="text-slate" style={{ fontSize: 'var(--text-sm)', marginTop: 4 }} multiline value={addon.description} onChange={(v) => updateArrayItem('addOns', idx, 'description', v)} />
                   </div>
-                  <div className="font-bold text-gray-900 pl-4 border-l border-gray-200 ml-4">
+                  <div className="text-ink" style={{ fontWeight: 700, paddingLeft: 16, marginLeft: 16, borderLeft: '1px solid var(--border-hairline)' }}>
                     +<EditableNumber value={addon.price} onChange={(v) => updateArrayItem('addOns', idx, 'price', v)} />
                   </div>
                 </div>
@@ -491,26 +519,22 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
 
         {/* Timeline Section */}
         {content.timeline && content.timeline.length > 0 && (
-          <div className="p-12 border-b border-gray-100">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">Project Timeline</h2>
+          <div className="p-12" style={{ borderBottom: '1px solid var(--border-hairline)' }}>
+            <h2 className="text-ink" style={{ fontSize: 'var(--text-h3)', fontWeight: 700, marginBottom: 32 }}>Project Timeline</h2>
             <div className="space-y-6">
               {content.timeline.map((phase: any, idx: number) => (
                 <div key={idx} className="group relative flex gap-6">
                   <div className="absolute -left-3 top-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => moveArrayItem('timeline', idx, 'up')} className="p-1 bg-white shadow rounded-full border border-gray-200 hover:bg-gray-50 disabled:opacity-30" disabled={idx === 0}>
-                      <ArrowUp className="w-3 h-3 text-gray-600" />
-                    </button>
-                    <button onClick={() => moveArrayItem('timeline', idx, 'down')} className="p-1 bg-white shadow rounded-full border border-gray-200 hover:bg-gray-50 disabled:opacity-30" disabled={idx === content.timeline.length - 1}>
-                      <ArrowDown className="w-3 h-3 text-gray-600" />
-                    </button>
+                    <IconButton icon="arrow-up" size="sm" variant="outline" label="Move phase up" onClick={() => moveArrayItem('timeline', idx, 'up')} disabled={idx === 0} />
+                    <IconButton icon="arrow-down" size="sm" variant="outline" label="Move phase down" onClick={() => moveArrayItem('timeline', idx, 'down')} disabled={idx === content.timeline.length - 1} />
                   </div>
 
                   <div className="w-32 shrink-0">
-                    <EditableText as="div" className="font-bold text-gray-900" value={phase.phase} onChange={(v) => updateArrayItem('timeline', idx, 'phase', v)} />
-                    <EditableText as="div" className="text-sm text-gray-500" value={phase.duration} onChange={(v) => updateArrayItem('timeline', idx, 'duration', v)} />
+                    <EditableText as="div" className="text-ink" style={{ fontWeight: 700 }} value={phase.phase} onChange={(v) => updateArrayItem('timeline', idx, 'phase', v)} />
+                    <EditableText as="div" className="text-mist" style={{ fontSize: 'var(--text-sm)' }} value={phase.duration} onChange={(v) => updateArrayItem('timeline', idx, 'duration', v)} />
                   </div>
-                  <div className="flex-1 pb-6 border-b border-gray-100">
-                    <EditableText as="p" className="text-gray-700" multiline value={phase.description} onChange={(v) => updateArrayItem('timeline', idx, 'description', v)} />
+                  <div className="flex-1 pb-6" style={{ borderBottom: '1px solid var(--border-hairline)' }}>
+                    <EditableText as="p" className="text-slate" multiline value={phase.description} onChange={(v) => updateArrayItem('timeline', idx, 'description', v)} />
                   </div>
                 </div>
               ))}
@@ -519,12 +543,12 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
         )}
 
         {/* Payment & Terms Section */}
-        <div className="p-12 bg-gray-50 grid grid-cols-1 md:grid-cols-2 gap-12">
+        <div className="p-12 grid grid-cols-1 md:grid-cols-2 gap-12" style={{ background: 'var(--surface-sunken)' }}>
           {content.paymentSection && (
             <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Payment Schedule</h2>
-              <div className="prose prose-sm text-gray-600">
-                <EditableText as="p" className="font-medium text-gray-900 mb-2 block" value={content.paymentSection.schedule} onChange={(v) => updateContent(prev => ({ ...prev, paymentSection: { ...prev.paymentSection, schedule: v } }))} />
+              <h2 className="text-ink" style={{ fontSize: 'var(--text-body-lg)', fontWeight: 700, marginBottom: 16 }}>Payment Schedule</h2>
+              <div className="text-slate" style={{ fontSize: 'var(--text-sm)' }}>
+                <EditableText as="p" className="text-ink block" style={{ fontWeight: 'var(--weight-medium)', marginBottom: 8 }} value={content.paymentSection.schedule} onChange={(v) => updateContent(prev => ({ ...prev, paymentSection: { ...prev.paymentSection, schedule: v } }))} />
                 <EditableText as="p" className="block" multiline value={content.paymentSection.terms} onChange={(v) => updateContent(prev => ({ ...prev, paymentSection: { ...prev.paymentSection, terms: v } }))} />
               </div>
             </div>
@@ -532,8 +556,8 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
 
           {content.terms && content.terms.length > 0 && (
             <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Terms & Conditions</h2>
-              <ul className="list-disc pl-4 space-y-2 text-sm text-gray-600">
+              <h2 className="text-ink" style={{ fontSize: 'var(--text-body-lg)', fontWeight: 700, marginBottom: 16 }}>Terms & Conditions</h2>
+              <ul className="text-slate list-disc pl-4 space-y-2" style={{ fontSize: 'var(--text-sm)' }}>
                 {content.terms.map((term: string, idx: number) => (
                   <li key={idx}>
                     <EditableText multiline value={term} onChange={(v) => {

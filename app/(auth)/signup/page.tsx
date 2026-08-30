@@ -1,5 +1,9 @@
 import { signup } from '../actions'
 import Link from 'next/link'
+import { Card } from '@/components/ui/Card'
+import { Logo } from '@/components/ui/Logo'
+import { Input } from '@/components/ui/Input'
+import { Button } from '@/components/ui/Button'
 
 export default async function SignupPage({
   searchParams,
@@ -9,79 +13,36 @@ export default async function SignupPage({
   const { error } = await searchParams
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-10 shadow-md">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create an account
-          </h2>
-        </div>
-        <form className="mt-8 space-y-6" action={signup}>
-          {error && (
-            <div className="rounded-md bg-red-50 p-4 text-sm text-red-500">
-              {error}
-            </div>
-          )}
-          <div className="space-y-4 rounded-md shadow-sm">
-            <div>
-              <label htmlFor="full_name" className="sr-only">
-                Full name
-              </label>
-              <input
-                id="full_name"
-                name="full_name"
-                type="text"
-                autoComplete="name"
-                required
-                className="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
-                placeholder="Full name"
-              />
-            </div>
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
-                placeholder="Email address"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                className="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
-                placeholder="Password"
-              />
-            </div>
+    <div className="flex h-screen w-full items-center justify-center" style={{ background: 'var(--gradient-app)' }}>
+      <div style={{ width: '100%', maxWidth: 420 }}>
+        <Card padding={40} style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+            <Logo size={26} wordmark />
+            <h2 style={{ fontSize: 'var(--text-h3)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text-primary)', margin: 0 }}>
+              Create an account
+            </h2>
           </div>
-
-          <div>
-            <button
-              type="submit"
-              className="group relative flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-            >
-              Sign up
-            </button>
+          <form action={signup} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {error && (
+              <div style={{
+                borderRadius: 'var(--radius-xs)', padding: '10px 12px', fontSize: 'var(--text-sm)',
+                background: 'var(--status-caution-surface)', border: '1px solid var(--status-caution-border)', color: 'var(--status-caution-text)',
+              }}>
+                {error}
+              </div>
+            )}
+            <Input id="full_name" name="full_name" type="text" autoComplete="name" required label="Full name" placeholder="Jane Doe" />
+            <Input id="email" name="email" type="email" autoComplete="email" required label="Email address" placeholder="you@company.com" />
+            <Input id="password" name="password" type="password" autoComplete="new-password" required label="Password" placeholder="••••••••" />
+            <Button type="submit" variant="primary" fullWidth>Sign up</Button>
+          </form>
+          <div style={{ textAlign: 'center', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+            Already have an account?{' '}
+            <Link href="/login" style={{ color: 'var(--brand-deep)', fontWeight: 'var(--weight-medium)' }}>
+              Log in
+            </Link>
           </div>
-        </form>
-        <div className="text-center text-sm text-gray-600">
-          Already have an account?{' '}
-          <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
-            Log in
-          </Link>
-        </div>
+        </Card>
       </div>
     </div>
   )
