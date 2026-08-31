@@ -31,13 +31,13 @@ export default async function PublicProposalPage({ params }: { params: Promise<{
     if (userRecord) viewerAccountId = userRecord.account_id
   }
 
-  // 2. Fetch the proposal using the service_role key so we can get the account's default_payment_info 
-  // (which is otherwise blocked by RLS for public visitors).
+  // 2. Fetch the proposal using the service_role key so we can get the account's display-only
+  // payment details (which is otherwise blocked by RLS for public visitors).
   const adminSupabase = createSupabaseClient(env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-  
+
   const { data: proposal, error } = await adminSupabase
     .from('proposals')
-    .select('*, accounts(default_payment_info, payment_provider), brand_kits(*)')
+    .select('*, accounts(payment_upi_id, payment_link, payment_qr_url), brand_kits(*)')
     .eq('slug', resolvedParams.slug)
     .single()
 
@@ -51,15 +51,11 @@ export default async function PublicProposalPage({ params }: { params: Promise<{
     notFound() // Hide drafts from the public
   }
 
-  // 4. Resolve Payment Info (Proposal override > Account default)
-  const paymentInfo = proposal.payment_info || proposal.accounts?.default_payment_info || null
-
   return (
     <PublicProposalView
       proposal={proposal}
-      paymentInfo={paymentInfo}
+      paymentDisplay={proposal.accounts ?? null}
       isOwner={isOwner}
-      paymentProvider={proposal.accounts?.payment_provider ?? null}
     />
   )
 }

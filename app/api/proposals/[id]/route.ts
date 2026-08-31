@@ -41,8 +41,6 @@ export async function PATCH(
     }
     if (body.content) updateData.content = body.content
     if (body.status) updateData.status = body.status
-    if (body.deposit_amount !== undefined) updateData.deposit_amount = body.deposit_amount
-    if (body.deposit_currency !== undefined) updateData.deposit_currency = body.deposit_currency
 
     const { data: proposal, error } = await supabase
       .from('proposals')
