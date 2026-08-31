@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
 import { Icon } from '@/components/ui/Icon'
 import { Modal } from '@/components/app/Modal'
+import { SignaturePad } from '@/components/app/SignaturePad'
+import { DealWon } from '@/components/app/DealWon'
 import { PdfExportModal, type PdfExportOptions } from '@/components/app/PdfExportModal'
 
 const CORNER_MAP: Record<PdfExportOptions['pageNumbers'], string> = {
@@ -46,6 +48,7 @@ export default function PublicProposalView({
   const [signerName, setSignerName] = useState('')
   const [signing, setSigning] = useState(false)
   const [signError, setSignError] = useState<string | null>(null)
+  const [burst, setBurst] = useState(false)
 
   const canAcceptSign = !isOwner && proposal.status === 'PUBLISHED'
 
@@ -64,6 +67,7 @@ export default function PublicProposalView({
       setAcceptedAt(data.accepted_at)
       setAcceptedByName(data.accepted_by_name)
       setShowSignModal(false)
+      setBurst(true)
     } catch (err: any) {
       setSignError(err.message)
     } finally {
@@ -143,6 +147,15 @@ export default function PublicProposalView({
 
   return (
     <div className={`relative min-h-screen print:min-h-0 ${pdfConfig.inkSavingMode ? 'print:text-black' : ''}`} style={{ background: 'var(--surface-page)' }}>
+
+      {/* Anchored to the viewport, not this potentially long-scrolling document — same fix as
+          the Modal/PdfExportModal below, so the celebration centers on screen regardless of
+          scroll position or page length. */}
+      {burst && (
+        <div className="print:hidden" style={{ position: 'fixed', inset: 0, zIndex: 90 }}>
+          <DealWon show={burst} onDone={() => setBurst(false)} />
+        </div>
+      )}
 
       {/* Dynamic Print Page Numbers (Fixed) - Removed in favor of @page CSS injected via style tag */}
       <style>{`
@@ -387,8 +400,8 @@ export default function PublicProposalView({
           <div className="w-full max-w-4xl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
             {!acceptedAt ? (
               <>
-                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Ready to move forward with this proposal?</span>
-                <Button variant="primary" onClick={() => setShowSignModal(true)}>Review &amp; Sign</Button>
+                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Questions? Reply to the email this link came from.</span>
+                <Button variant="primary" icon="signature" onClick={() => setShowSignModal(true)}>Accept proposal</Button>
               </>
             ) : (
               <>
@@ -402,21 +415,25 @@ export default function PublicProposalView({
       {showSignModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
           <Modal
-            title="Review & sign"
-            eyebrow={content.clientName}
+            eyebrow="Optional e-signature"
+            title="Accept this proposal"
             onClose={() => setShowSignModal(false)}
             footer={
               <>
+                <span style={{ flex: 1 }} />
                 <Button variant="secondary" onClick={() => setShowSignModal(false)}>Cancel</Button>
-                <Button variant="primary" onClick={handleAcceptSign} loading={signing} disabled={!signerName.trim()}>Accept &amp; Sign</Button>
+                <Button variant="primary" icon="check" onClick={handleAcceptSign} loading={signing} disabled={!signerName.trim()}>Accept &amp; sign</Button>
               </>
             }
           >
-            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 16 }}>
-              By signing, you&apos;re accepting the scope, pricing, and terms in this proposal.
-            </p>
-            <Input label="Your full name" placeholder="Jane Doe" value={signerName} onChange={(e) => setSignerName(e.target.value)} autoFocus />
-            {signError && <p style={{ marginTop: 8, fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>{signError}</p>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <Input label="Your full name" placeholder="Jane Doe" value={signerName} onChange={(e) => setSignerName(e.target.value)} autoFocus />
+              <SignaturePad name={signerName} />
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                Signing records your name, the date and this proposal version.
+              </p>
+              {signError && <p style={{ fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>{signError}</p>}
+            </div>
           </Modal>
         </div>
       )}
