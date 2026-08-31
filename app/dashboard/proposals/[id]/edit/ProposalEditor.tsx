@@ -5,6 +5,7 @@ import { Check, Loader2, ArrowUp, ArrowDown } from 'lucide-react'
 import { NotificationsDropdown } from '@/components/NotificationsDropdown'
 import { Button } from '@/components/ui/Button'
 import { IconButton } from '@/components/ui/IconButton'
+import { Input } from '@/components/ui/Input'
 import { ThemeColorPicker } from '@/components/app/ThemeColorPicker'
 import { PdfExportModal, type PdfExportOptions } from '@/components/app/PdfExportModal'
 
@@ -170,6 +171,10 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
     : undefined
   const [showPdfExport, setShowPdfExport] = useState(false)
 
+  const depositCurrency = proposal.deposit_currency || (initialProposal.accounts?.payment_provider === 'razorpay' ? 'INR' : 'USD')
+  const [depositAmount, setDepositAmount] = useState<string>(proposal.deposit_amount != null ? String(proposal.deposit_amount) : '')
+  const [depositSaved, setDepositSaved] = useState(false)
+
   const content = proposal.content
 
   const PDF_SECTIONS = [
@@ -218,6 +223,24 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
   }
 
   const debouncedSave = useDebounce(saveProposal, 1000)
+
+  const saveDeposit = async (amount: string) => {
+    const parsed = amount === '' ? null : Number(amount)
+    try {
+      const res = await fetch(`/api/proposals/${proposal.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deposit_amount: parsed, deposit_currency: depositCurrency }),
+      })
+      if (!res.ok) throw new Error('Failed to save deposit amount')
+      setDepositSaved(true)
+      setTimeout(() => setDepositSaved(false), 2000)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const debouncedSaveDeposit = useDebounce(saveDeposit, 800)
 
   const updateContent = (updater: (prevContent: any) => any) => {
     setProposal((prev: any) => {
@@ -571,6 +594,20 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
               <div className="text-slate" style={{ fontSize: 'var(--text-sm)' }}>
                 <EditableText as="p" className="text-ink block" style={{ fontWeight: 'var(--weight-medium)', marginBottom: 8 }} value={content.paymentSection.schedule} onChange={(v) => updateContent(prev => ({ ...prev, paymentSection: { ...prev.paymentSection, schedule: v } }))} />
                 <EditableText as="p" className="block" multiline value={content.paymentSection.terms} onChange={(v) => updateContent(prev => ({ ...prev, paymentSection: { ...prev.paymentSection, terms: v } }))} />
+              </div>
+              <div style={{ marginTop: 16, maxWidth: 220 }}>
+                <Input
+                  label={`Deposit amount (${depositCurrency})`}
+                  type="number"
+                  min={0}
+                  placeholder="e.g. 500"
+                  value={depositAmount}
+                  onChange={(e) => {
+                    setDepositAmount(e.target.value)
+                    debouncedSaveDeposit(e.target.value)
+                  }}
+                  hint={depositSaved ? 'Saved' : 'Shown as "Pay deposit" on the public proposal once set'}
+                />
               </div>
             </div>
           )}

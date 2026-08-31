@@ -37,7 +37,7 @@ export default async function PublicProposalPage({ params }: { params: Promise<{
   
   const { data: proposal, error } = await adminSupabase
     .from('proposals')
-    .select('*, accounts(default_payment_info), brand_kits(*)')
+    .select('*, accounts(default_payment_info, payment_provider), brand_kits(*)')
     .eq('slug', resolvedParams.slug)
     .single()
 
@@ -55,10 +55,11 @@ export default async function PublicProposalPage({ params }: { params: Promise<{
   const paymentInfo = proposal.payment_info || proposal.accounts?.default_payment_info || null
 
   return (
-    <PublicProposalView 
-      proposal={proposal} 
-      paymentInfo={paymentInfo} 
-      isOwner={isOwner} 
+    <PublicProposalView
+      proposal={proposal}
+      paymentInfo={paymentInfo}
+      isOwner={isOwner}
+      paymentProvider={proposal.accounts?.payment_provider ?? null}
     />
   )
 }

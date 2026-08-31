@@ -3,7 +3,27 @@
 import React, { useEffect, useState } from 'react'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Badge } from '@/components/ui/Badge'
+import { Modal } from '@/components/app/Modal'
 import { PdfExportModal, type PdfExportOptions } from '@/components/app/PdfExportModal'
+
+declare global {
+  interface Window {
+    Razorpay?: any
+  }
+}
+
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true)
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
+}
 
 const CORNER_MAP: Record<PdfExportOptions['pageNumbers'], string> = {
   tl: 'top-left', tr: 'top-right', bl: 'bottom-left', br: 'bottom-right', none: 'none',
@@ -24,16 +44,100 @@ const PDF_SECTIONS = [
 export default function PublicProposalView({
   proposal,
   paymentInfo,
-  isOwner
+  isOwner,
+  paymentProvider,
 }: {
   proposal: any,
   paymentInfo: any,
-  isOwner: boolean
+  isOwner: boolean,
+  paymentProvider: string | null,
 }) {
   const content = proposal.content
   // Same fallback chain as the editor: an explicit choice on the proposal wins, then the
   // linked brand kit's primary color, then the old hardcoded default for accounts with no kit.
   const themeColor = content.themeColor || proposal.brand_kits?.colors?.primary || '#4F46E5'
+
+  // Accept & sign state
+  const [acceptedAt, setAcceptedAt] = useState<string | null>(proposal.accepted_at)
+  const [acceptedByName, setAcceptedByName] = useState<string | null>(proposal.accepted_by_name)
+  const [depositStatus, setDepositStatus] = useState<string>(proposal.deposit_status || 'unpaid')
+  const [showSignModal, setShowSignModal] = useState(false)
+  const [signerName, setSignerName] = useState('')
+  const [signing, setSigning] = useState(false)
+  const [signError, setSignError] = useState<string | null>(null)
+  const [payingDeposit, setPayingDeposit] = useState(false)
+  const [depositError, setDepositError] = useState<string | null>(null)
+
+  const canAcceptSign = !isOwner && proposal.status === 'PUBLISHED'
+  const hasDeposit = proposal.deposit_amount != null && Number(proposal.deposit_amount) > 0
+
+  const handleAcceptSign = async () => {
+    if (!signerName.trim()) return
+    setSigning(true)
+    setSignError(null)
+    try {
+      const res = await fetch(`/api/proposals/${proposal.slug}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: signerName }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to sign')
+      setAcceptedAt(data.accepted_at)
+      setAcceptedByName(data.accepted_by_name)
+      setShowSignModal(false)
+    } catch (err: any) {
+      setSignError(err.message)
+    } finally {
+      setSigning(false)
+    }
+  }
+
+  const handlePayDeposit = async () => {
+    setPayingDeposit(true)
+    setDepositError(null)
+    try {
+      const orderRes = await fetch(`/api/proposals/${proposal.slug}/create-deposit-order`, { method: 'POST' })
+      const order = await orderRes.json()
+      if (!orderRes.ok) throw new Error(order.error || 'Could not start payment')
+
+      const loaded = await loadRazorpayScript()
+      if (!loaded || !window.Razorpay) throw new Error('Could not load payment provider')
+
+      const rzp = new window.Razorpay({
+        key: order.keyId,
+        amount: order.amount,
+        currency: order.currency,
+        order_id: order.orderId,
+        name: content.preparedBy || 'Proposal deposit',
+        description: `Deposit for ${content.title || 'proposal'}`,
+        prefill: { name: acceptedByName || undefined },
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await fetch(`/api/proposals/${proposal.slug}/verify-deposit`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: response.razorpay_order_id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+              }),
+            })
+            if (verifyRes.ok) setDepositStatus('paid')
+          } catch (err) {
+            console.error(err)
+          } finally {
+            setPayingDeposit(false)
+          }
+        },
+        modal: { ondismiss: () => setPayingDeposit(false) },
+      })
+      rzp.open()
+    } catch (err: any) {
+      setDepositError(err.message)
+      setPayingDeposit(false)
+    }
+  }
 
   // View Tracking (only fire if not owner)
   useEffect(() => {
@@ -321,6 +425,68 @@ export default function PublicProposalView({
           )}
         </div>
       </div>
+
+      {canAcceptSign && !acceptedAt && <div style={{ height: 88 }} className="print:hidden" />}
+
+      {/* Review & sign / accepted state — pinned to the viewport bottom, hidden in print. */}
+      {canAcceptSign && (
+        <div className="print:hidden" style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, display: 'flex', justifyContent: 'center',
+          padding: '16px 24px', background: 'var(--glass-quiet)', backdropFilter: 'var(--blur-glass)', WebkitBackdropFilter: 'var(--blur-glass)',
+          borderTop: '1px solid var(--border-hairline)', fontFamily: 'var(--font-sans)',
+        }}>
+          <div className="w-full max-w-4xl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            {!acceptedAt ? (
+              <>
+                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Ready to move forward with this proposal?</span>
+                <Button variant="primary" onClick={() => setShowSignModal(true)}>Review &amp; Sign</Button>
+              </>
+            ) : (
+              <>
+                <Badge tone="accepted">Accepted by {acceptedByName}</Badge>
+                {hasDeposit && (
+                  depositStatus === 'paid' ? (
+                    <Badge tone="accepted">Deposit paid</Badge>
+                  ) : paymentProvider === 'razorpay' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {depositError && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--status-caution-text)' }}>{depositError}</span>}
+                      <Button variant="primary" onClick={handlePayDeposit} loading={payingDeposit}>
+                        Pay deposit ({proposal.deposit_currency} {Number(proposal.deposit_amount).toLocaleString()})
+                      </Button>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                      Deposit payment via {paymentProvider === 'skydo' ? 'Skydo' : 'this provider'} — coming soon
+                    </span>
+                  )
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showSignModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
+          <Modal
+            title="Review & sign"
+            eyebrow={content.clientName}
+            onClose={() => setShowSignModal(false)}
+            footer={
+              <>
+                <Button variant="secondary" onClick={() => setShowSignModal(false)}>Cancel</Button>
+                <Button variant="primary" onClick={handleAcceptSign} loading={signing} disabled={!signerName.trim()}>Accept &amp; Sign</Button>
+              </>
+            }
+          >
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 16 }}>
+              By signing, you&apos;re accepting the scope, pricing, and terms in this proposal.
+            </p>
+            <Input label="Your full name" placeholder="Jane Doe" value={signerName} onChange={(e) => setSignerName(e.target.value)} autoFocus />
+            {signError && <p style={{ marginTop: 8, fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>{signError}</p>}
+          </Modal>
+        </div>
+      )}
     </div>
   )
 }

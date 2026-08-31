@@ -17,7 +17,7 @@ export default async function ProposalEditorPage({ params }: { params: Promise<{
   // Fetch the proposal
   const { data: proposal, error } = await supabase
     .from('proposals')
-    .select('*, brand_kits(*)')
+    .select('*, brand_kits(*), accounts(payment_provider)')
     .eq('id', resolvedParams.id)
     .single()
 
