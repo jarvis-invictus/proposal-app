@@ -14,6 +14,8 @@ export default async function ProposalEditorPage({ params }: { params: Promise<{
     redirect('/login')
   }
 
+  const { data: userRecord } = await supabase.from('users').select('role').eq('id', user.id).single()
+
   // Fetch the proposal
   const { data: proposal, error } = await supabase
     .from('proposals')
@@ -27,7 +29,7 @@ export default async function ProposalEditorPage({ params }: { params: Promise<{
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <ProposalEditor initialProposal={proposal} />
+      <ProposalEditor initialProposal={proposal} userRole={userRecord?.role || 'owner'} />
     </div>
   )
 }
