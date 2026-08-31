@@ -6,14 +6,15 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { FilterChip } from '@/components/ui/FilterChip'
 import { Badge } from '@/components/ui/Badge'
-import { COUNTRIES } from '@/lib/countries'
-import { updateAccountName, markNotificationRead, markAllNotificationsRead } from './actions'
+import { Icon } from '@/components/ui/Icon'
+import { createClient } from '@/lib/supabase/client'
+import { updateAccountName, updatePaymentDetails, markNotificationRead, markAllNotificationsRead } from './actions'
 
-type Account = { id: string; name: string; billing_country: string | null; payment_provider: string | null; provider_customer_id: string | null } | null
+type Account = { id: string; name: string; payment_upi_id: string | null; payment_link: string | null; payment_qr_url: string | null } | null
 type Notification = { id: string; message: string; read: boolean; created_at: string }
 type ApiKey = { id: string; name: string; key_prefix: string; created_at: string; revoked_at: string | null }
 
-const TABS = ['Account', 'Notifications', 'Billing', 'API keys'] as const
+const TABS = ['Account', 'Notifications', 'Payment details', 'API keys'] as const
 
 export function SettingsClient({ account, userEmail, notifications, apiKeys }: {
   account: Account
@@ -37,7 +38,7 @@ export function SettingsClient({ account, userEmail, notifications, apiKeys }: {
 
       {tab === 'Account' && <AccountTab account={account} userEmail={userEmail} />}
       {tab === 'Notifications' && <NotificationsTab notifications={notifications} />}
-      {tab === 'Billing' && <BillingTab account={account} />}
+      {tab === 'Payment details' && <PaymentTab account={account} />}
       {tab === 'API keys' && <ApiKeysTab initialKeys={apiKeys} />}
     </div>
   )
@@ -47,8 +48,6 @@ function AccountTab({ account, userEmail }: { account: Account; userEmail: strin
   const [name, setName] = React.useState(account?.name || '')
   const [saving, setSaving] = React.useState(false)
   const [saved, setSaved] = React.useState(false)
-
-  const countryName = COUNTRIES.find((c) => c.code === account?.billing_country)?.name || account?.billing_country || 'Not set'
 
   const handleSave = async () => {
     setSaving(true)
@@ -66,15 +65,6 @@ function AccountTab({ account, userEmail }: { account: Account; userEmail: strin
     <Card padding={24} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <Input label="Agency / account name" value={name} onChange={(e) => setName(e.target.value)} />
       <Input label="Email" value={userEmail} disabled />
-      <div>
-        <span style={{ display: 'block', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text-primary)', marginBottom: 6 }}>
-          Billing country
-        </span>
-        <Badge tone="draft">{countryName}</Badge>
-        <p style={{ margin: '8px 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-          Set at signup — determines your payment provider, so it can&apos;t be changed here.
-        </p>
-      </div>
       <div>
         <Button variant="primary" onClick={handleSave} loading={saving}>Save changes</Button>
         {saved && <span style={{ marginLeft: 12, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Saved</span>}
@@ -127,57 +117,106 @@ function NotificationsTab({ notifications }: { notifications: Notification[] }) 
   )
 }
 
-function BillingTab({ account }: { account: Account }) {
-  const [customerId, setCustomerId] = React.useState(account?.provider_customer_id || null)
-  const [loading, setLoading] = React.useState(false)
+/**
+ * Marg never processes payments. Ported from ui_kits/app/Settings.jsx's PaymentTab — the info
+ * banner copy is exact. Fields autosave (debounced) since the source has no visible Save
+ * button for them; only the QR row's "Upload QR" action is a real button in the design.
+ */
+function PaymentTab({ account }: { account: Account }) {
+  const [upiId, setUpiId] = React.useState(account?.payment_upi_id || '')
+  const [paymentLink, setPaymentLink] = React.useState(account?.payment_link || '')
+  const [qrUrl, setQrUrl] = React.useState(account?.payment_qr_url || '')
+  const [uploading, setUploading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-  const provider = account?.payment_provider
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const handleManageBilling = async () => {
-    setLoading(true)
+  const scheduleSave = (next: { upiId?: string; paymentLink?: string; qrUrl?: string }) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      updatePaymentDetails({
+        upi_id: next.upiId ?? upiId,
+        payment_link: next.paymentLink ?? paymentLink,
+        qr_url: next.qrUrl ?? qrUrl,
+      })
+    }, 700)
+  }
+
+  const handleUploadClick = () => fileInputRef.current?.click()
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !account) return
+    setUploading(true)
     setError(null)
     try {
-      const res = await fetch('/api/settings/billing/create-customer', { method: 'POST' })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to set up billing')
-      setCustomerId(data.providerCustomerId)
+      const supabase = createClient()
+      const path = `${account.id}/payment-qr.${file.name.split('.').pop() || 'png'}`
+      const { error: uploadError } = await supabase.storage.from('public-assets').upload(path, file, { upsert: true })
+      if (uploadError) throw new Error(uploadError.message)
+      const { data } = supabase.storage.from('public-assets').getPublicUrl(path)
+      setQrUrl(data.publicUrl)
+      await updatePaymentDetails({ upi_id: upiId, payment_link: paymentLink, qr_url: data.publicUrl })
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message || 'Failed to upload QR code')
     } finally {
-      setLoading(false)
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
   return (
-    <Card padding={24} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div>
-        <span style={{ display: 'block', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text-primary)', marginBottom: 6 }}>
-          Payment provider
-        </span>
-        <Badge tone={provider ? 'sent' : 'draft'}>{provider === 'razorpay' ? 'Razorpay' : provider === 'skydo' ? 'Skydo' : 'Not set'}</Badge>
-        {provider === 'skydo' && (
-          <p style={{ margin: '8px 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-            Skydo integration is pending — billing management isn&apos;t available for this provider yet.
-          </p>
-        )}
+    <Card padding={24} style={{ marginBottom: 18 }}>
+      <div style={{ marginBottom: 18 }}>
+        <h3 style={{ fontSize: 'var(--text-h4)' }}>Payment display</h3>
+        <p style={{ marginTop: 5, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+          Marg shows these details to your client. We do not process, track or confirm payments.
+        </p>
       </div>
-
-      {provider === 'razorpay' && (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 'var(--radius-sm)',
+        background: 'var(--glass-card)', border: '1px solid var(--border-hairline)', marginBottom: 18,
+      }}>
+        <Icon name="info" size={16} />
+        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+          Display only — mark a proposal as paid yourself once the money lands.
+        </span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 14 }}>
+        <Input
+          label="UPI ID"
+          placeholder="you@okhdfc"
+          value={upiId}
+          onChange={(e) => { setUpiId(e.target.value); scheduleSave({ upiId: e.target.value }) }}
+        />
+        <Input
+          label="Payment link (optional)"
+          placeholder="https://…"
+          value={paymentLink}
+          onChange={(e) => { setPaymentLink(e.target.value); scheduleSave({ paymentLink: e.target.value }) }}
+        />
+      </div>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 16, marginTop: 18, padding: 16, borderRadius: 'var(--radius-sm)',
+        border: '1px dashed var(--border-strong)',
+      }}>
+        {qrUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={qrUrl} alt="Payment QR code" width={40} height={40} style={{ borderRadius: 6, flex: 'none' }} />
+        ) : (
+          <Icon name="qr-code" size={40} />
+        )}
         <div>
-          {customerId ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>Customer record created</span>
-              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{customerId}</span>
-              <p style={{ margin: '6px 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                There&apos;s no subscription on this account yet, so there&apos;s nothing further to self-manage right now.
-              </p>
-            </div>
-          ) : (
-            <Button variant="primary" onClick={handleManageBilling} loading={loading}>Manage billing</Button>
-          )}
-          {error && <p style={{ marginTop: 8, fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>{error}</p>}
+          <div style={{ fontSize: 'var(--text-body)', fontWeight: 500 }}>QR code</div>
+          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+            Upload the QR your bank app generates — we show it in the Payment section.
+          </div>
         </div>
-      )}
+        <span style={{ flex: 1 }} />
+        <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
+        <Button variant="secondary" size="sm" icon="upload" onClick={handleUploadClick} loading={uploading}>Upload QR</Button>
+      </div>
+      {error && <p style={{ marginTop: 12, fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>{error}</p>}
     </Card>
   )
 }
