@@ -6,7 +6,7 @@ import {
   Upload, LayoutTemplate, Link as LinkIcon, Eye, EyeOff, Undo2, Redo2, Palette, Bold, Italic, List,
   Heading2, Lock, CreditCard, PenLine, ChevronsLeft, ChevronsRight, Ellipsis, Copy, FileDown, Trash2,
   Clock, FilePlus2, RotateCcw, Bell, Menu, IndianRupee, Send, QrCode, User, Globe, UserPlus,
-  ShoppingBag, type LucideProps,
+  ShoppingBag, Building2, Megaphone, Code, CircleEllipsis, LayoutDashboard, type LucideProps,
 } from 'lucide-react';
 
 const MAP: Record<string, React.ComponentType<LucideProps>> = {
@@ -21,6 +21,8 @@ const MAP: Record<string, React.ComponentType<LucideProps>> = {
   copy: Copy, 'file-down': FileDown, 'trash-2': Trash2, clock: Clock, 'file-plus-2': FilePlus2,
   'rotate-ccw': RotateCcw, bell: Bell, menu: Menu, 'indian-rupee': IndianRupee, send: Send, 'qr-code': QrCode,
   user: User, globe: Globe, 'user-plus': UserPlus, 'shopping-bag': ShoppingBag,
+  'building-2': Building2, megaphone: Megaphone, code: Code, 'circle-ellipsis': CircleEllipsis,
+  'layout-dashboard': LayoutDashboard,
 };
 
 export interface IconProps {
