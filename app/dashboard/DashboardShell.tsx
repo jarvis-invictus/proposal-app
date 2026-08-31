@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { id: 'proposals', href: '/dashboard', label: 'Proposals', icon: 'file-text' },
   { id: 'templates', href: '/dashboard/templates', label: 'Templates', icon: 'layout-template' },
   { id: 'brand', href: '/dashboard/brand-kit', label: 'Brand kits', icon: 'palette' },
+  { id: 'settings', href: '/dashboard/settings', label: 'Settings', icon: 'settings' },
 ]
 
 export function DashboardShell({ userEmail, children }: { userEmail: string; children: React.ReactNode }) {
