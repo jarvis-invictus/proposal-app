@@ -241,10 +241,9 @@ body {
   --gradient-hero:linear-gradient(180deg,var(--sky-light) 0%,var(--sky-deep) 100%);
 }
 
-/* PLACEHOLDER — not a design-handoff value. MicButton.tsx's "listening" state animates its three
-   bars with `pulse-bar`, but no keyframe of that name was ever defined anywhere in the handoff
-   (checked every tokens/*.css and every reference file). Without it the bars just sat static.
-   This is a simple opacity/scale pulse — no new duration or easing invented, MicButton's own
-   `animation: pulse-bar 900ms ${i*140}ms infinite ease-in-out` already supplies those. Needs a
-   design pass before being treated as final. */
-@keyframes pulse-bar{0%,100%{opacity:0.4;transform:scaleY(0.6)}50%{opacity:1;transform:scaleY(1)}}
+/* Stop timing matches `dot-bounce` below (same app, same "activity" affordance family — see
+   AIDock's busy dots) instead of a symmetric ease: snap to peak at 40%, hold/settle over the
+   rest. Reads as live audio movement rather than a slow breathing pulse. Duration/delay/easing
+   are unchanged — MicButton's own `animation: pulse-bar 900ms ${i*140}ms infinite ease-in-out`
+   already supplies those. */
+@keyframes pulse-bar{0%,80%,100%{opacity:0.4;transform:scaleY(0.6)}40%{opacity:1;transform:scaleY(1)}}

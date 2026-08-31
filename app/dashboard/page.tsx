@@ -5,6 +5,7 @@ import { StatStrip } from '@/components/app/StatStrip'
 import { EmptyState } from '@/components/app/EmptyState'
 import { DashboardActions } from './DashboardActions'
 import { DashboardEntryPoints } from './DashboardEntryPoints'
+import { OnboardingSequence } from './OnboardingSequence'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -20,10 +21,44 @@ export default async function DashboardPage() {
   // Fetch the account name from the accounts table using the authenticated user's ID
   const { data: accountData } = await supabase
     .from('accounts')
-    .select('name')
+    .select('id, name, onboarding_completed_at')
     .single()
 
   const accountName = accountData?.name || 'your Dashboard'
+
+  // Onboarding: shown in place of the normal dashboard until brand kit + first proposal +
+  // first share are all done, then permanently retired via onboarding_completed_at.
+  if (accountData && !accountData.onboarding_completed_at) {
+    const [{ count: brandKitCount }, { data: allProposals }] = await Promise.all([
+      supabase.from('brand_kits').select('id', { count: 'exact', head: true }),
+      supabase.from('proposals').select('id, status').order('updated_at', { ascending: false }),
+    ])
+
+    const done = {
+      brandKit: (brandKitCount ?? 0) > 0,
+      proposal: (allProposals?.length ?? 0) > 0,
+      shared: (allProposals ?? []).some((p) => p.status === 'PUBLISHED'),
+    }
+
+    if (done.brandKit && done.proposal && done.shared) {
+      // All three complete — persist it server-side so this is retired for good, not just
+      // hidden client-side, then fall through to render the normal dashboard below.
+      await supabase
+        .from('accounts')
+        .update({ onboarding_completed_at: new Date().toISOString() })
+        .eq('id', accountData.id)
+    } else {
+      return (
+        <DashboardShell userEmail={user.email ?? ''}>
+          <OnboardingSequence
+            name={accountName}
+            done={done}
+            latestProposalId={allProposals?.[0]?.id ?? null}
+          />
+        </DashboardShell>
+      )
+    }
+  }
 
   // Fetch user's proposals
   const { data: proposals } = await supabase
