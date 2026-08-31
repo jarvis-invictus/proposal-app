@@ -4,7 +4,6 @@ import { extractBrandKitFromUrl } from '@/lib/brand-extraction/url'
 import { extractBrandKitFromImage } from '@/lib/brand-extraction/vision'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 
 export async function extractFromUrl(url: string) {
   if (!url) throw new Error("URL is required")
@@ -49,5 +48,4 @@ export async function saveBrandKit(data: any) {
   }
 
   revalidatePath('/dashboard')
-  redirect('/dashboard/templates') // Go to templates after saving brand kit
 }

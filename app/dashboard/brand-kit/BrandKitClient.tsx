@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { extractFromUrl, extractFromImage, saveBrandKit } from './actions'
 import { FilterChip } from '@/components/ui/FilterChip'
 import { Input } from '@/components/ui/Input'
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 
 export function BrandKitClient() {
+  const router = useRouter()
   const [sourceType, setSourceType] = useState<'url' | 'image' | 'manual'>('url')
   const [sourceRef, setSourceRef] = useState('')
   const [isExtracting, setIsExtracting] = useState(false)
@@ -67,6 +69,7 @@ export function BrandKitClient() {
         source_reference: sourceRef,
         ...brandData
       })
+      router.push('/dashboard/templates')
     } catch (err: any) {
       setError(err.message || 'Failed to save')
       setIsSaving(false)
