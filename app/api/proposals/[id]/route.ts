@@ -40,7 +40,22 @@ export async function PATCH(
       updated_at: new Date().toISOString()
     }
     if (body.content) updateData.content = body.content
-    if (body.status) updateData.status = body.status
+
+    if (body.status === 'PUBLISHED') {
+      // Drafters cannot publish directly — their submission goes to the approval queue
+      // instead. This is the real enforcement point; Settings' approval chain reads/writes
+      // the same PENDING_APPROVAL state from the other side.
+      const { data: userRecord } = await supabase.from('users').select('role').eq('id', user.id).single()
+      if (userRecord?.role === 'drafter') {
+        updateData.status = 'PENDING_APPROVAL'
+        updateData.submitted_by = user.id
+        updateData.submitted_at = new Date().toISOString()
+      } else {
+        updateData.status = 'PUBLISHED'
+      }
+    } else if (body.status) {
+      updateData.status = body.status
+    }
 
     const { data: proposal, error } = await supabase
       .from('proposals')

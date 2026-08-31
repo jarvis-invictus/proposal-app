@@ -148,7 +148,7 @@ const EditableNumber = ({
   )
 }
 
-export default function ProposalEditor({ initialProposal }: { initialProposal: any }) {
+export default function ProposalEditor({ initialProposal, userRole = 'owner' }: { initialProposal: any; userRole?: string }) {
   const [proposal, setProposal] = useState(initialProposal)
   const [savingState, setSavingState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
@@ -278,10 +278,11 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
       const res = await fetch(`/api/proposals/${proposal.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'PUBLISHED' }) // Will be handled by the route
+        body: JSON.stringify({ status: 'PUBLISHED' }) // Drafters are redirected server-side to PENDING_APPROVAL
       })
       if (!res.ok) throw new Error('Failed to publish')
-      setProposal({ ...proposal, status: 'PUBLISHED' })
+      const updated = await res.json()
+      setProposal({ ...proposal, status: updated.status })
       setSavingState('saved')
       setTimeout(() => setSavingState('idle'), 2000)
     } catch (err) {
@@ -313,7 +314,7 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
             border: `1px solid ${proposal.status === 'PUBLISHED' ? 'var(--brand-38)' : 'var(--border-hairline)'}`,
             color: proposal.status === 'PUBLISHED' ? 'var(--brand-deep)' : 'var(--text-muted)',
           }}>
-            {proposal.status}
+            {proposal.status === 'PENDING_APPROVAL' ? 'Waiting for approval' : proposal.status}
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -323,7 +324,9 @@ export default function ProposalEditor({ initialProposal }: { initialProposal: a
             <Button variant="secondary" size="sm" icon="link" onClick={copyLink}>Copy Public Link</Button>
           )}
           {proposal.status === 'DRAFT' && (
-            <Button variant="primary" size="sm" onClick={handlePublish}>Publish</Button>
+            <Button variant="primary" size="sm" onClick={handlePublish}>
+              {userRole === 'drafter' ? 'Submit for approval' : 'Publish'}
+            </Button>
           )}
         </div>
       </div>
