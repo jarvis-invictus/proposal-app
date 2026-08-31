@@ -1,11 +1,17 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { DashboardShell } from './DashboardShell'
-import { StatStrip } from '@/components/app/StatStrip'
-import { EmptyState } from '@/components/app/EmptyState'
-import { DashboardActions } from './DashboardActions'
-import { DashboardEntryPoints } from './DashboardEntryPoints'
 import { OnboardingWizard } from './OnboardingWizard'
+import { DashboardClient, type DashboardProposal } from './DashboardClient'
+
+const PLAN_LABEL: Record<string, string> = { free: 'Free plan', pay_per_proposal: 'Pay-per-proposal plan', agency: 'Agency plan' }
+const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+
+function dealValue(content: any): string {
+  const packages = content?.packages
+  if (!Array.isArray(packages) || packages.length === 0) return ''
+  const highest = Math.max(...packages.map((p: any) => Number(p.discountedPrice) || 0))
+  return highest > 0 ? currency.format(highest) : ''
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -18,13 +24,12 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  // Fetch the account name from the accounts table using the authenticated user's ID
   const { data: accountData } = await supabase
     .from('accounts')
-    .select('id, name, onboarding_completed_at')
+    .select('id, name, onboarding_completed_at, category, plan_tier')
     .single()
 
-  const accountName = accountData?.name || 'your Dashboard'
+  const accountName = accountData?.name || 'Marg Studio'
 
   // The wizard is a full-screen flow (its own header, no sidebar) shown until it's finished
   // once — by completing it or using "Skip setup" — which persists onboarding_completed_at.
@@ -33,55 +38,62 @@ export default async function DashboardPage() {
     return <OnboardingWizard firstName={firstName} accountId={accountData.id} />
   }
 
-  // Fetch user's proposals
-  const { data: proposals } = await supabase
-    .from('proposals')
-    .select('id, content, updated_at, status')
-    .eq('status', 'DRAFT')
-    .order('updated_at', { ascending: false })
+  const [{ data: proposalRows }, { count: brandKitCount }] = await Promise.all([
+    supabase
+      .from('proposals')
+      .select('id, slug, content, updated_at, status, accepted_at, last_viewed_at')
+      .order('updated_at', { ascending: false }),
+    supabase.from('brand_kits').select('id', { count: 'exact', head: true }),
+  ])
 
-  // Lightweight status counts for the quick-figures strip (doesn't affect the DRAFT-only list above)
-  const { data: allStatuses } = await supabase
-    .from('proposals')
-    .select('status')
+  const rows = proposalRows ?? []
+
+  const proposals: DashboardProposal[] = rows.map((p) => {
+    let displayStatus: DashboardProposal['displayStatus'] = 'draft'
+    let statusLabel: string | undefined
+    if (p.status === 'PENDING_APPROVAL') { displayStatus = 'sent'; statusLabel = 'Pending approval' }
+    else if (p.status === 'ARCHIVED') { displayStatus = 'draft'; statusLabel = 'Archived' }
+    else if (p.status === 'PUBLISHED') {
+      displayStatus = p.accepted_at ? 'accepted' : p.last_viewed_at ? 'viewed' : 'sent'
+    }
+    return {
+      id: p.id,
+      slug: p.slug,
+      title: p.content?.title || 'Untitled proposal',
+      client: p.content?.clientName || 'Unknown client',
+      updatedAt: p.updated_at,
+      value: dealValue(p.content),
+      displayStatus,
+      statusLabel,
+      pendingApproval: p.status === 'PENDING_APPROVAL',
+    }
+  })
 
   const counts = {
-    total: allStatuses?.length ?? 0,
-    draft: allStatuses?.filter((p) => p.status === 'DRAFT').length ?? 0,
-    published: allStatuses?.filter((p) => p.status === 'PUBLISHED').length ?? 0,
+    total: rows.length,
+    open: rows.filter((p) => p.status === 'PUBLISHED' && !p.accepted_at).length,
+    won: rows.filter((p) => !!p.accepted_at).length,
   }
 
+  const clients = Array.from(new Set(proposals.map((p) => p.client))).sort()
+
+  const setupDone = {
+    brand: (brandKitCount ?? 0) > 0,
+    proposal: rows.length > 0,
+    share: rows.some((p) => p.status === 'PUBLISHED'),
+  }
+  const showNudge = !(setupDone.brand && setupDone.proposal && setupDone.share)
+
   return (
-    <DashboardShell userEmail={user.email ?? ''}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <h1 style={{ margin: 0, fontSize: 'var(--text-h2)', fontWeight: 'var(--weight-semibold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text-primary)' }}>
-          Welcome to {accountName}
-        </h1>
-      </div>
-
-      <StatStrip
-        counts={counts}
-        items={[
-          { key: 'total', label: 'Total proposals', icon: 'file-text' },
-          { key: 'draft', label: 'Drafts', icon: 'clock' },
-          { key: 'published', label: 'Published', icon: 'circle-check-big' },
-        ]}
-      />
-
-      <DashboardEntryPoints />
-
-      {proposals && proposals.length > 0 ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 24 }}>
-          {proposals.map((proposal) => (
-            <DashboardActions key={proposal.id} proposal={proposal} />
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          title="No proposals yet"
-          description="Get started by creating a new proposal."
-        />
-      )}
-    </DashboardShell>
+    <DashboardClient
+      accountName={accountName}
+      planLabel={PLAN_LABEL[accountData?.plan_tier || 'free']}
+      category={accountData?.category ?? null}
+      proposals={proposals}
+      counts={counts}
+      clients={clients}
+      setupDone={setupDone}
+      showNudge={showNudge}
+    />
   )
 }

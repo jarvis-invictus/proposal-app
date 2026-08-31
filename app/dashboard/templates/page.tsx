@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { DashboardShell } from '../DashboardShell'
+import { AppShell } from '@/components/app/AppShell'
+import { getAccountShellInfo } from '@/lib/accountShellInfo'
 import { Pill } from '@/components/ui/Pill'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/app/EmptyState'
@@ -12,6 +13,8 @@ export default async function TemplatesPage() {
   if (userError || !userData.user) {
     redirect('/login')
   }
+
+  const shellInfo = await getAccountShellInfo(supabase)
 
   // Fetch system templates
   const { data: templates, error } = await supabase
@@ -25,21 +28,9 @@ export default async function TemplatesPage() {
   }
 
   return (
-    <DashboardShell userEmail={userData.user.email ?? ''}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 'var(--text-h2)', fontWeight: 'var(--weight-semibold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text-primary)' }}>
-            Template Library
-          </h1>
-          <p style={{ margin: '8px 0 0', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-            Select a template to start building your proposal.
-          </p>
-        </div>
-        <a href="/dashboard/brand-kit" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--brand-deep)' }}>
-          Edit Brand Kit
-        </a>
-      </div>
-
+    <AppShell screen="templates" title="Template Library" subtitle="Select a template to start building your proposal."
+      accountName={shellInfo.accountName} planLabel={shellInfo.planLabel}
+      actions={<a href="/dashboard/brand-kit" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--brand-deep)' }}>Edit Brand Kit</a>}>
       {(!templates || templates.length === 0) ? (
         <EmptyState title="No templates" description="No templates available yet." />
       ) : (
@@ -75,6 +66,6 @@ export default async function TemplatesPage() {
           ))}
         </div>
       )}
-    </DashboardShell>
+    </AppShell>
   )
 }

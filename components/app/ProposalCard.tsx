@@ -11,7 +11,9 @@ export interface ProposalCardProps extends React.HTMLAttributes<HTMLDivElement> 
   client?: string;
   /** Relative time string, e.g. "Updated 4m ago". */
   updated?: string;
-  status?: 'draft' | 'sent' | 'accepted';
+  status?: 'draft' | 'sent' | 'viewed' | 'accepted';
+  /** Overrides the default Title-Case(status) label, e.g. "Pending approval" while status stays 'sent' for its tone. */
+  statusLabel?: string;
   /** Headline figure shown in the thumbnail, e.g. "$50,000". */
   value?: string;
   onOpen?: () => void;
@@ -21,7 +23,7 @@ export interface ProposalCardProps extends React.HTMLAttributes<HTMLDivElement> 
   menu?: React.ReactNode;
 }
 
-export function ProposalCard({title,client,updated,status='draft',value,onOpen,onMenu,menu,style,...rest}:ProposalCardProps){
+export function ProposalCard({title,client,updated,status='draft',statusLabel,value,onOpen,onMenu,menu,style,...rest}:ProposalCardProps){
   const [hover,setHover]=React.useState(false);
   return (
     <div {...rest} onClick={onOpen} onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}
@@ -40,7 +42,7 @@ export function ProposalCard({title,client,updated,status='draft',value,onOpen,o
       <div style={{display:'flex',flexDirection:'column',gap:5}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <span style={{fontSize:'var(--text-body)',fontWeight:'var(--weight-medium)',letterSpacing:'var(--tracking-tight)'}}>{title}</span>
-          <Badge tone={status}>{status[0].toUpperCase()+status.slice(1)}</Badge>
+          <Badge tone={status}>{statusLabel || status[0].toUpperCase()+status.slice(1)}</Badge>
         </div>
         <span style={{fontSize:'var(--text-sm)',color:'var(--text-muted)'}}>{client}{client&&updated?' · ':''}{updated}</span>
       </div>
