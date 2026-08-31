@@ -35,6 +35,7 @@ export async function saveBrandKit(data: any) {
 
   const { error } = await supabase.from('brand_kits').insert({
     account_id: userRecord.account_id,
+    name: data.name,
     source_type: data.source_type,
     source_reference: data.source_reference,
     colors: data.colors,
