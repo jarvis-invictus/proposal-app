@@ -30,7 +30,7 @@ export default async function DashboardPage() {
   // once — by completing it or using "Skip setup" — which persists onboarding_completed_at.
   if (accountData && !accountData.onboarding_completed_at) {
     const firstName = (user.user_metadata?.full_name as string | undefined)?.split(' ')[0] || user.email?.split('@')[0] || 'there'
-    return <OnboardingWizard firstName={firstName} />
+    return <OnboardingWizard firstName={firstName} accountId={accountData.id} />
   }
 
   // Fetch user's proposals

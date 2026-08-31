@@ -8,8 +8,7 @@ import { Icon } from '@/components/ui/Icon'
 import { Logo } from '@/components/ui/Logo'
 import { Badge } from '@/components/ui/Badge'
 import { Pill } from '@/components/ui/Pill'
-import { FilterChip } from '@/components/ui/FilterChip'
-import { extractFromUrl, extractFromImage, saveBrandKit } from './brand-kit/actions'
+import { BrandExtract } from './brand-kit/BrandExtract'
 import { finishOnboarding } from './onboarding-actions'
 
 const STEPS = [
@@ -157,128 +156,10 @@ function BusinessStep({ business, setBusiness, category, setCategory, onNext }: 
   )
 }
 
-/** Reuses the existing 2-source extraction + review step. Will be upgraded to the full 5-source
- * BrandExtract flow (with mandatory manual logo upload) in the next correction — this is the
- * extraction capability that exists today, embedded inline instead of skipped. */
-function BrandStep({ onNext }: { onNext: () => void }) {
-  const [sourceType, setSourceType] = React.useState<'url' | 'image' | 'manual'>('url')
-  const [sourceRef, setSourceRef] = React.useState('')
-  const [isExtracting, setIsExtracting] = React.useState(false)
-  const [isSaving, setIsSaving] = React.useState(false)
-  const [error, setError] = React.useState('')
-  const [hasExtracted, setHasExtracted] = React.useState(false)
-  const [brandData, setBrandData] = React.useState<any>({
-    colors: { primary: '#000000', secondary: '#ffffff', accent: '#000000', background: '#ffffff', text: '#000000' },
-    fonts: { heading: 'sans-serif', body: 'sans-serif' },
-    logoUrl: '',
-  })
-
-  const handleUrlExtraction = async () => {
-    try {
-      setIsExtracting(true)
-      setError('')
-      const data = await extractFromUrl(sourceRef)
-      setBrandData(data)
-      setHasExtracted(true)
-    } catch (err: any) {
-      setError(err.message || 'Failed to extract from URL')
-    } finally {
-      setIsExtracting(false)
-    }
-  }
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = async (event) => {
-      const base64 = event.target?.result as string
-      setSourceRef(file.name)
-      try {
-        setIsExtracting(true)
-        setError('')
-        const data = await extractFromImage(base64)
-        setBrandData(data)
-        setHasExtracted(true)
-      } catch (err: any) {
-        setError(err.message || 'Failed to extract from image')
-      } finally {
-        setIsExtracting(false)
-      }
-    }
-    reader.readAsDataURL(file)
-  }
-
-  const handleSaveAndContinue = async () => {
-    try {
-      setIsSaving(true)
-      await saveBrandKit({ source_type: sourceType, source_reference: sourceRef, ...brandData })
-      onNext()
-    } catch (err: any) {
-      setError(err.message || 'Failed to save')
-      setIsSaving(false)
-    }
-  }
-
+function BrandStep({ onNext, accountId, business }: { onNext: () => void; accountId: string; business: string }) {
   return (
     <WizardPanel className="liquid-flat">
-      <Head title="Set up your brand kit" accent="brand kit" sub="Pull your colours, fonts and logo from something you already have — or skip and add it later." />
-      {!hasExtracted ? (
-        <div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-            <FilterChip active={sourceType === 'url'} onClick={() => setSourceType('url')} icon="link">From website URL</FilterChip>
-            <FilterChip active={sourceType === 'image'} onClick={() => setSourceType('image')} icon="upload">From image</FilterChip>
-            <FilterChip active={sourceType === 'manual'} onClick={() => { setSourceType('manual'); setHasExtracted(true) }} icon="signature">Enter manually</FilterChip>
-          </div>
-          {sourceType === 'url' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 460 }}>
-              <Input type="url" value={sourceRef} onChange={(e) => setSourceRef(e.target.value)} placeholder="https://yourwebsite.com" icon="link" />
-              <div><Button variant="primary" icon="sparkles" loading={isExtracting} disabled={!sourceRef} onClick={handleUrlExtraction}>{isExtracting ? 'Extracting…' : 'Extract brand kit'}</Button></div>
-            </div>
-          )}
-          {sourceType === 'image' && (
-            <label style={{
-              display: 'flex', alignItems: 'center', gap: 10, height: 'var(--control-h)', padding: '0 14px', maxWidth: 460,
-              borderRadius: 'var(--radius-pill)', border: '1px dashed var(--border-strong)', cursor: isExtracting ? 'not-allowed' : 'pointer',
-              fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', opacity: isExtracting ? 0.5 : 1,
-            }}>
-              <Icon name="upload" size={16} color="var(--text-muted)" />
-              {sourceRef || 'Choose an image or PDF…'}
-              <input type="file" accept="image/*,.pdf" onChange={handleImageUpload} disabled={isExtracting} style={{ display: 'none' }} />
-            </label>
-          )}
-          {error && <p style={{ marginTop: 12, fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>{error}</p>}
-          <div style={{ marginTop: 20 }}>
-            <button type="button" onClick={onNext} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', textDecoration: 'underline' }}>
-              Skip for now
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 28, marginBottom: 24 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)', margin: 0 }}>Colors</h3>
-              {Object.entries(brandData.colors).map(([key, val]: [string, any]) => (
-                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', backgroundColor: val, border: '1px solid var(--border-hairline)' }} />
-                  <input type="text" value={val} onChange={(e) => setBrandData({ ...brandData, colors: { ...brandData.colors, [key]: e.target.value } })}
-                    style={{ flex: 1, border: 'none', borderBottom: '1px solid var(--border-hairline)', outline: 'none', padding: '4px 0', background: 'transparent', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)' }} />
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)', margin: 0 }}>Logo</h3>
-              <input type="url" value={brandData.logoUrl} onChange={(e) => setBrandData({ ...brandData, logoUrl: e.target.value })} placeholder="https://…"
-                style={{ border: 'none', borderBottom: '1px solid var(--border-hairline)', outline: 'none', padding: '4px 0', background: 'transparent', fontSize: 'var(--text-sm)' }} />
-            </div>
-          </div>
-          {error && <p style={{ marginBottom: 12, fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>{error}</p>}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Button variant="primary" iconRight="arrow-right" loading={isSaving} onClick={handleSaveAndContinue}>Save &amp; continue</Button>
-          </div>
-        </div>
-      )}
+      <BrandExtract accountId={accountId} kitNameDefault={business || 'Marg Studio'} onConfirm={onNext} onSkip={onNext} />
     </WizardPanel>
   )
 }
@@ -398,7 +279,7 @@ function FirstProposalStep({ onCreate, onLater }: { onCreate: () => void; onLate
   )
 }
 
-export function OnboardingWizard({ firstName }: { firstName: string }) {
+export function OnboardingWizard({ firstName, accountId }: { firstName: string; accountId: string }) {
   const router = useRouter()
   const [phase, setPhase] = React.useState<'welcome' | 0 | 1 | 2 | 3>('welcome')
   const [business, setBusiness] = React.useState('')
@@ -427,7 +308,7 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
         <div key={phase} className="screen-in" style={{ width: 'min(860px,100%)' }}>
           {phase === 'welcome' && <Welcome firstName={firstName} onStart={next} />}
           {phase === 0 && <BusinessStep business={business} setBusiness={setBusiness} category={category} setCategory={setCategory} onNext={next} />}
-          {phase === 1 && <BrandStep onNext={next} />}
+          {phase === 1 && <BrandStep onNext={next} accountId={accountId} business={business} />}
           {phase === 2 && <PreviewStep business={business} onNext={next} />}
           {phase === 3 && <FirstProposalStep onCreate={() => finish('new')} onLater={() => finish('proposals')} />}
         </div>
