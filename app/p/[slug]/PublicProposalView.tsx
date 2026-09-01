@@ -10,6 +10,7 @@ import { Modal } from '@/components/app/Modal'
 import { SignaturePad } from '@/components/app/SignaturePad'
 import { DealWon } from '@/components/app/DealWon'
 import { PdfExportModal, type PdfExportOptions } from '@/components/app/PdfExportModal'
+import { formatCurrency } from '@/lib/formatCurrency'
 
 const CORNER_MAP: Record<PdfExportOptions['pageNumbers'], string> = {
   tl: 'top-left', tr: 'top-right', bl: 'bottom-left', br: 'bottom-right', none: 'none',
@@ -31,10 +32,12 @@ export default function PublicProposalView({
   proposal,
   paymentDisplay,
   isOwner,
+  currency = 'USD',
 }: {
   proposal: any,
   paymentDisplay: { payment_upi_id: string | null; payment_link: string | null; payment_qr_url: string | null } | null,
   isOwner: boolean,
+  currency?: string,
 }) {
   const content = proposal.content
   // Same fallback chain as the editor: an explicit choice on the proposal wins, then the
@@ -271,10 +274,10 @@ export default function PublicProposalView({
                   <p className="text-slate" style={{ fontSize: 'var(--text-sm)', marginBottom: 24, minHeight: 40, whiteSpace: 'pre-wrap' }}>{pkg.description}</p>
 
                   <div className="mb-6 flex items-baseline gap-2">
-                    <span className="text-ink" style={{ fontSize: 30, fontWeight: 700 }}>${(pkg.discountedPrice ?? 0).toLocaleString()}</span>
+                    <span className="text-ink" style={{ fontSize: 30, fontWeight: 700 }}>{formatCurrency(pkg.discountedPrice, currency)}</span>
                     {pkg.originalPrice > 0 && !pdfConfig.hideLineItemPrices && (
                       <span className="text-mist" style={{ fontSize: 'var(--text-body-lg)', textDecoration: 'line-through' }}>
-                        ${pkg.originalPrice.toLocaleString()}
+                        {formatCurrency(pkg.originalPrice, currency)}
                       </span>
                     )}
                   </div>
@@ -307,7 +310,7 @@ export default function PublicProposalView({
                   </div>
                   {!pdfConfig.hideLineItemPrices && (
                     <div className="text-ink" style={{ fontWeight: 700, paddingLeft: 16, marginLeft: 16, borderLeft: '1px solid var(--border-hairline)' }}>
-                      +${addon.price.toLocaleString()}
+                      +{formatCurrency(addon.price, currency)}
                     </div>
                   )}
                 </div>

@@ -16,7 +16,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const { data: existing, error: fetchError } = await adminSupabase
     .from('proposals')
-    .select('id, status, accepted_at')
+    .select('id, account_id, status, accepted_at, content')
     .eq('slug', slug)
     .single()
 
@@ -39,6 +39,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  const title = (existing.content as any)?.title || 'Your proposal'
+  const { error: notifError } = await adminSupabase.from('notifications').insert({
+    account_id: existing.account_id,
+    proposal_id: existing.id,
+    message: `${name.trim()} accepted ${title}.`,
+  })
+  if (notifError) {
+    console.error('Failed to insert acceptance notification', notifError)
+    // Don't fail the request over this — the acceptance itself already succeeded.
   }
 
   return NextResponse.json(proposal)

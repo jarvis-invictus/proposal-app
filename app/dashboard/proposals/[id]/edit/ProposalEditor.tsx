@@ -24,7 +24,7 @@ function useDebouncedCallback<T extends (...args: any[]) => void>(callback: T, d
   )
 }
 
-export default function ProposalEditor({ initialProposal, userRole = 'owner' }: { initialProposal: any; userRole?: string }) {
+export default function ProposalEditor({ initialProposal, userRole = 'owner', accountCurrency = 'USD' }: { initialProposal: any; userRole?: string; accountCurrency?: string }) {
   const [proposal, setProposal] = React.useState(initialProposal)
   const [content, setContent] = React.useState<any>(initialProposal.content)
   const [saveStatus, setSaveStatus] = React.useState<SaveStatus>('saved')
@@ -95,10 +95,12 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner' }: 
         <PackagesBlock
           packages={(content.packages as PackageItem[]) || []}
           onChange={(next) => updateField('packages', next)}
+          currency={accountCurrency}
         />
         <AddOnsBlock
           addOns={(content.addOns as AddOnItem[]) || []}
           onChange={(next) => updateField('addOns', next)}
+          currency={accountCurrency}
         />
         <TimelineBlock
           timeline={(content.timeline as TimelinePhase[]) || []}

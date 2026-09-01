@@ -15,7 +15,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   updateUserProfile, updateBusinessDetails, updatePaymentDetails, updateAvatarUrl,
   inviteMember, changeMemberRole, approveProposal, requestChanges,
-  connectDomain, buyDomainSlot, switchPlan,
+  connectDomain, buyDomainSlot, switchPlan, updateCurrency,
 } from './actions'
 
 type Account = {
@@ -23,6 +23,7 @@ type Account = {
   business_address: string | null; gstin: string | null; default_validity_days: number
   payment_upi_id: string | null; payment_link: string | null; payment_qr_url: string | null
   plan_tier: 'free' | 'pay_per_proposal' | 'agency'; extra_domain_slots: number
+  currency: 'USD' | 'EUR' | 'INR'
 } | null
 type Member = { id: string; role: string; avatar_url: string | null; email: string }
 type Invitation = { id: string; email: string; role: string; invited_at: string; accepted_at: string | null }
@@ -580,21 +581,61 @@ function DomainTab({ account, domains, onSeePlan }: { account: Account; domains:
 }
 
 const PLANS = [
-  { tier: 'free', name: 'Free', price: '₹0', cadence: 'forever', domains: 'No custom domain', lines: ['1 active proposal', 'Full AI generation and brand kit', 'No credit card required'] },
-  { tier: 'pay_per_proposal', name: 'Pay per proposal', price: '₹249', cadence: 'per proposal', domains: '1 custom domain', lines: ['No subscription', 'Pay only when you publish', 'View tracking'], flag: 'Most flexible' },
-  { tier: 'agency', name: 'Agency', price: '₹999', cadence: 'per month', domains: '3 custom domains', lines: ['Unlimited proposals', 'Team members and approval chain', 'Priority support'] },
+  { tier: 'free', name: 'Free', price: '₹0', amountInr: 0, cadence: 'forever', domains: 'No custom domain', lines: ['1 active proposal', 'Full AI generation and brand kit', 'No credit card required'] },
+  { tier: 'pay_per_proposal', name: 'Pay per proposal', price: '₹249', amountInr: 249, cadence: 'per proposal', domains: '1 custom domain', lines: ['No subscription', 'Pay only when you publish', 'View tracking'], flag: 'Most flexible' },
+  { tier: 'agency', name: 'Agency', price: '₹999', amountInr: 999, cadence: 'per month', domains: '3 custom domains', lines: ['Unlimited proposals', 'Team members and approval chain', 'Priority support'] },
 ] as const
+
+const CURRENCIES = [
+  { code: 'USD', label: 'US Dollar' },
+  { code: 'EUR', label: 'Euro' },
+  { code: 'INR', label: 'Indian Rupee' },
+] as const
+
+function ProposalCurrencySection({ account }: { account: Account }) {
+  const current = account?.currency || 'USD'
+  const [saving, setSaving] = React.useState<string | null>(null)
+  const [error, setError] = React.useState<string | null>(null)
+
+  const handlePick = async (code: string) => {
+    if (code === current) return
+    setSaving(code)
+    setError(null)
+    try {
+      await updateCurrency(code)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  return (
+    <Section title="Proposal currency" description="The currency shown on the proposals you send to your clients. This is separate from your Marg subscription price below, which is billed in ₹.">
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {CURRENCIES.map((c) => (
+          <FilterChip key={c.code} active={c.code === current} onClick={() => handlePick(c.code)}>
+            {saving === c.code ? 'Saving…' : `${c.code} — ${c.label}`}
+          </FilterChip>
+        ))}
+      </div>
+      {error && <p style={{ marginTop: 10, fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>{error}</p>}
+    </Section>
+  )
+}
 
 function BillingTab({ account }: { account: Account }) {
   const currentTier = account?.plan_tier || 'free'
   const [switching, setSwitching] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
+  const [subscribeTier, setSubscribeTier] = React.useState<(typeof PLANS)[number] | null>(null)
 
   const handleSwitch = async (tier: string) => {
     setSwitching(tier)
     setError(null)
     try {
       await switchPlan(tier)
+      setSubscribeTier(null)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -604,10 +645,12 @@ function BillingTab({ account }: { account: Account }) {
 
   return (
     <>
+      <ProposalCurrencySection account={account} />
       <Section title="Your plan" description="Domain slots, team seats and branding all follow the plan you pick.">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 12 }}>
           {PLANS.map((p) => {
             const isCurrent = p.tier === currentTier
+            const isPaid = p.amountInr > 0
             return (
               <div key={p.tier} style={{
                 display: 'flex', flexDirection: 'column', gap: 10, padding: 18, borderRadius: 'var(--radius-card)',
@@ -628,8 +671,9 @@ function BillingTab({ account }: { account: Account }) {
                   {p.lines.map((l) => <span key={l} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}><Icon name="check" size={13} style={{ marginTop: 3 }} />{l}</span>)}
                 </div>
                 <span style={{ flex: 1 }} />
-                <Button variant="secondary" size="sm" fullWidth disabled={isCurrent} loading={switching === p.tier} onClick={() => handleSwitch(p.tier)}>
-                  {isCurrent ? 'Your plan' : 'Switch to this'}
+                <Button variant="secondary" size="sm" fullWidth disabled={isCurrent} loading={switching === p.tier}
+                  onClick={() => (isPaid ? setSubscribeTier(p) : handleSwitch(p.tier))}>
+                  {isCurrent ? 'Your plan' : isPaid ? 'Subscribe' : 'Switch to this'}
                 </Button>
               </div>
             )
@@ -640,6 +684,37 @@ function BillingTab({ account }: { account: Account }) {
       <Section title="Billing" description="No payment processor is connected yet, so there's nothing to charge or invoice." footer={<Button variant="secondary" size="sm" icon="credit-card" disabled>Update payment method</Button>}>
         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No invoices yet.</p>
       </Section>
+
+      {subscribeTier && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
+          <Modal open={!!subscribeTier} eyebrow="Subscribe" title={`Upgrade to ${subscribeTier.name}`} onClose={() => setSubscribeTier(null)} width={480}
+            footer={<>
+              <span style={{ flex: 1 }} />
+              <Button variant="ghost" onClick={() => setSubscribeTier(null)}>Cancel</Button>
+              <Button variant="primary" loading={switching === subscribeTier.tier} onClick={() => handleSwitch(subscribeTier.tier)}>Activate plan</Button>
+            </>}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+                No payment processor is connected yet — <strong>this won&apos;t charge you</strong>. This previews the checkout payload that will be sent to Razorpay or LemonSqueezy once billing is live; for now, &quot;Activate plan&quot; switches your plan tier directly.
+              </p>
+              <pre style={{
+                margin: 0, padding: 14, borderRadius: 'var(--radius-sm)', background: 'var(--surface-sunken)',
+                border: '1px solid var(--border-hairline)', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)',
+                color: 'var(--text-primary)', overflowX: 'auto',
+              }}>
+{JSON.stringify({
+  provider: 'razorpay',
+  plan_tier: subscribeTier.tier,
+  amount: subscribeTier.amountInr * 100,
+  currency: 'INR',
+  cadence: subscribeTier.cadence,
+  account_id: account?.id,
+}, null, 2)}
+              </pre>
+            </div>
+          </Modal>
+        </div>
+      )}
     </>
   )
 }
