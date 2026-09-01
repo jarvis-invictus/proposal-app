@@ -61,7 +61,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const { error: updateError } = await adminSupabase
     .from('proposals')
-    .update({ content: updatedContent })
+    .update({ 
+      content: updatedContent,
+      last_viewed_at: new Date().toISOString()
+    })
     .eq('id', proposal.id)
 
   if (updateError) {
