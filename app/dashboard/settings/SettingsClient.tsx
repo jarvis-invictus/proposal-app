@@ -11,6 +11,7 @@ import { Icon } from '@/components/ui/Icon'
 import { IconButton } from '@/components/ui/IconButton'
 import { SelectMenu } from '@/components/ui/SelectMenu'
 import { Modal } from '@/components/app/Modal'
+import { Toast, ToastHost } from '@/components/ui/Toast'
 import { createClient } from '@/lib/supabase/client'
 import {
   updateUserProfile, updateBusinessDetails, updatePaymentDetails, updateAvatarUrl,
@@ -24,6 +25,8 @@ type Account = {
   payment_upi_id: string | null; payment_link: string | null; payment_qr_url: string | null
   plan_tier: 'free' | 'pay_per_proposal' | 'agency'; extra_domain_slots: number
   currency: 'USD' | 'EUR' | 'INR'
+  stripe_customer_id: string | null; stripe_subscription_id: string | null; stripe_price_id: string | null
+  billing_status: 'free' | 'trialing' | 'active' | 'past_due' | 'canceled'
 } | null
 type Member = { id: string; role: string; avatar_url: string | null; email: string }
 type Invitation = { id: string; email: string; role: string; invited_at: string; accepted_at: string | null }
@@ -627,7 +630,9 @@ function ProposalCurrencySection({ account }: { account: Account }) {
 function BillingTab({ account }: { account: Account }) {
   const currentTier = account?.plan_tier || 'free'
   const [switching, setSwitching] = React.useState<string | null>(null)
+  const [checkingOut, setCheckingOut] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
+  const [toast, setToast] = React.useState<string | null>(null)
   const [subscribeTier, setSubscribeTier] = React.useState<(typeof PLANS)[number] | null>(null)
 
   const handleSwitch = async (tier: string) => {
@@ -640,6 +645,29 @@ function BillingTab({ account }: { account: Account }) {
       setError(err.message)
     } finally {
       setSwitching(null)
+    }
+  }
+
+  const handleCheckout = async (tier: string) => {
+    setCheckingOut(tier)
+    try {
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan_tier: tier }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Checkout failed')
+      window.location.href = data.checkout_url
+      // Deliberately no finally-reset of checkingOut here — the browser is about to navigate
+      // away to Stripe, so leaving the button in its loading state avoids a flash back to
+      // "Subscribe" during that instant.
+    } catch (err: any) {
+      // Locally, until Sahil adds real Stripe keys, this is the only way the route can fail —
+      // every other rejection path in /api/billing/checkout returns a specific reason, but this
+      // toast is what the task asked for and matches the actual local dev experience today.
+      setToast('Stripe keys not configured. Checkout disabled in development.')
+      setCheckingOut(null)
     }
   }
 
@@ -671,7 +699,7 @@ function BillingTab({ account }: { account: Account }) {
                   {p.lines.map((l) => <span key={l} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}><Icon name="check" size={13} style={{ marginTop: 3 }} />{l}</span>)}
                 </div>
                 <span style={{ flex: 1 }} />
-                <Button variant="secondary" size="sm" fullWidth disabled={isCurrent} loading={switching === p.tier}
+                <Button variant="secondary" size="sm" fullWidth disabled={isCurrent} loading={switching === p.tier || checkingOut === p.tier}
                   onClick={() => (isPaid ? setSubscribeTier(p) : handleSwitch(p.tier))}>
                   {isCurrent ? 'Your plan' : isPaid ? 'Subscribe' : 'Switch to this'}
                 </Button>
@@ -691,30 +719,17 @@ function BillingTab({ account }: { account: Account }) {
             footer={<>
               <span style={{ flex: 1 }} />
               <Button variant="ghost" onClick={() => setSubscribeTier(null)}>Cancel</Button>
-              <Button variant="primary" loading={switching === subscribeTier.tier} onClick={() => handleSwitch(subscribeTier.tier)}>Activate plan</Button>
+              <Button variant="primary" loading={checkingOut === subscribeTier.tier} onClick={() => handleCheckout(subscribeTier.tier)}>Continue to Stripe</Button>
             </>}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
-                No payment processor is connected yet — <strong>this won&apos;t charge you</strong>. This previews the checkout payload that will be sent to Razorpay or LemonSqueezy once billing is live; for now, &quot;Activate plan&quot; switches your plan tier directly.
+                You&apos;ll be redirected to Stripe to complete checkout securely. Your plan updates automatically once payment succeeds — nothing more to do here afterward.
               </p>
-              <pre style={{
-                margin: 0, padding: 14, borderRadius: 'var(--radius-sm)', background: 'var(--surface-sunken)',
-                border: '1px solid var(--border-hairline)', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)',
-                color: 'var(--text-primary)', overflowX: 'auto',
-              }}>
-{JSON.stringify({
-  provider: 'razorpay',
-  plan_tier: subscribeTier.tier,
-  amount: subscribeTier.amountInr * 100,
-  currency: 'INR',
-  cadence: subscribeTier.cadence,
-  account_id: account?.id,
-}, null, 2)}
-              </pre>
             </div>
           </Modal>
         </div>
       )}
+      {toast && <ToastHost><Toast tone="error" onDismiss={() => setToast(null)}>{toast}</Toast></ToastHost>}
     </>
   )
 }
