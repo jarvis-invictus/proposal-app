@@ -8,7 +8,7 @@ import {
   Clock, FilePlus2, RotateCcw, Bell, Menu, IndianRupee, Send, QrCode, User, Globe, UserPlus,
   ShoppingBag, Building2, Megaphone, Code, CircleEllipsis, LayoutDashboard, ScanSearch, Image,
   MessageSquare, GitBranch, WandSparkles, TrendingUp, Repeat, Wrench, Component, Briefcase,
-  Layers, AlignLeft,
+  Layers, AlignLeft, Files, Calendar,
   type LucideProps,
 } from 'lucide-react';
 
@@ -28,7 +28,7 @@ const MAP: Record<string, React.ComponentType<LucideProps>> = {
   'layout-dashboard': LayoutDashboard, 'scan-search': ScanSearch, image: Image,
   'message-square': MessageSquare, github: GitBranch, 'wand-sparkles': WandSparkles,
   'trending-up': TrendingUp, repeat: Repeat, wrench: Wrench, component: Component, briefcase: Briefcase,
-  layers: Layers, 'align-left': AlignLeft,
+  layers: Layers, 'align-left': AlignLeft, files: Files, calendar: Calendar,
 };
 
 export interface IconProps {
