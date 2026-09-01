@@ -34,7 +34,27 @@ export async function PATCH(
 
     const body = await request.json()
 
-    // 2. Update Proposal
+    // 2. Lock signed proposals. There's no separate "ACCEPTED" status in
+    // proposal_status_enum (DRAFT/PUBLISHED/PENDING_APPROVAL/ARCHIVED) — acceptance is
+    // recorded via accepted_at/signature on a PUBLISHED proposal, so that's the real signal
+    // to guard on. Checked here (not just in the UI) so a raw PATCH can't bypass it.
+    const { data: existing, error: fetchError } = await supabase
+      .from('proposals')
+      .select('accepted_at, signature')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !existing) {
+      return NextResponse.json({ error: 'Proposal not found' }, { status: 404 })
+    }
+    if (existing.accepted_at || existing.signature) {
+      return NextResponse.json(
+        { error: 'This proposal has been signed and is now locked as a legally binding document.' },
+        { status: 403 }
+      )
+    }
+
+    // 3. Update Proposal
     // RLS will ensure that the user can only update their own proposals.
     // Publishing (DRAFT -> PUBLISHED/PENDING_APPROVAL) is handled by the dedicated
     // /api/proposals/[id]/publish route, not here, since that transition needs the

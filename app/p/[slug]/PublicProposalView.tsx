@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -31,7 +32,10 @@ const FORMAT_MAP: Record<PdfExportOptions['dateFormat'], string> = {
   long: 'standard', us: 'slashes', iso: 'iso', custom: 'standard',
 }
 
-const PDF_SECTIONS = [
+/** The only sections this proposal's print view actually toggles — must match the ids
+ * PdfExportModal is given everywhere it's opened for a proposal (also from the Editor),
+ * otherwise a chosen "hide this section" option silently does nothing. */
+export const PDF_SECTIONS = [
   { id: 'addOns', label: 'Optional Add-ons' },
   { id: 'timeline', label: 'Project Timeline' },
   { id: 'terms', label: 'Terms & Conditions' },
@@ -130,6 +134,26 @@ export default function PublicProposalView({
     // Small delay to allow the DOM to update based on state changes before printing
     setTimeout(() => window.print(), 100)
   }
+
+  // The Editor's "Export PDF" button can't print its own editable canvas (unstyled for print),
+  // so it opens this page with the chosen options encoded here instead — apply them and print
+  // automatically. Guarded by a ref so React 18 Strict Mode's double-effect in dev can't
+  // trigger the print dialog twice.
+  const searchParams = useSearchParams()
+  const printTriggeredRef = useRef(false)
+  useEffect(() => {
+    if (printTriggeredRef.current) return
+    const raw = searchParams.get('pdfExport')
+    if (!raw) return
+    try {
+      const opts = JSON.parse(raw) as PdfExportOptions
+      printTriggeredRef.current = true
+      handlePdfExport(opts)
+    } catch {
+      // Malformed query param — ignore rather than crash the page.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const formatDate = (dateStr: string, format: string) => {
     if (!dateStr) return ''
