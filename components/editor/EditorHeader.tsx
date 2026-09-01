@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
+import { ThemeColorPicker, type ThemeRoles } from '@/components/app/ThemeColorPicker'
 
 export type SaveStatus = 'saved' | 'saving' | 'error'
 export type EditorProposalStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'PENDING_APPROVAL'
@@ -21,10 +22,18 @@ export interface EditorHeaderProps {
   onPublish: () => void
   publishLabel: string
   canPublish: boolean
+  themeColor: string
+  brandColor: string
+  onThemeChange: (roles: ThemeRoles) => void
+  onExportPdf: () => void
+  locked?: boolean
 }
 
 /** Thin editor chrome: document title + save state center, Preview/Publish right — matches Editor.jsx's EditorToolbar. */
-export function EditorHeader({ title, proposalStatus, saveStatus, onPreview, onPublish, publishLabel, canPublish }: EditorHeaderProps) {
+export function EditorHeader({
+  title, proposalStatus, saveStatus, onPreview, onPublish, publishLabel, canPublish,
+  themeColor, brandColor, onThemeChange, onExportPdf, locked = false,
+}: EditorHeaderProps) {
   return (
     <header style={{
       position: 'relative', zIndex: 30, display: 'flex', alignItems: 'center', gap: 16, height: 58, padding: '0 16px 0 20px',
@@ -51,6 +60,17 @@ export function EditorHeader({ title, proposalStatus, saveStatus, onPreview, onP
         </span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* A real fieldset, not just a pointer-events wrapper — that would only stop mouse
+            clicks, not keyboard activation or a programmatic .click(). display:contents keeps
+            it out of the flex layout while still disabling every descendant control. */}
+        <fieldset disabled={locked} style={{ display: 'contents', border: 'none', margin: 0, padding: 0 }}>
+          <ThemeColorPicker
+            value={themeColor} brandColor={brandColor} onChange={onThemeChange}
+            style={{ opacity: locked ? 0.5 : 1 }}
+            title={locked ? 'Locked — this proposal has been signed' : undefined}
+          />
+        </fieldset>
+        <Button variant="ghost" size="sm" icon="file-down" onClick={onExportPdf}>Export PDF</Button>
         <Button variant="ghost" size="sm" icon="eye" onClick={onPreview}>Preview</Button>
         {canPublish && <Button variant="primary" size="sm" onClick={onPublish}>{publishLabel}</Button>}
       </div>
