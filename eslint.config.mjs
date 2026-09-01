@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Supabase CLI's local runtime cache — generated Deno bootstrap code, not source, not
+    // even under version control. Without this it gets linted as if it were app code, which
+    // is where the bulk of a `prefer-const`/`no-var` flood on one minified line comes from.
+    "supabase/.temp/**",
   ]),
 ]);
 
