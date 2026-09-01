@@ -3,7 +3,6 @@
 ## Enums
 * `source_type_enum`: `'url'`, `'image'`, `'document'`, `'manual'`
 * `proposal_status_enum`: `'DRAFT'`, `'PUBLISHED'`, `'ARCHIVED'`, `'PENDING_APPROVAL'`
-* `transaction_type_enum`: `'GRANT'`, `'DEDUCT'`
 
 ## Tables
 
@@ -106,15 +105,6 @@ Events triggered for the account owner.
 * `read`: BOOLEAN NOT NULL DEFAULT FALSE
 * `created_at`: TIMESTAMPTZ NOT NULL DEFAULT NOW()
 * **RLS:** `Users can view their own account notifications`, `Users can update their own account notifications`.
-
-### 9. `credit_transactions`
-* `id`: UUID PRIMARY KEY
-* `account_id`: UUID NOT NULL (references accounts.id)
-* `transaction_type`: transaction_type_enum NOT NULL
-* `amount`: INT NOT NULL
-* `proposal_id`: UUID (references proposals.id)
-* `created_at`: TIMESTAMPTZ NOT NULL DEFAULT NOW()
-* **RLS:** `Users can read own credit transactions`.
 
 ## JSONB Implicit Shapes
 

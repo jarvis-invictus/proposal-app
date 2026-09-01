@@ -1,6 +1,7 @@
 import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 import { ProposalSchemaV1 } from '@/lib/schema/proposal';
+import { getAccountCurrency, currencyPromptInstruction } from '@/lib/accountCurrency';
 
 export const maxDuration = 30;
 
@@ -15,6 +16,7 @@ export async function POST(req: Request) {
     const today = new Date();
     const defaultValidUntil = new Date(today);
     defaultValidUntil.setDate(today.getDate() + 14);
+    const currency = await getAccountCurrency();
 
     const { object } = await generateObject({
       model: openai('gpt-4o'),
@@ -22,6 +24,8 @@ export async function POST(req: Request) {
       prompt: `You are a professional proposal generation engine.
 Below is a summary of facts gathered from the user about a prospective deal.
 Your task is to populate the ProposalSchemaV1 with this data.
+
+CURRENCY (critical): ${currencyPromptInstruction(currency)}
 
 Requirements:
 - Make sure originalPrice is higher than discountedPrice if both exist.
