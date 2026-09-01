@@ -7,7 +7,8 @@ import { Icon } from '@/components/ui/Icon'
 import { Logo } from '@/components/ui/Logo'
 import { Badge } from '@/components/ui/Badge'
 import { createClient } from '@/lib/supabase/client'
-import { extractFromUrl, extractFromImage, saveBrandKit } from './actions'
+import { Textarea } from '@/components/ui/Textarea'
+import { extractFromUrl, extractFromImage, extractFromText, saveBrandKit } from './actions'
 
 type SourceId = 'url' | 'file' | 'code' | 'assets' | 'describe'
 
@@ -16,7 +17,7 @@ const SOURCES: { id: SourceId; icon: string; label: string; hint: string; live: 
   { id: 'file', icon: 'file-text', label: 'Upload a brand guide', hint: 'design.md, a PDF, or a style doc', live: false },
   { id: 'code', icon: 'code', label: 'Connect a codebase', hint: 'Reads your tokens and CSS variables', live: false },
   { id: 'assets', icon: 'image', label: 'Upload assets', hint: 'Screenshots, a deck, old proposals', live: true },
-  { id: 'describe', icon: 'message-square', label: 'Describe it in words', hint: '"Warm, editorial, deep green"', live: false },
+  { id: 'describe', icon: 'message-square', label: 'Describe it in words', hint: '"Warm, editorial, deep green"', live: true },
 ]
 
 const SCAN_STEPS = [
@@ -44,6 +45,7 @@ export function BrandExtract({ onConfirm, onSkip, kitNameDefault, accountId }: {
   const [phase, setPhase] = React.useState<'pick' | 'input' | 'scan' | 'review'>('pick')
   const [url, setUrl] = React.useState('')
   const [assetFile, setAssetFile] = React.useState<File | null>(null)
+  const [description, setDescription] = React.useState('')
   const [extracted, setExtracted] = React.useState<Extracted | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const extractionRef = React.useRef<Promise<Extracted> | null>(null)
@@ -61,6 +63,8 @@ export function BrandExtract({ onConfirm, onSkip, kitNameDefault, accountId }: {
           reader.readAsDataURL(assetFile)
         })
         extractionRef.current = extractFromImage(base64) as Promise<Extracted>
+      } else if (src === 'describe' && description.trim()) {
+        extractionRef.current = extractFromText(description) as Promise<Extracted>
       }
       setPhase('scan')
     } catch (err: any) {
@@ -94,6 +98,7 @@ export function BrandExtract({ onConfirm, onSkip, kitNameDefault, accountId }: {
         <SourceInput
           source={source} url={url} setUrl={setUrl}
           assetFile={assetFile} setAssetFile={setAssetFile}
+          description={description} setDescription={setDescription}
           error={error}
           onBack={() => { setSource(null); setPhase('pick'); setError(null) }}
           onRun={() => runExtraction(source)}
@@ -141,7 +146,7 @@ function SourcePicker({ onPick, onSkip, url, setUrl, onScan }: {
         <span style={{ height: 1, flex: 1, background: 'var(--border-hairline)' }} />
       </div>
 
-      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
+      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 10 }}>
         {SOURCES.filter((s) => s.id !== 'url').map((s) => <SourceRow key={s.id} source={s} onClick={() => onPick(s.id)} />)}
       </div>
 
@@ -210,9 +215,10 @@ function SourceRow({ source, onClick }: { source: typeof SOURCES[number]; onClic
 
 /* ---------- 2. Give us the thing ---------- */
 
-function SourceInput({ source, url, setUrl, assetFile, setAssetFile, error, onBack, onRun }: {
+function SourceInput({ source, url, setUrl, assetFile, setAssetFile, description, setDescription, error, onBack, onRun }: {
   source: SourceId; url: string; setUrl: (v: string) => void
   assetFile: File | null; setAssetFile: (f: File | null) => void
+  description: string; setDescription: (v: string) => void
   error: string | null; onBack: () => void; onRun: () => void
 }) {
   const meta: Record<SourceId, { title: string; cta: string; icon: string }> = {
@@ -256,12 +262,25 @@ function SourceInput({ source, url, setUrl, assetFile, setAssetFile, error, onBa
         </div>
       )}
 
+      {source === 'describe' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder='"Warm, editorial, deep green — like a design studio that also makes furniture. Serif headings, plenty of whitespace."'
+            rows={5}
+            hint="A few sentences is enough — what it feels like, any colours or references that come to mind."
+          />
+          <Button variant="primary" icon="message-square" onClick={onRun} disabled={!description.trim()} style={{ alignSelf: 'flex-start' }}>{m.cta}</Button>
+        </div>
+      )}
+
       {!live && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <DropZonePreview source={source} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Button variant="primary" icon={m.icon} disabled>{m.cta}</Button>
-            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Coming soon — try &quot;Scan my website&quot; or &quot;Upload assets&quot; for now.</span>
+            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Coming soon — try &quot;Scan my website&quot;, &quot;Upload assets&quot;, or &quot;Describe it in words&quot; for now.</span>
           </div>
         </div>
       )}
@@ -275,7 +294,6 @@ function DropZonePreview({ source }: { source: SourceId }) {
   const copy: Partial<Record<SourceId, { title: string; hint: string; icon: string }>> = {
     file: { title: 'Drop your brand guide here', hint: 'design.md, PDF, DOCX · up to 10 MB', icon: 'file-text' },
     code: { title: 'Drop a folder, or paste a repo URL', hint: 'We look for tokens, tailwind.config, CSS variables', icon: 'code' },
-    describe: { title: 'Tell us about your brand', hint: 'A short description is enough', icon: 'message-square' },
   }
   const c = copy[source]
   if (!c) return null
@@ -393,6 +411,7 @@ function MockSite() {
 function GenericScan({ source, onDone }: { source: SourceId; onDone: () => void }) {
   const lines: Partial<Record<SourceId, string[]>> = {
     assets: ['Reading the image', 'Sampling dominant colours', 'Matching closest fonts', 'Brand read complete'],
+    describe: ['Reading your description', 'Choosing colours that fit', 'Pairing fonts', 'Brand read complete'],
   }
   const seq = lines[source] || ['Reading', 'Brand read complete']
   const [step, setStep] = React.useState(0)
@@ -467,7 +486,9 @@ function BrandReview({ source, extracted, kitNameDefault, accountId, onRedo, onC
     try {
       await saveBrandKit({
         name,
-        source_type: source === 'assets' ? 'image' : source,
+        // source_type_enum is only ever 'url' | 'image' | 'document' | 'manual' — every other
+        // SourceId (assets/describe/file/code) maps onto one of those four real values.
+        source_type: source === 'assets' ? 'image' : source === 'describe' ? 'manual' : source === 'url' ? 'url' : 'document',
         source_reference: source,
         colors: { primary: colors[0], secondary: colors[1], accent: colors[2], background: colors[3], text: colors[4], extra: colors.slice(5) },
         fonts: { heading, body, accent },

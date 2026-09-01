@@ -2,15 +2,15 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { OnboardingWizard } from './OnboardingWizard'
 import { DashboardClient, type DashboardProposal } from './DashboardClient'
+import { formatCurrency } from '@/lib/formatCurrency'
 
 const PLAN_LABEL: Record<string, string> = { free: 'Free plan', pay_per_proposal: 'Pay-per-proposal plan', agency: 'Agency plan' }
-const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 
-function dealValue(content: any): string {
+function dealValue(content: any, currencyCode: string): string {
   const packages = content?.packages
   if (!Array.isArray(packages) || packages.length === 0) return ''
   const highest = Math.max(...packages.map((p: any) => Number(p.discountedPrice) || 0))
-  return highest > 0 ? currency.format(highest) : ''
+  return highest > 0 ? formatCurrency(highest, currencyCode) : ''
 }
 
 export default async function DashboardPage() {
@@ -26,7 +26,7 @@ export default async function DashboardPage() {
 
   const { data: accountData } = await supabase
     .from('accounts')
-    .select('id, name, onboarding_completed_at, category, plan_tier')
+    .select('id, name, onboarding_completed_at, category, plan_tier, currency')
     .single()
 
   const accountName = accountData?.name || 'Marg Studio'
@@ -62,7 +62,7 @@ export default async function DashboardPage() {
       title: p.content?.title || 'Untitled proposal',
       client: p.content?.clientName || 'Unknown client',
       updatedAt: p.updated_at,
-      value: dealValue(p.content),
+      value: dealValue(p.content, accountData?.currency || 'USD'),
       displayStatus,
       statusLabel,
       pendingApproval: p.status === 'PENDING_APPROVAL',

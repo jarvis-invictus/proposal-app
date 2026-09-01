@@ -79,7 +79,7 @@ export function NotificationsClient({
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                   <span style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, flex: 'none',
-                    borderRadius: 'var(--radius-pill)', background: n.read ? 'var(--brand-12)' : 'var(--brand-deep)', color: n.read ? 'var(--brand-deep)' : '#fff',
+                    borderRadius: 'var(--radius-pill)', background: n.read ? 'var(--brand-12)' : 'var(--brand-deep)', color: n.read ? 'var(--brand-deep)' : 'var(--text-inverse)',
                   }}>
                     <Icon name={icon} size={16} />
                   </span>

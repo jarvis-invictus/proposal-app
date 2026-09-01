@@ -49,7 +49,7 @@ export function PackagesBlock({ packages, onChange, currency = 'USD' }: Packages
   return (
     <div style={{ padding: '32px 40px', borderBottom: '1px solid var(--border-hairline)' }}>
       <h2 style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400, fontSize: 25, letterSpacing: 0, marginBottom: 20 }}>Packages</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16 }}>
         {packages.map((pkg, idx) => (
           <div key={idx} style={{
             position: 'relative', padding: 20, borderRadius: 'var(--radius-card)',

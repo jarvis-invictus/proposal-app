@@ -184,14 +184,14 @@ export function DashboardClient({
       {proposals.length === 0 ? (
         <FirstRunEmpty />
       ) : loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 22 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 22 }}>
           {[0, 1, 2, 3, 4, 5].map((i) => <SkeletonCard key={i} lines={2} />)}
         </div>
       ) : list.length === 0 ? (
         <EmptyState title="Nothing matches that filter" description="Clear the filters, or describe a new deal and we'll draft the whole proposal for you."
           action={<Button icon="sparkles" onClick={() => goNew()}>Create with AI</Button>} />
       ) : (
-        <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 22 }}>
+        <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 22 }}>
           {list.map((p) => (
             <ProposalCard key={p.id} title={p.title} client={p.client} updated={`Updated ${relativeTime(p.updatedAt)}`}
               status={p.displayStatus} statusLabel={p.statusLabel} value={p.value}
@@ -278,7 +278,7 @@ function QuickChip({ children, onClick }: { children: React.ReactNode; onClick: 
 
 function SecondaryStarts({ onTemplates }: { onTemplates: () => void }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: -16, marginBottom: 30 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginTop: -16, marginBottom: 30 }}>
       <TextStart icon="layout-template" onClick={onTemplates}>Start from a template</TextStart>
       {/* "Import a document" has no backend anywhere in this app — the source itself leaves it
           unwired (onClick={()=>{}}); shown honestly disabled instead of a silent dead click. */}
@@ -346,7 +346,7 @@ function RecommendedRow({ category, onBrowse }: { category: string; onBrowse: ()
         <span style={{ flex: 1 }} />
         <button type="button" onClick={onBrowse} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--brand-deep)', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)' }}>Browse all templates</button>
       </div>
-      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
         {list.map(([name, icon]) => (
           <button key={name} type="button" onClick={onBrowse} className="liquid liquid-hover"
             style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '13px 15px', textAlign: 'left', cursor: 'pointer', borderRadius: 'var(--radius-card)', fontFamily: 'var(--font-sans)' }}>

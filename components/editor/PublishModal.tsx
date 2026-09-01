@@ -90,7 +90,7 @@ export function PublishModal({ open, onClose, proposalId, slug, content, brandKi
               display: 'flex', alignItems: 'center', justifyContent: 'center', width: 54, height: 54, borderRadius: '50%',
               background: 'var(--brand-deep)', color: 'var(--text-inverse)', boxShadow: 'var(--shadow-brand-lg)',
               animation: 'pop-in 520ms var(--ease-spring) both',
-            }}><Icon name="check" size={24} color="#fff" /></span>
+            }}><Icon name="check" size={24} color="var(--text-inverse)" /></span>
           </div>
           {published ? (
             <>

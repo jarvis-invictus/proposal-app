@@ -53,7 +53,7 @@ export function TemplatesClient({
           <FilterChip key={c} active={category === c} onClick={() => setCategory(c)}>{c}</FilterChip>
         ))}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 18 }}>
         {list.map((t) => (
           <Card key={t.id} interactive padding={0} radius="var(--radius-card)" onClick={() => setPreview(t)} style={{ overflow: 'hidden' }}>
             <div style={{ aspectRatio: '4 / 3', padding: 14, background: 'var(--pure-white)', borderBottom: '1px solid var(--border-hairline)' }}>
