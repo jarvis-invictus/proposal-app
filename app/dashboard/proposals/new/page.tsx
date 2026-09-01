@@ -1,10 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { AppShell } from '@/components/app/AppShell'
-import { getAccountShellInfo } from '@/lib/accountShellInfo'
-import { NewProposalClient } from './NewProposalClient'
+import { NewProposalClient, type PastProposalRef, type BrandKitPreview, type TemplateSeed } from './NewProposalClient'
 
-export default async function NewProposalPage() {
+export default async function NewProposalPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ starter?: string; template?: string }>
+}) {
+  const { starter, template: templateId } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -12,11 +15,31 @@ export default async function NewProposalPage() {
     redirect('/login')
   }
 
-  const shellInfo = await getAccountShellInfo(supabase)
+  const firstName = (user.user_metadata?.full_name as string | undefined)?.split(' ')[0] || user.email?.split('@')[0] || 'there'
+
+  const [{ data: proposalRows }, { data: brandKitRow }, templateResult] = await Promise.all([
+    supabase.from('proposals').select('id, content, updated_at').order('updated_at', { ascending: false }).limit(6),
+    supabase.from('brand_kits').select('name, colors, fonts').order('updated_at', { ascending: false }).limit(1).maybeSingle(),
+    templateId
+      ? supabase.from('templates').select('id, name, category').eq('id', templateId).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
+
+  const pastProposals: PastProposalRef[] = (proposalRows ?? [])
+    .filter((p) => p.content?.title)
+    .map((p) => ({ id: p.id, title: p.content.title, client: p.content?.clientName || 'Unknown client' }))
+
+  const brandKit: BrandKitPreview | null = brandKitRow
+    ? {
+        name: brandKitRow.name || 'Your brand kit',
+        colors: (brandKitRow.colors as any) || null,
+        headingFont: (brandKitRow.fonts as any)?.heading || null,
+      }
+    : null
+
+  const template: TemplateSeed = templateResult.data ? { id: templateResult.data.id, name: templateResult.data.name, category: templateResult.data.category } : null
 
   return (
-    <AppShell screen="proposals" title="New proposal" accountName={shellInfo.accountName} planLabel={shellInfo.planLabel}>
-      <NewProposalClient />
-    </AppShell>
+    <NewProposalClient firstName={firstName} pastProposals={pastProposals} brandKit={brandKit} starter={starter || null} template={template} />
   )
 }
