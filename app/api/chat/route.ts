@@ -1,11 +1,15 @@
 import { openai } from '@ai-sdk/openai';
 import { streamText, tool } from 'ai';
 import { z } from 'zod';
+import { getAccountCurrency, currencyPromptInstruction } from '@/lib/accountCurrency';
+import { currencySymbol } from '@/lib/formatCurrency';
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
   const { messages, styleReference } = await req.json();
+  const currency = await getAccountCurrency();
+  const symbol = currencySymbol(currency);
 
   const styleReferenceBlock = styleReference
     ? `\n\nSTYLISTIC REFERENCE — the user picked a past proposal of theirs to match the tone and structure of. Use it only to guide voice, phrasing, and how packages/terms are typically framed — never copy its client name, prices, or specific facts into the new proposal unless the user separately tells you those same facts. Reference:\n${JSON.stringify(styleReference)}`
@@ -16,6 +20,8 @@ export async function POST(req: Request) {
     system: `You are an expert proposal generation assistant for freelancers and agencies.
 Your goal is to extract all necessary details to generate a high-quality, professional proposal.
 The user will describe a deal in plain language or paste a call transcript.
+
+${currencyPromptInstruction(currency)} When you ask about or restate prices in conversation (not just in the final tool call), use the ${currency} symbol (${symbol}), not $, unless the user has already stated a figure in a different currency themselves.
 
 You must ask follow-up questions until you have clear information on:
 1. Client and Project Info: Who is the client? Who is preparing it? What is the core objective?
@@ -37,7 +43,7 @@ When you call finalize_proposal_details, fill in the \`preview\` object with sho
           preview: z.object({
             clientName: z.string().describe('The client or company name this proposal is for.'),
             packageCount: z.number().int().min(1).max(3).describe('How many pricing tiers/packages were discussed (1-3).'),
-            priceRange: z.string().describe('A short price summary the user will recognize, e.g. "$32,000 - $50,000" for two tiers or "$12,000" for one flat price. Use only figures the user actually gave you.'),
+            priceRange: z.string().describe(`A short price summary the user will recognize, in ${currency} (symbol: ${symbol}), e.g. "${symbol}32,000 - ${symbol}50,000" for two tiers or "${symbol}12,000" for one flat price. Use only figures the user actually gave you.`),
             timeline: z.string().describe('A short timeline summary, e.g. "12 weeks" or "3 months".'),
             terms: z.string().describe('One short phrase for the most important protective term discussed, e.g. "Two rounds of revisions per milestone." If nothing specific was discussed, say "Standard terms".'),
             paymentSchedule: z.string().describe('One short phrase for how payment is split, e.g. "50% upfront, 50% on delivery".'),
