@@ -10,10 +10,10 @@ const NAV: NavItem[] = [
   { id: 'templates', label: 'Templates', icon: 'layout-template' },
   { id: 'brand', label: 'Brand kits', icon: 'palette' },
 ]
-// "Activity" (Notifications.jsx) and "Help & guides" are omitted until they have a real
-// destination — Notifications.jsx is still queued in this same correction, and there's no
-// help/docs system anywhere in this app to link "Help & guides" to.
+// "Help & guides" stays omitted — there's no help/docs system anywhere in this app to link it
+// to. Activity now has a real destination (Notifications, Correction 6.8) and is wired in.
 const UTIL: NavItem[] = [
+  { id: 'notifications', label: 'Activity', icon: 'bell' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
 ]
 
@@ -21,6 +21,7 @@ const ROUTES: Record<string, string> = {
   proposals: '/dashboard',
   templates: '/dashboard/templates',
   brand: '/dashboard/brand-kit',
+  notifications: '/dashboard/notifications',
   settings: '/dashboard/settings',
 }
 

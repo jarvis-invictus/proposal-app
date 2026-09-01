@@ -4,6 +4,7 @@ import * as React from 'react'
 import { IconButton } from '@/components/ui/IconButton'
 import { Icon } from '@/components/ui/Icon'
 import { Button } from '@/components/ui/Button'
+import { currencySymbol } from '@/lib/formatCurrency'
 
 export type PackageItem = {
   name: string
@@ -17,6 +18,7 @@ export type PackageItem = {
 export interface PackagesBlockProps {
   packages: PackageItem[]
   onChange: (next: PackageItem[]) => void
+  currency?: string
 }
 
 const BLANK_PACKAGE: PackageItem = {
@@ -24,7 +26,7 @@ const BLANK_PACKAGE: PackageItem = {
 }
 
 /** Editable pricing tiers, bound directly to ProposalSchemaV1's packages array. */
-export function PackagesBlock({ packages, onChange }: PackagesBlockProps) {
+export function PackagesBlock({ packages, onChange, currency = 'USD' }: PackagesBlockProps) {
   const updatePackage = (index: number, patch: Partial<PackageItem>) => {
     onChange(packages.map((p, i) => (i === index ? { ...p, ...patch } : p)))
   }
@@ -82,8 +84,8 @@ export function PackagesBlock({ packages, onChange }: PackagesBlockProps) {
               }} />
 
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 16 }}>
-              <PriceInput value={pkg.discountedPrice} onChange={(v) => updatePackage(idx, { discountedPrice: v })} size={30} weight={700} />
-              <PriceInput value={pkg.originalPrice} onChange={(v) => updatePackage(idx, { originalPrice: v })} size={16} weight={400} strike muted />
+              <PriceInput value={pkg.discountedPrice} onChange={(v) => updatePackage(idx, { discountedPrice: v })} size={30} weight={700} currency={currency} />
+              <PriceInput value={pkg.originalPrice} onChange={(v) => updatePackage(idx, { originalPrice: v })} size={16} weight={400} strike muted currency={currency} />
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -112,12 +114,12 @@ export function PackagesBlock({ packages, onChange }: PackagesBlockProps) {
   )
 }
 
-function PriceInput({ value, onChange, size, weight, strike, muted }: {
-  value: number; onChange: (v: number) => void; size: number; weight: number; strike?: boolean; muted?: boolean
+function PriceInput({ value, onChange, size, weight, strike, muted, currency }: {
+  value: number; onChange: (v: number) => void; size: number; weight: number; strike?: boolean; muted?: boolean; currency: string
 }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 1 }}>
-      <span style={{ fontSize: size, fontWeight: weight, color: muted ? 'var(--text-muted)' : 'var(--text-primary)' }}>$</span>
+      <span style={{ fontSize: size, fontWeight: weight, color: muted ? 'var(--text-muted)' : 'var(--text-primary)' }}>{currencySymbol(currency)}</span>
       <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value) || 0)}
         style={{
           width: `${Math.max(2, String(value).length + 1)}ch`, border: 'none', outline: 'none', background: 'transparent',

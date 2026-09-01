@@ -18,7 +18,7 @@ export default async function SettingsPage() {
 
   const { data: account } = await supabase
     .from('accounts')
-    .select('id, name, business_address, gstin, default_validity_days, payment_upi_id, payment_link, payment_qr_url, plan_tier, extra_domain_slots')
+    .select('id, name, business_address, gstin, default_validity_days, payment_upi_id, payment_link, payment_qr_url, plan_tier, extra_domain_slots, currency')
     .eq('id', accountId)
     .single()
 

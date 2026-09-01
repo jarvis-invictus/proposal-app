@@ -37,7 +37,7 @@ export default async function PublicProposalPage({ params }: { params: Promise<{
 
   const { data: proposal, error } = await adminSupabase
     .from('proposals')
-    .select('*, accounts(payment_upi_id, payment_link, payment_qr_url), brand_kits(*)')
+    .select('*, accounts(payment_upi_id, payment_link, payment_qr_url, currency), brand_kits(*)')
     .eq('slug', resolvedParams.slug)
     .single()
 
@@ -56,6 +56,7 @@ export default async function PublicProposalPage({ params }: { params: Promise<{
       proposal={proposal}
       paymentDisplay={proposal.accounts ?? null}
       isOwner={isOwner}
+      currency={proposal.accounts?.currency || 'USD'}
     />
   )
 }

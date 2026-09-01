@@ -14,14 +14,12 @@ export default async function ProposalEditorPage({ params }: { params: Promise<{
     redirect('/login')
   }
 
-  const { data: userRecord } = await supabase.from('users').select('role').eq('id', user.id).single()
+  const { data: userRecord } = await supabase.from('users').select('role, account_id').eq('id', user.id).single()
 
-  // Fetch the proposal
-  const { data: proposal, error } = await supabase
-    .from('proposals')
-    .select('*, brand_kits(*)')
-    .eq('id', resolvedParams.id)
-    .single()
+  const [{ data: proposal, error }, { data: accountRecord }] = await Promise.all([
+    supabase.from('proposals').select('*, brand_kits(*)').eq('id', resolvedParams.id).single(),
+    userRecord ? supabase.from('accounts').select('currency').eq('id', userRecord.account_id).single() : Promise.resolve({ data: null }),
+  ])
 
   if (error || !proposal) {
     redirect('/dashboard') // Handle not found
@@ -29,7 +27,7 @@ export default async function ProposalEditorPage({ params }: { params: Promise<{
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <ProposalEditor initialProposal={proposal} userRole={userRecord?.role || 'owner'} />
+      <ProposalEditor initialProposal={proposal} userRole={userRecord?.role || 'owner'} accountCurrency={accountRecord?.currency || 'USD'} />
     </div>
   )
 }

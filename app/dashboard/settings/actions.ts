@@ -79,6 +79,8 @@ export async function approveProposal(proposalId: string) {
     .eq('status', 'PENDING_APPROVAL')
   if (error) throw new Error(error.message)
   revalidatePath('/dashboard/settings')
+  revalidatePath('/dashboard/notifications')
+  revalidatePath('/dashboard')
 }
 
 export async function requestChanges(proposalId: string) {
@@ -129,4 +131,16 @@ export async function switchPlan(planTier: string) {
   const { error } = await supabase.from('accounts').update({ plan_tier: planTier }).eq('id', accountId)
   if (error) throw new Error(error.message)
   revalidatePath('/dashboard/settings')
+}
+
+// The currency shown on the proposals this account sends to its own clients — unrelated to
+// what Marg itself charges this account for the subscription (that stays in INR, tied to the
+// Razorpay/LemonSqueezy decision in docs/DECISION_LOG.md).
+export async function updateCurrency(currency: string) {
+  const { supabase, accountId } = await requireAccount()
+  if (!['USD', 'EUR', 'INR'].includes(currency)) throw new Error('Unsupported currency')
+  const { error } = await supabase.from('accounts').update({ currency }).eq('id', accountId)
+  if (error) throw new Error(error.message)
+  revalidatePath('/dashboard/settings')
+  revalidatePath('/dashboard/proposals')
 }
