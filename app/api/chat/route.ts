@@ -3,10 +3,17 @@ import { streamText, tool } from 'ai';
 import { z } from 'zod';
 import { getAccountCurrency, currencyPromptInstruction } from '@/lib/accountCurrency';
 import { currencySymbol } from '@/lib/formatCurrency';
+import { checkAiRateLimit, extractClientIp } from '@/lib/ratelimit';
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+  const ip = extractClientIp(req);
+  const { success } = await checkAiRateLimit(ip);
+  if (!success) {
+    return new Response(JSON.stringify({ error: 'Too many requests — please wait a few minutes before continuing.' }), { status: 429 });
+  }
+
   const { messages, styleReference } = await req.json();
   const currency = await getAccountCurrency();
   const symbol = currencySymbol(currency);
