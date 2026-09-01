@@ -14,7 +14,15 @@ import { SelectMenu } from '@/components/ui/SelectMenu'
 import { Logo } from '@/components/ui/Logo'
 import { GeneratingScreen, type Preview } from './GeneratingScreen'
 
-export type PastProposalRef = { id: string; title: string; client: string }
+export type PastProposalRef = { id: string; title: string; client: string; content: any }
+
+// The AI should match tone/structure, not leak the other client's identity or figures into
+// the new proposal — strip what identifies who the reference was actually for.
+function styleReferenceFrom(ref: PastProposalRef | null) {
+  if (!ref?.content) return null
+  const { clientName, preparedFor, dateIssued, validUntil, ...rest } = ref.content
+  return rest
+}
 export type BrandKitPreview = { name: string; colors: { primary?: string; secondary?: string; accent?: string } | null; headingFont: string | null }
 export type TemplateSeed = { id: string; name: string; category: string } | null
 
@@ -74,10 +82,10 @@ export function NewProposalClient({
     if (seededRef.current) return
     seededRef.current = true
     if (template) {
-      append({ role: 'user', content: `I'd like to use the "${template.name}" template (${template.category}). Let's start from there.` })
+      append({ role: 'user', content: `I'd like to use the "${template.name}" template (${template.category}). Let's start from there.` }, { body: { styleReference: styleReferenceFrom(reference) } })
     } else if (starter) {
       const s = STARTERS.find((x) => x.id === starter)
-      if (s?.seed) append({ role: 'user', content: s.seed })
+      if (s?.seed) append({ role: 'user', content: s.seed }, { body: { styleReference: styleReferenceFrom(reference) } })
       else if (s) setMessages([{ id: 'seed-notes', role: 'assistant', content: "Go ahead and paste whatever you have — notes, a transcript, a rough email. I'll pull out what matters." }])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -88,7 +96,7 @@ export function NewProposalClient({
       setMessages([{ id: 'seed-notes', role: 'assistant', content: "Go ahead and paste whatever you have — notes, a transcript, a rough email. I'll pull out what matters." }])
       return
     }
-    append({ role: 'user', content: s.seed })
+    append({ role: 'user', content: s.seed }, { body: { styleReference: styleReferenceFrom(reference) } })
   }
 
   const toggleMic = () => {
@@ -175,7 +183,7 @@ export function NewProposalClient({
                   Hi {firstName} — what kind of work are we <em style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>proposing</em>?
                 </span>
               </div>
-              <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
+              <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 12 }}>
                 {STARTERS.map((s) => <StarterCard key={s.id} starter={s} onClick={() => start(s)} />)}
               </div>
             </div>
@@ -194,7 +202,8 @@ export function NewProposalClient({
           )}
 
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12, position: 'sticky', bottom: 0, paddingBottom: 4 }}>
-            <PromptInput size={started ? 'sm' : 'lg'} value={input} onChange={(e) => handleInputChange(e as React.ChangeEvent<HTMLTextAreaElement>)} onSubmit={() => handleSubmit()}
+            <PromptInput size={started ? 'sm' : 'lg'} value={input} onChange={(e) => handleInputChange(e as React.ChangeEvent<HTMLTextAreaElement>)}
+              onSubmit={() => handleSubmit(undefined, { body: { styleReference: styleReferenceFrom(reference) } })}
               listening={listening} onToggleMic={toggleMic}
               placeholder={started ? 'Type your answer…' : 'Or just describe the deal in your own words…'} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>

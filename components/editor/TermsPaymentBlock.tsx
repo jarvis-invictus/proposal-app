@@ -21,7 +21,7 @@ export function TermsPaymentBlock({ paymentSection, onPaymentSectionChange, term
   const addTerm = () => onTermsChange([...terms, ''])
 
   return (
-    <div style={{ padding: '32px 40px', display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 40 }}>
+    <div style={{ padding: '32px 40px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 40 }}>
       <div>
         <h2 style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400, fontSize: 25, letterSpacing: 0, marginBottom: 16 }}>Payment Schedule</h2>
         <input value={paymentSection.schedule} onChange={(e) => onPaymentSectionChange({ ...paymentSection, schedule: e.target.value })}

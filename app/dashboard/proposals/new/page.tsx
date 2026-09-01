@@ -18,7 +18,9 @@ export default async function NewProposalPage({
   const firstName = (user.user_metadata?.full_name as string | undefined)?.split(' ')[0] || user.email?.split('@')[0] || 'there'
 
   const [{ data: proposalRows }, { data: brandKitRow }, templateResult] = await Promise.all([
-    supabase.from('proposals').select('id, content, updated_at').order('updated_at', { ascending: false }).limit(6),
+    // Only published proposals are meaningful as a stylistic reference — a draft is unfinished
+    // and may be heavily rewritten or deleted before it ever represents real, sent work.
+    supabase.from('proposals').select('id, content, updated_at').eq('status', 'PUBLISHED').order('updated_at', { ascending: false }).limit(6),
     supabase.from('brand_kits').select('name, colors, fonts').order('updated_at', { ascending: false }).limit(1).maybeSingle(),
     templateId
       ? supabase.from('templates').select('id, name, category').eq('id', templateId).maybeSingle()
@@ -27,7 +29,7 @@ export default async function NewProposalPage({
 
   const pastProposals: PastProposalRef[] = (proposalRows ?? [])
     .filter((p) => p.content?.title)
-    .map((p) => ({ id: p.id, title: p.content.title, client: p.content?.clientName || 'Unknown client' }))
+    .map((p) => ({ id: p.id, title: p.content.title, client: p.content?.clientName || 'Unknown client', content: p.content }))
 
   const brandKit: BrandKitPreview | null = brandKitRow
     ? {

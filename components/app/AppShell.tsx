@@ -106,6 +106,16 @@ export function AppShell({ screen, title, subtitle, actions, search, scroll = tr
   const [shrunk, setShrunk] = React.useState(false)
   const [collapsed, setCollapsed] = React.useState(false)
 
+  // Auto-collapse the sidebar to its icon-only rail on narrow viewports so it doesn't eat
+  // most of the screen width — the user can still expand it manually via the same toggle.
+  React.useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    setCollapsed(mq.matches)
+    const onChange = (e: MediaQueryListEvent) => setCollapsed(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
   const go = (id: string) => {
     const route = ROUTES[id]
     if (route) router.push(route)

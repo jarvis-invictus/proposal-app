@@ -647,7 +647,7 @@ function BillingTab({ account }: { account: Account }) {
     <>
       <ProposalCurrencySection account={account} />
       <Section title="Your plan" description="Domain slots, team seats and branding all follow the plan you pick.">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 }}>
           {PLANS.map((p) => {
             const isCurrent = p.tier === currentTier
             const isPaid = p.amountInr > 0

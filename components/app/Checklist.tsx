@@ -78,7 +78,7 @@ export function Checklist({
         {onDismiss&&<IconButton icon="x" size="sm" label="Dismiss setup checklist" onClick={onDismiss}/>}
       </div>
       <div className="stagger" style={{display:'grid',
-        gridTemplateColumns:'repeat('+Math.max(items.length,1)+',minmax(0,1fr))',gap:10}}>
+        gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10}}>
         {items.map(it=>(
           <ChecklistRow key={it.id} item={it} done={done.includes(it.id)}
             onClick={()=>onSelect&&onSelect(it)}/>

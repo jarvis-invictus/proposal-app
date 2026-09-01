@@ -2,6 +2,7 @@
 
 import { extractBrandKitFromUrl } from '@/lib/brand-extraction/url'
 import { extractBrandKitFromImage } from '@/lib/brand-extraction/vision'
+import { extractBrandKitFromText } from '@/lib/brand-extraction/text'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
@@ -14,6 +15,12 @@ export async function extractFromUrl(url: string) {
 export async function extractFromImage(fileData: string) {
   if (!fileData) throw new Error("Image data is required")
   const extracted = await extractBrandKitFromImage(fileData)
+  return extracted
+}
+
+export async function extractFromText(description: string) {
+  if (!description || !description.trim()) throw new Error("A description is required")
+  const extracted = await extractBrandKitFromText(description.trim())
   return extracted
 }
 
