@@ -241,6 +241,7 @@ body {
   --glass-nav-hover:rgba(255,255,255,0.50); /* @kind color */
   --glass-nav-active:rgba(255,255,255,0.82); /* @kind color */
   --gradient-feature:linear-gradient(150deg,rgba(207,228,242,0.86) 0%,rgba(233,244,251,0.72) 52%,rgba(255,255,255,0.62) 100%); /* @kind color */
+  --bloom-feature:rgba(124,188,220,0.42); /* @kind color */
   --sky-light:#cfe4f2;
   --sky-deep:#7cbcdc;
   --gradient-hero:linear-gradient(180deg,var(--sky-light) 0%,var(--sky-deep) 100%);

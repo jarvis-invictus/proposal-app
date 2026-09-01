@@ -62,10 +62,6 @@ export function SettingsClient({ account, userEmail, myRole, members, invitation
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '232px minmax(0,1fr)', gap: 26, maxWidth: 1060, margin: '0 auto' }}>
       <div>
-        <h1 style={{ margin: '0 0 6px', fontSize: 'var(--text-h2)', fontWeight: 'var(--weight-semibold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text-primary)' }}>
-          Settings
-        </h1>
-        <p style={{ margin: '0 0 20px', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Your business details, your team, and what your clients see.</p>
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {TABS.map((t) => (
             <TabRow key={t.id} label={t.label} icon={t.icon} active={tab === t.id} onClick={() => setTab(t.id)} />

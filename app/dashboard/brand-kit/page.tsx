@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { DashboardShell } from '../DashboardShell'
+import { AppShell } from '@/components/app/AppShell'
+import { getAccountShellInfo } from '@/lib/accountShellInfo'
 import { BrandKitPageClient } from './BrandKitPageClient'
 
 export default async function BrandKitPage() {
@@ -13,10 +14,11 @@ export default async function BrandKitPage() {
 
   const { data: userRecord } = await supabase.from('users').select('account_id').eq('id', user.id).single()
   const { data: account } = await supabase.from('accounts').select('id, name').eq('id', userRecord?.account_id).single()
+  const shellInfo = await getAccountShellInfo(supabase)
 
   return (
-    <DashboardShell userEmail={user.email ?? ''}>
+    <AppShell screen="brand" title="Set up your brand kit" accountName={shellInfo.accountName} planLabel={shellInfo.planLabel}>
       <BrandKitPageClient accountId={account?.id ?? ''} accountName={account?.name || 'Marg Studio'} />
-    </DashboardShell>
+    </AppShell>
   )
 }

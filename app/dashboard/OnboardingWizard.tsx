@@ -8,6 +8,7 @@ import { Icon } from '@/components/ui/Icon'
 import { Logo } from '@/components/ui/Logo'
 import { Badge } from '@/components/ui/Badge'
 import { Pill } from '@/components/ui/Pill'
+import { SkyBackdrop } from '@/components/app/AppShell'
 import { BrandExtract } from './brand-kit/BrandExtract'
 import { finishOnboarding } from './onboarding-actions'
 
@@ -25,21 +26,6 @@ const CATEGORIES = [
   { id: 'freelance', label: 'Freelancer', icon: 'user' },
   { id: 'other', label: 'Something else', icon: 'circle-ellipsis' },
 ] as const
-
-function SkyBackdrop() {
-  return (
-    <div aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
-      <span style={{
-        position: 'absolute', top: '-28%', left: '8%', width: '60%', height: '85%', borderRadius: '50%',
-        background: 'radial-gradient(circle,var(--bloom-1) 0%,rgba(124,188,220,0) 68%)', animation: 'sky-drift 26s var(--ease-standard) infinite',
-      }} />
-      <span style={{
-        position: 'absolute', top: '12%', right: '-14%', width: '52%', height: '78%', borderRadius: '50%',
-        background: 'radial-gradient(circle,var(--bloom-2) 0%,rgba(207,228,242,0) 70%)', animation: 'sky-drift 34s var(--ease-standard) infinite reverse',
-      }} />
-    </div>
-  )
-}
 
 function WizardPanel({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (

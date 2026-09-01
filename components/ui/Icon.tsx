@@ -7,7 +7,8 @@ import {
   Heading2, Lock, CreditCard, PenLine, ChevronsLeft, ChevronsRight, Ellipsis, Copy, FileDown, Trash2,
   Clock, FilePlus2, RotateCcw, Bell, Menu, IndianRupee, Send, QrCode, User, Globe, UserPlus,
   ShoppingBag, Building2, Megaphone, Code, CircleEllipsis, LayoutDashboard, ScanSearch, Image,
-  MessageSquare, GitBranch, WandSparkles, type LucideProps,
+  MessageSquare, GitBranch, WandSparkles, TrendingUp, Repeat, Wrench, Component, Briefcase,
+  type LucideProps,
 } from 'lucide-react';
 
 const MAP: Record<string, React.ComponentType<LucideProps>> = {
@@ -25,6 +26,7 @@ const MAP: Record<string, React.ComponentType<LucideProps>> = {
   'building-2': Building2, megaphone: Megaphone, code: Code, 'circle-ellipsis': CircleEllipsis,
   'layout-dashboard': LayoutDashboard, 'scan-search': ScanSearch, image: Image,
   'message-square': MessageSquare, github: GitBranch, 'wand-sparkles': WandSparkles,
+  'trending-up': TrendingUp, repeat: Repeat, wrench: Wrench, component: Component, briefcase: Briefcase,
 };
 
 export interface IconProps {

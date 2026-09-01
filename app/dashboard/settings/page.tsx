@@ -2,8 +2,11 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import { env } from '@/env'
-import { DashboardShell } from '../DashboardShell'
+import { AppShell } from '@/components/app/AppShell'
 import { SettingsClient } from './SettingsClient'
+import { logout } from '../../(auth)/actions'
+
+const PLAN_LABEL: Record<string, string> = { free: 'Free plan', pay_per_proposal: 'Pay-per-proposal plan', agency: 'Agency plan' }
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -64,7 +67,18 @@ export default async function SettingsPage() {
   }))
 
   return (
-    <DashboardShell userEmail={user.email ?? ''}>
+    <AppShell screen="settings" title="Settings" subtitle="Your business details, your team, and what your clients see."
+      accountName={account?.name || 'Marg Studio'} planLabel={PLAN_LABEL[account?.plan_tier || 'free']}
+      actions={
+        <form action={logout}>
+          <button type="submit" style={{
+            border: 'none', background: 'none', cursor: 'pointer', fontSize: 'var(--text-sm)',
+            color: 'var(--text-secondary)', fontWeight: 'var(--weight-medium)', fontFamily: 'var(--font-sans)',
+          }}>
+            Log out
+          </button>
+        </form>
+      }>
       <SettingsClient
         account={account}
         userEmail={user.email ?? ''}
@@ -79,6 +93,6 @@ export default async function SettingsPage() {
         }}
         domains={domains ?? []}
       />
-    </DashboardShell>
+    </AppShell>
   )
 }

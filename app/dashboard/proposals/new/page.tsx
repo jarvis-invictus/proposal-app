@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { DashboardShell } from '../../DashboardShell'
+import { AppShell } from '@/components/app/AppShell'
+import { getAccountShellInfo } from '@/lib/accountShellInfo'
 import { NewProposalClient } from './NewProposalClient'
 
 export default async function NewProposalPage() {
@@ -11,9 +12,11 @@ export default async function NewProposalPage() {
     redirect('/login')
   }
 
+  const shellInfo = await getAccountShellInfo(supabase)
+
   return (
-    <DashboardShell userEmail={user.email ?? ''}>
+    <AppShell screen="proposals" title="New proposal" accountName={shellInfo.accountName} planLabel={shellInfo.planLabel}>
       <NewProposalClient />
-    </DashboardShell>
+    </AppShell>
   )
 }
