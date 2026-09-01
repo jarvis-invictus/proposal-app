@@ -25,12 +25,20 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
   const supabase = await createClient()
 
+  const inviteId = (formData.get('invite_id') as string) || ''
+
   const data = {
     email: formData.get('email') as string,
     password: formData.get('password') as string,
     options: {
       data: {
         full_name: formData.get('full_name') as string,
+        // Read by the on_auth_user_created trigger to join the inviting account (at the role
+        // the invite specifies) instead of creating a new standalone one — see
+        // supabase/migrations/20260901160000_invite_redemption_on_signup.sql. Only ever a hint:
+        // the trigger independently re-verifies the invite is still pending and matches this
+        // exact email before honoring it.
+        ...(inviteId ? { invite_id: inviteId } : {}),
       }
     }
   }
@@ -38,7 +46,7 @@ export async function signup(formData: FormData) {
   const { error } = await supabase.auth.signUp(data)
 
   if (error) {
-    redirect('/signup?error=Could not sign up')
+    redirect(`/signup?error=Could not sign up${inviteId ? `&invite=${inviteId}` : ''}`)
   }
 
   revalidatePath('/dashboard')
