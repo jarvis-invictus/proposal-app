@@ -2,6 +2,8 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { env } from '@/env'
 import { ESIGN_CONSENT_STATEMENT, type Signature } from '@/lib/signature'
+import { sendEmail } from '@/lib/email'
+import { ProposalSignedEmail } from '@/emails/ProposalSignedEmail'
 
 // x-forwarded-for can carry a client-supplied chain ("client, proxy1, proxy2") — the first
 // entry is the original client. NextRequest has no reliable .ip in the App Router, so headers
@@ -57,7 +59,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const title = (existing.content as any)?.title || 'Your proposal'
+  const content = existing.content as any
+  const title = content?.title || 'Your proposal'
   const { error: notifError } = await adminSupabase.from('notifications').insert({
     account_id: existing.account_id,
     proposal_id: existing.id,
@@ -66,6 +69,38 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (notifError) {
     console.error('Failed to insert acceptance notification', notifError)
     // Don't fail the request over this — the acceptance itself already succeeded.
+  }
+
+  // Best-effort — a failed/missing owner lookup or email send must never fail an acceptance
+  // that already succeeded and is legally meaningful.
+  try {
+    const { data: ownerRecord } = await adminSupabase
+      .from('users')
+      .select('id')
+      .eq('account_id', existing.account_id)
+      .eq('role', 'owner')
+      .limit(1)
+      .maybeSingle()
+
+    if (ownerRecord) {
+      const { data: ownerAuth } = await adminSupabase.auth.admin.getUserById(ownerRecord.id)
+      const ownerEmail = ownerAuth?.user?.email
+      if (ownerEmail) {
+        const origin = request.headers.get('origin') || new URL(request.url).origin
+        await sendEmail({
+          to: ownerEmail,
+          subject: `${name.trim()} signed ${title}`,
+          react: ProposalSignedEmail({
+            proposalName: title,
+            clientName: name.trim(),
+            viewLink: `${origin}/p/${slug}`,
+          }),
+          mockLink: `${origin}/p/${slug}`,
+        })
+      }
+    }
+  } catch (emailErr) {
+    console.error('Failed to send signature notification email', emailErr)
   }
 
   return NextResponse.json(proposal)

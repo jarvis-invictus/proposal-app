@@ -401,7 +401,7 @@ function TeamTab({ members, invitations, pendingApprovals, recentApprovals, shar
               }}>{initialsOf(inv.email)}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 'var(--text-body)', fontWeight: 500 }}>{inv.email}</div>
-                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Invited {new Date(inv.invited_at).toLocaleDateString()} — not sent by email yet</div>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Invited {new Date(inv.invited_at).toLocaleDateString()}</div>
               </div>
               <Badge tone="draft">Pending</Badge>
               <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{ROLE_LABEL[inv.role]}</span>

@@ -2,6 +2,9 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
+import { sendEmail } from '@/lib/email'
+import { TeamInviteEmail } from '@/emails/TeamInviteEmail'
 
 async function requireAccount() {
   const supabase = await createClient()
@@ -49,15 +52,37 @@ export async function updateAvatarUrl(avatarUrl: string) {
   revalidatePath('/dashboard/settings')
 }
 
-// Invitations only create the record — there's no email-sending infrastructure in this app,
-// so nothing is actually sent yet. The member shows up as "Pending" until that's built.
 export async function inviteMember({ email, role }: { email: string; role: string }) {
   if (!email || !email.trim()) throw new Error('Email is required')
   const { supabase, user, accountId } = await requireAccount()
-  const { error } = await supabase.from('invitations').insert({
-    account_id: accountId, email: email.trim(), role, invited_by: user.id,
-  })
+
+  const { data: invitation, error } = await supabase
+    .from('invitations')
+    .insert({ account_id: accountId, email: email.trim(), role, invited_by: user.id })
+    .select('id')
+    .single()
   if (error) throw new Error(error.message)
+
+  const { data: account } = await supabase.from('accounts').select('name').eq('id', accountId).single()
+  const inviterName = (user.user_metadata?.full_name as string | undefined) || user.email || 'A teammate'
+  const teamName = account?.name || 'their team'
+
+  const headersList = await headers()
+  const host = headersList.get('host') || 'localhost:3000'
+  const origin = `${host.startsWith('localhost') ? 'http' : 'https'}://${host}`
+  // There's no invite-redemption flow yet (a new signup always creates its own standalone
+  // account — see on_auth_user_created — it doesn't join the inviting account at any role).
+  // This link is a placeholder destination carrying the invitation id forward for whenever that
+  // flow gets built, not a working accept-invite mechanism today.
+  const inviteLink = `${origin}/signup?invite=${invitation.id}`
+
+  await sendEmail({
+    to: email.trim(),
+    subject: `${inviterName} invited you to join ${teamName} on Marg`,
+    react: TeamInviteEmail({ inviterName, teamName, inviteLink }),
+    mockLink: inviteLink,
+  })
+
   revalidatePath('/dashboard/settings')
 }
 
