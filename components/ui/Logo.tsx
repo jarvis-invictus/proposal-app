@@ -10,8 +10,13 @@ export interface LogoProps {
   className?: string;
 }
 
+// logo.png's real intrinsic size (542x462) isn't square — forcing equal width/height distorts
+// it and trips Next Image's aspect-ratio warning. Scale height from the real ratio instead.
+const LOGO_ASPECT = 462 / 542
+
 /** The Marg mark — an angular arrow. Always the image asset; never redrawn. */
 export function Logo({ size = 26, wordmark = false, variant = 'default', label = 'Marg', style, className }: LogoProps) {
+  const imgHeight = Math.round(size * LOGO_ASPECT)
   const mark = (
     <span style={{
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -22,8 +27,8 @@ export function Logo({ size = 26, wordmark = false, variant = 'default', label =
       WebkitBackdropFilter: variant === 'glass' ? 'var(--blur-glass)' : 'none',
       border: variant === 'glass' ? '1px solid var(--border-glass)' : '1px solid transparent',
     }}>
-      <Image src="/logo.png" alt={wordmark ? '' : label} width={size} height={size}
-        style={{ width: size, height: size, objectFit: 'contain', display: 'block', filter: variant === 'ink' ? 'brightness(0) invert(1)' : 'none' }} />
+      <Image src="/logo.png" alt={wordmark ? '' : label} width={size} height={imgHeight}
+        style={{ width: size, height: 'auto', objectFit: 'contain', display: 'block', filter: variant === 'ink' ? 'brightness(0) invert(1)' : 'none' }} />
     </span>
   );
   if (!wordmark) return <span className={className} style={{ display: 'inline-flex', ...style }}>{mark}</span>;
