@@ -2,10 +2,17 @@ import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 import { ProposalSchemaV1 } from '@/lib/schema/proposal';
 import { getAccountCurrency, currencyPromptInstruction } from '@/lib/accountCurrency';
+import { checkAiRateLimit, extractClientIp } from '@/lib/ratelimit';
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+  const ip = extractClientIp(req);
+  const { success } = await checkAiRateLimit(ip);
+  if (!success) {
+    return new Response(JSON.stringify({ error: 'Too many requests — please wait a few minutes before generating another proposal.' }), { status: 429 });
+  }
+
   const { summary } = await req.json();
 
   if (!summary) {
