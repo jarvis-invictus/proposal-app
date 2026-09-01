@@ -1,0 +1,59 @@
+'use client'
+
+import * as React from 'react'
+import { Button } from '@/components/ui/Button'
+import { Icon } from '@/components/ui/Icon'
+
+export type SaveStatus = 'saved' | 'saving' | 'error'
+export type EditorProposalStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'PENDING_APPROVAL'
+
+const SAVE_LABEL: Record<SaveStatus, string> = {
+  saving: 'Saving…',
+  saved: 'Saved just now',
+  error: "Couldn't save — edit again to retry",
+}
+
+export interface EditorHeaderProps {
+  title: string
+  proposalStatus: EditorProposalStatus
+  saveStatus: SaveStatus
+  onPreview: () => void
+  onPublish: () => void
+  publishLabel: string
+  canPublish: boolean
+}
+
+/** Thin editor chrome: document title + save state center, Preview/Publish right — matches Editor.jsx's EditorToolbar. */
+export function EditorHeader({ title, proposalStatus, saveStatus, onPreview, onPublish, publishLabel, canPublish }: EditorHeaderProps) {
+  return (
+    <header style={{
+      position: 'relative', zIndex: 30, display: 'flex', alignItems: 'center', gap: 16, height: 58, padding: '0 16px 0 20px',
+      borderBottom: '1px solid var(--border-hairline)', background: 'var(--glass-quiet)',
+      backdropFilter: 'var(--blur-glass)', WebkitBackdropFilter: 'var(--blur-glass)', fontFamily: 'var(--font-sans)',
+    }}>
+      <span style={{
+        padding: '3px 9px', borderRadius: 'var(--radius-pill)', fontSize: 'var(--text-micro)', fontWeight: 'var(--weight-medium)',
+        background: proposalStatus === 'PUBLISHED' ? 'var(--brand-12)' : 'transparent',
+        border: `1px solid ${proposalStatus === 'PUBLISHED' ? 'var(--brand-38)' : 'var(--border-hairline)'}`,
+        color: proposalStatus === 'PUBLISHED' ? 'var(--brand-deep)' : 'var(--text-muted)', flex: 'none',
+      }}>
+        {proposalStatus === 'PENDING_APPROVAL' ? 'Waiting for approval' : proposalStatus}
+      </span>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, minWidth: 0 }}>
+        <span style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span>
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs)', whiteSpace: 'nowrap',
+          color: saveStatus === 'error' ? 'var(--status-caution-text)' : 'var(--text-muted)',
+        }}>
+          <Icon name={saveStatus === 'saving' ? 'loader-circle' : 'check'} size={12}
+            style={saveStatus === 'saving' ? { animation: 'spin 900ms linear infinite' } : undefined} />
+          {SAVE_LABEL[saveStatus]}
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Button variant="ghost" size="sm" icon="eye" onClick={onPreview}>Preview</Button>
+        {canPublish && <Button variant="primary" size="sm" onClick={onPublish}>{publishLabel}</Button>}
+      </div>
+    </header>
+  )
+}
