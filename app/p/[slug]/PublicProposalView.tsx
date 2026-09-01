@@ -11,6 +11,15 @@ import { SignaturePad } from '@/components/app/SignaturePad'
 import { DealWon } from '@/components/app/DealWon'
 import { PdfExportModal, type PdfExportOptions } from '@/components/app/PdfExportModal'
 import { formatCurrency } from '@/lib/formatCurrency'
+import { ESIGN_CONSENT_STATEMENT, type Signature } from '@/lib/signature'
+
+function formatUtc(dateStr: string): string {
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return dateStr
+  const datePart = d.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+  const timePart = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' })
+  return `${datePart} at ${timePart} UTC`
+}
 
 const CORNER_MAP: Record<PdfExportOptions['pageNumbers'], string> = {
   tl: 'top-left', tr: 'top-right', bl: 'bottom-left', br: 'bottom-right', none: 'none',
@@ -47,6 +56,7 @@ export default function PublicProposalView({
   // Accept & sign state
   const [acceptedAt, setAcceptedAt] = useState<string | null>(proposal.accepted_at)
   const [acceptedByName, setAcceptedByName] = useState<string | null>(proposal.accepted_by_name)
+  const [signature, setSignature] = useState<Signature | null>(proposal.signature ?? null)
   const [showSignModal, setShowSignModal] = useState(false)
   const [signerName, setSignerName] = useState('')
   const [signing, setSigning] = useState(false)
@@ -69,6 +79,7 @@ export default function PublicProposalView({
       if (!res.ok) throw new Error(data.error || 'Failed to sign')
       setAcceptedAt(data.accepted_at)
       setAcceptedByName(data.accepted_by_name)
+      setSignature(data.signature ?? null)
       setShowSignModal(false)
       setBurst(true)
     } catch (err: any) {
@@ -389,6 +400,52 @@ export default function PublicProposalView({
             </div>
           )}
         </div>
+
+        {/* Signature Certificate — part of the permanent document once signed, so it prints
+            and stays visible to both the signer and the owner reviewing the same page. */}
+        {acceptedAt && (
+          <div className="p-12 print:break-inside-avoid" style={{ borderTop: '1px solid var(--border-hairline)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+              <Icon name="lock" size={18} color="var(--text-muted)" />
+              <h2 className="text-ink" style={{ fontSize: 'var(--text-body-lg)', fontWeight: 700, margin: 0 }}>Signature Certificate</h2>
+            </div>
+            <div style={{
+              border: '1px solid var(--border-hairline)', borderRadius: 'var(--radius-sm)', padding: '20px 24px',
+              background: 'var(--surface-sunken)',
+            }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                <div>
+                  <p className="uppercase tracking-wider text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Signatory Name</p>
+                  <p className="text-ink" style={{ fontWeight: 'var(--weight-medium)' }}>{acceptedByName}</p>
+                </div>
+                <div>
+                  <p className="uppercase tracking-wider text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Timestamp (UTC)</p>
+                  <p className="text-ink" style={{ fontWeight: 'var(--weight-medium)' }}>{formatUtc(acceptedAt)}</p>
+                </div>
+                <div>
+                  <p className="uppercase tracking-wider text-xs mb-1" style={{ color: 'var(--text-muted)' }}>IP Address</p>
+                  <p className="text-slate" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)' }}>
+                    {signature?.ip_address || 'Not recorded'}
+                  </p>
+                </div>
+                <div>
+                  <p className="uppercase tracking-wider text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Browser / User-Agent</p>
+                  <p className="text-slate" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)', wordBreak: 'break-all' }}>
+                    {signature?.user_agent || 'Not recorded'}
+                  </p>
+                </div>
+              </div>
+              {signature?.consent_statement && (
+                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-hairline)' }}>
+                  <p className="uppercase tracking-wider text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Consent statement</p>
+                  <p className="text-slate" style={{ fontSize: 'var(--text-sm)', fontStyle: 'italic', lineHeight: 'var(--leading-body)' }}>
+                    &ldquo;{signature.consent_statement}&rdquo;
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {canAcceptSign && !acceptedAt && <div style={{ height: 88 }} className="print:hidden" />}
@@ -432,8 +489,16 @@ export default function PublicProposalView({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <Input label="Your full name" placeholder="Jane Doe" value={signerName} onChange={(e) => setSignerName(e.target.value)} autoFocus />
               <SignaturePad name={signerName} />
-              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-                Signing records your name, the date and this proposal version.
+              <div style={{
+                padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-sunken)',
+                border: '1px solid var(--border-hairline)',
+              }}>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 'var(--leading-body)' }}>
+                  {ESIGN_CONSENT_STATEMENT}
+                </p>
+              </div>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                Your name, IP address and browser will be recorded alongside this consent to form the signature's audit trail.
               </p>
               {signError && <p style={{ fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>{signError}</p>}
             </div>

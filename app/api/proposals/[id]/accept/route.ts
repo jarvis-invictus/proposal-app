@@ -1,6 +1,16 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { env } from '@/env'
+import { ESIGN_CONSENT_STATEMENT, type Signature } from '@/lib/signature'
+
+// x-forwarded-for can carry a client-supplied chain ("client, proxy1, proxy2") — the first
+// entry is the original client. NextRequest has no reliable .ip in the App Router, so headers
+// are the only portable source here.
+function extractIp(request: NextRequest): string {
+  const forwardedFor = request.headers.get('x-forwarded-for')
+  if (forwardedFor) return forwardedFor.split(',')[0].trim()
+  return request.headers.get('x-real-ip') || 'unknown'
+}
 
 // Public route — the person accepting a proposal has no account/session, so this uses the
 // service-role client the same way the public proposal page itself does.
@@ -30,11 +40,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: 'Already accepted' }, { status: 409 })
   }
 
+  const signature: Signature = {
+    ip_address: extractIp(request),
+    user_agent: request.headers.get('user-agent') || 'unknown',
+    consent_statement: ESIGN_CONSENT_STATEMENT,
+  }
+
   const { data: proposal, error } = await adminSupabase
     .from('proposals')
-    .update({ accepted_at: new Date().toISOString(), accepted_by_name: name.trim() })
+    .update({ accepted_at: new Date().toISOString(), accepted_by_name: name.trim(), signature })
     .eq('slug', slug)
-    .select('accepted_at, accepted_by_name')
+    .select('accepted_at, accepted_by_name, signature')
     .single()
 
   if (error) {
