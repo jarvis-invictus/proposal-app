@@ -271,8 +271,8 @@ export default function PublicProposalView({
                   <p className="text-slate" style={{ fontSize: 'var(--text-sm)', marginBottom: 24, minHeight: 40, whiteSpace: 'pre-wrap' }}>{pkg.description}</p>
 
                   <div className="mb-6 flex items-baseline gap-2">
-                    <span className="text-ink" style={{ fontSize: 30, fontWeight: 700 }}>${(pkg.discountedPrice || pkg.price).toLocaleString()}</span>
-                    {pkg.originalPrice && !pdfConfig.hideLineItemPrices && (
+                    <span className="text-ink" style={{ fontSize: 30, fontWeight: 700 }}>${(pkg.discountedPrice ?? 0).toLocaleString()}</span>
+                    {pkg.originalPrice > 0 && !pdfConfig.hideLineItemPrices && (
                       <span className="text-mist" style={{ fontSize: 'var(--text-body-lg)', textDecoration: 'line-through' }}>
                         ${pkg.originalPrice.toLocaleString()}
                       </span>
