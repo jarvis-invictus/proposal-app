@@ -5,6 +5,9 @@ import { EditorHeader, type SaveStatus } from '@/components/editor/EditorHeader'
 import { DocStats } from '@/components/editor/DocStats'
 import { StructuredDocument } from '@/components/editor/StructuredDocument'
 import { PackagesBlock, type PackageItem } from '@/components/editor/PackagesBlock'
+import { AddOnsBlock, type AddOnItem } from '@/components/editor/AddOnsBlock'
+import { TimelineBlock, type TimelinePhase } from '@/components/editor/TimelineBlock'
+import { TermsPaymentBlock, type PaymentSection } from '@/components/editor/TermsPaymentBlock'
 
 const AUTOSAVE_DEBOUNCE_MS = 2500
 
@@ -105,7 +108,20 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner' }: 
           packages={(content.packages as PackageItem[]) || []}
           onChange={(next) => updateField('packages', next)}
         />
-        {/* Add-ons, Timeline, Terms & Payment blocks land in the next Milestone 1.1 PRs — see docs/ROADMAP.md */}
+        <AddOnsBlock
+          addOns={(content.addOns as AddOnItem[]) || []}
+          onChange={(next) => updateField('addOns', next)}
+        />
+        <TimelineBlock
+          timeline={(content.timeline as TimelinePhase[]) || []}
+          onChange={(next) => updateField('timeline', next)}
+        />
+        <TermsPaymentBlock
+          paymentSection={(content.paymentSection as PaymentSection) || { schedule: '', terms: '' }}
+          onPaymentSectionChange={(next) => updateField('paymentSection', next)}
+          terms={(content.terms as string[]) || []}
+          onTermsChange={(next) => updateField('terms', next)}
+        />
       </StructuredDocument>
     </div>
   )
