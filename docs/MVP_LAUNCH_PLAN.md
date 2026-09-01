@@ -11,32 +11,32 @@ citing a source, it's labeled as one.
 
 ---
 
-## 0. The one thing to resolve before anything else in this plan matters
+## 0. Deployment status — resolved
 
-**Is there a real, deployed, hosted version of this app anywhere?**
+**Resolved by Sahil, 2026-09-01: the remote Supabase environment is alive and verified.**
 
-While researching this plan I found that `.env.local` — the file this entire project has been
-built and tested against, this whole session — points to `localhost` (the local Docker Supabase
-instance). But `supabase/.temp/project-ref` shows a real, linked *hosted* Supabase project
-(`tkrfqagkqshyvrmtpdxn`), and `.env.local` contains a commented-out `OLD_NEXT_PUBLIC_SUPABASE_URL`
-line, implying the target was switched at some point. There's no `vercel.json` and no other
-evidence in the repo of an active deployment.
+This plan no longer needs to account for standing up production from a cold start. The remote
+project (`qmnxkdmtiicdyneafban` per Sahil's confirmation) is live. One thing worth a direct,
+five-minute check early in execution rather than an assumption: this plan was researched against
+`supabase/.temp/project-ref`, which currently shows a different ref (`tkrfqagkqshyvrmtpdxn`) than
+the one Sahil confirmed. That's most likely a stale local CLI link (the project was probably
+relinked at some point and the `.temp` cache never got refreshed) rather than two live projects,
+but it's worth one `supabase projects list` / dashboard check before the first deploy to confirm
+which ref is authoritative and that it has every migration applied — not a re-open of the
+resolved question, just a sanity check on the mechanics.
 
-I don't know, and I'm not going to guess, whether:
-- That hosted Supabase project has the same schema as local (all 9 tables, all migrations,
-  including the ones from this week)
-- Anything is actually deployed to a reachable URL right now
-- If something is deployed, whether it's the current code or an old snapshot
-
-**This has to be answered first**, because it changes the shape of everything else here —
-"finish the remaining features" and "stand up production for the first time" are different
-projects with different sequencing. Everything below assumes production doesn't exist yet and
-needs to be stood up as part of this plan; if it turns out something's already live, several
-items reorder.
+With deployment de-risked, this plan is purely about feature/quality sequencing, not "does
+production exist yet."
 
 ---
 
 ## 1. What "industry benchmark" actually means for this category
+
+**Target market: Global-first, USD-default.** Resolved by Sahil, 2026-09-01: Marg targets a
+global, US-based community first, not an India-first market. USD is the default currency across
+the product. This supersedes the India-first framing (GSTIN field, UPI-centric display, Razorpay
+as the billing decision) that this plan and `docs/DECISION_LOG.md` previously assumed — see §3.1
+for what that means for billing specifically.
 
 Researched against PandaDoc, Proposify, and Better Proposals — the three products anyone
 evaluating a proposal tool will have already looked at.
@@ -107,26 +107,39 @@ effort tier (S = under a day, M = a few days, L = a real sub-project).
 
 ### 3.1 Payments — the highest-leverage gap
 
-**Two separate problems, don't conflate them:**
+**Two separate problems, don't conflate them. Razorpay is out for both — superseded by the
+global-first/USD decision (§1). Replaced with a global-provider strategy below, researched
+fresh rather than swapped in by name only.**
 
-**(a) Marg charging its own users** (the Subscribe scaffold). Recommended: build the real
-Razorpay Subscriptions integration behind the existing scaffold. Razorpay's Subscriptions API
-supports exactly the plan/subscription model already designed (`plan_tier`, fixed billing
-periods) and already has a decision on record (`docs/DECISION_LOG.md`) favoring it. One real
-limitation surfaced in research worth planning around: Razorpay is noted as "less compelling for
-complex subscription logic or merchant-of-record global coverage" — meaning if international
-customers become a real goal, this may need revisiting later. For an India-first MVP, it's the
-right, already-decided choice. **Effort: L** (webhook handling, plan lifecycle, failed-payment
-retry logic, dunning).
+**(a) Marg charging its own users** (the Subscribe scaffold). This is recurring subscription
+billing — plans, billing periods, failed-payment retry, dunning — charged in USD to a global
+customer base. **Recommended: Stripe**, specifically Stripe's own merchant-of-record product
+(Stripe Managed Payments, built by the former LemonSqueezy team after Stripe's acquisition of
+them). That combination gets the tax/VAT handling that made LemonSqueezy attractive, at Stripe's
+base processing rate (2.9% + $0.30) rather than a typical MoR premium (LemonSqueezy/Paddle
+standalone run closer to 5%+ all-in). Stripe is also the most heavily documented, most
+Next.js/Vercel-integrated option, which matters for execution speed given this is largely
+AI-assisted build work. **LemonSqueezy standalone is the fallback** if Stripe's MoR product
+turns out to have gaps for this use case at evaluation time — worth a quick spike before
+committing, not a blind pick. Razorpay's Subscriptions API is no longer the target regardless of
+its prior decision-log entry; that entry should be treated as superseded, not deleted (see
+`docs/DECISION_LOG.md` — not touched by this plan, flagged for a follow-up update). **Effort: L**
+(webhook handling, plan lifecycle, failed-payment retry logic, dunning) — same effort tier as
+before, different vendor.
 
 **(b) Client-side payment collection** (getting your users' clients to actually pay through
-Marg). Recommended: **do not build this for MVP.** Better Proposals proves it's not required
-for category parity, and it's a materially bigger lift than (a) — it means acting as a payment
-facilitator between two other parties, with its own compliance surface. Keep the current
-display-only UPI/link/QR (it already works, it's honest, it's actually how most freelancers in
-this market already get paid). Revisit as a genuine differentiator (matching Qwilr/Ignition)
-once (a) is live and there's a real user base to justify the lift. **Effort if deferred: none
-now.**
+Marg). Recommended: **still do not build this for MVP** — that conclusion doesn't change with
+the market pivot. Better Proposals proves it's not required for category parity, and it's a
+materially bigger lift than (a) — it means acting as a payment facilitator between two other
+parties, with its own compliance surface. One thing worth flagging for whenever this *is*
+revisited, not for MVP: **Skydo is not a Stripe/LemonSqueezy alternative** — it's a different
+kind of tool entirely (RBI-authorized cross-border payment *receipt*, not subscription billing —
+no recurring charges, no checkout page, no webhooks). But it's a strong fit for exactly this
+feature specifically, since Marg's own users are plausibly India-based freelancers/agencies
+invoicing international clients — precisely what Skydo is built for (virtual foreign-currency
+receiving accounts, mid-market FX, automatic FIRA export-compliance docs). Don't confuse it with
+(a)'s billing-provider decision; keep it filed against (b) if/when that gets built. **Effort if
+deferred: none now.**
 
 ### 3.2 E-signature legal hardening
 
@@ -239,20 +252,30 @@ selling the Team feature as reliable.
 
 ## 5. Suggested sequencing
 
-Ordered by dependency and leverage, not by how the gaps happened to be discovered.
+Re-ordered per Sahil's explicit priority, 2026-09-01: **core stability and e-signature hardening
+come first — foundational correctness before anything else, including AI-facing polish.** §0 is
+already resolved (§0 above), so it no longer occupies the top slot.
 
-1. **Resolve §0** — production/deployment status. Answers everything else's urgency.
-2. **Cheap, high-value, low-risk fixes**: §3.3 (currency/generation), §3.4 (Editor regression),
-   §3.2 (e-signature hardening). All small, all real correctness/trust issues, none depend on
-   anything else.
-3. **Production infrastructure** (§3.7) — stand this up once, properly, rather than
-   retrofitting it after real users exist.
-4. **Marg's own billing** (§3.1a — Razorpay subscriptions) — the actual revenue-unblocking
-   piece, now that the ground underneath it is solid.
-5. **Transactional email** (§3.5) — needed for invitations now, and everything nudge/reminder-
+1. **Core stability and correctness, first**: §3.4 (Editor regression — a confirmed regression
+   in already-built functionality) and §3.2 (e-signature legal hardening — real legal/trust
+   exposure against a real standard, ESIGN Act). Both small, both foundational, neither depends
+   on anything else. This is the "make what exists actually solid" pass before any new surface
+   area gets added.
+2. **Production infrastructure** (§3.7) — stand this up once, properly, rather than
+   retrofitting it after real users exist. Deployment itself is de-risked (§0), but the
+   surrounding checklist (error tracking, rate limiting, backups verification, secrets hygiene)
+   still needs doing.
+3. **Marg's own billing** (§3.1a — Stripe, per §3.1) — the actual revenue-unblocking piece, now
+   that the ground underneath it is solid.
+4. **Transactional email** (§3.5) — needed for invitations now, and everything nudge/reminder-
    related later.
-6. **Critical-path automated tests** (§3.8) — once the above has stabilized the surface area
+5. **Critical-path automated tests** (§3.8) — once the above has stabilized the surface area
    worth protecting.
+6. **The AI prompt currency/generation gap** (§3.3) — deliberately pushed to the bottom.
+   Deprioritized per Sahil's explicit direction: core functionality and flawless execution take
+   priority over add-ons, and this is a prompt-level refinement on top of an already-working
+   generation flow, not a foundational correctness issue like §3.2/§3.4. Still worth doing before
+   general availability at global scale, just not before the items above it.
 7. Everything in §3.9, prioritized opportunistically after MVP, informed by what real users
    actually ask for rather than guessed in advance.
 
@@ -263,13 +286,14 @@ Custom domains (§3.6) and client-side payment collection (§3.1b) are real, val
 
 ## 6. Open questions this plan can't resolve on its own
 
-- **§0**: is there already a deployed instance anywhere? This needs a direct answer, not an
-  inference.
-- **Target market for v1**: this plan assumes India-first (matching the existing Razorpay
-  decision, GSTIN field, UPI-centric payment display) with USD/EUR support as a secondary,
-  already-built capability. If the real intent is global-first, the billing-provider choice in
-  §3.1a may need revisiting given Razorpay's noted limitations for non-Indian merchant-of-record
-  coverage.
+Two of the three questions this section originally raised are now resolved by Sahil's direct
+decisions, 2026-09-01:
+
+- ~~Is there already a deployed instance anywhere?~~ **Resolved** — see §0.
+- ~~Target market for v1?~~ **Resolved** — global-first, USD-default. See §1 and §3.1.
+
+One remains genuinely open:
+
 - **Execution capacity**: this plan doesn't estimate calendar time because that depends on how
   much of it runs through AI-assisted execution (the pattern used for everything so far) versus
   needing hands-on review of billing/legal-sensitive pieces specifically. Worth deciding
