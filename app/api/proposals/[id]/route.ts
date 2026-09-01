@@ -36,26 +36,13 @@ export async function PATCH(
 
     // 2. Update Proposal
     // RLS will ensure that the user can only update their own proposals.
+    // Publishing (DRAFT -> PUBLISHED/PENDING_APPROVAL) is handled by the dedicated
+    // /api/proposals/[id]/publish route, not here, since that transition needs the
+    // service-role client to insert an approval notification.
     const updateData: any = {
       updated_at: new Date().toISOString()
     }
     if (body.content) updateData.content = body.content
-
-    if (body.status === 'PUBLISHED') {
-      // Drafters cannot publish directly — their submission goes to the approval queue
-      // instead. This is the real enforcement point; Settings' approval chain reads/writes
-      // the same PENDING_APPROVAL state from the other side.
-      const { data: userRecord } = await supabase.from('users').select('role').eq('id', user.id).single()
-      if (userRecord?.role === 'drafter') {
-        updateData.status = 'PENDING_APPROVAL'
-        updateData.submitted_by = user.id
-        updateData.submitted_at = new Date().toISOString()
-      } else {
-        updateData.status = 'PUBLISHED'
-      }
-    } else if (body.status) {
-      updateData.status = body.status
-    }
 
     const { data: proposal, error } = await supabase
       .from('proposals')

@@ -8,6 +8,7 @@ import { PackagesBlock, type PackageItem } from '@/components/editor/PackagesBlo
 import { AddOnsBlock, type AddOnItem } from '@/components/editor/AddOnsBlock'
 import { TimelineBlock, type TimelinePhase } from '@/components/editor/TimelineBlock'
 import { TermsPaymentBlock, type PaymentSection } from '@/components/editor/TermsPaymentBlock'
+import { PublishModal } from '@/components/editor/PublishModal'
 
 const AUTOSAVE_DEBOUNCE_MS = 2500
 
@@ -27,6 +28,7 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner' }: 
   const [proposal, setProposal] = React.useState(initialProposal)
   const [content, setContent] = React.useState<any>(initialProposal.content)
   const [saveStatus, setSaveStatus] = React.useState<SaveStatus>('saved')
+  const [showPublishModal, setShowPublishModal] = React.useState(false)
 
   const saveContent = React.useCallback(async (nextContent: any) => {
     setSaveStatus('saving')
@@ -58,22 +60,8 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner' }: 
     window.open(`/p/${proposal.slug}`, '_blank')
   }
 
-  const handlePublish = async () => {
-    setSaveStatus('saving')
-    try {
-      const res = await fetch(`/api/proposals/${proposal.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'PUBLISHED' }), // Drafters are redirected server-side to PENDING_APPROVAL
-      })
-      if (!res.ok) throw new Error('Failed to publish')
-      const updated = await res.json()
-      setProposal((prev: any) => ({ ...prev, status: updated.status }))
-      setSaveStatus('saved')
-    } catch (err) {
-      console.error(err)
-      setSaveStatus('error')
-    }
+  const handlePublished = (result: { status: 'PUBLISHED' | 'PENDING_APPROVAL'; slug: string }) => {
+    setProposal((prev: any) => ({ ...prev, status: result.status }))
   }
 
   return (
@@ -83,7 +71,7 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner' }: 
         proposalStatus={proposal.status}
         saveStatus={saveStatus}
         onPreview={handlePreview}
-        onPublish={handlePublish}
+        onPublish={() => setShowPublishModal(true)}
         publishLabel={userRole === 'drafter' ? 'Submit for approval' : 'Publish'}
         canPublish={proposal.status === 'DRAFT'}
       />
@@ -123,6 +111,16 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner' }: 
           onTermsChange={(next) => updateField('terms', next)}
         />
       </StructuredDocument>
+      <PublishModal
+        open={showPublishModal}
+        onClose={() => setShowPublishModal(false)}
+        proposalId={proposal.id}
+        slug={proposal.slug}
+        content={content}
+        brandKitName={initialProposal.brand_kits?.name || null}
+        userRole={userRole}
+        onPublished={handlePublished}
+      />
     </div>
   )
 }
