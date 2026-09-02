@@ -1,19 +1,23 @@
 import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 import { ProposalSchemaV1 } from '@/lib/schema/proposal';
-import { getAccountCurrency, currencyPromptInstruction } from '@/lib/accountCurrency';
-import { checkAiRateLimit, extractClientIp } from '@/lib/ratelimit';
+import { getAccountContext } from '@/lib/accountContext';
+import { currencyPromptInstruction } from '@/lib/accountCurrency';
+import { checkAiRateLimit, extractClientIp, rateLimitIdentifier } from '@/lib/ratelimit';
+import { resolveBrandKit, brandContextBlock } from '@/lib/brand-extraction/prompt';
+import { styleReferenceBlock, briefBlock } from '@/lib/generation/promptBlocks';
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+  const account = await getAccountContext();
   const ip = extractClientIp(req);
-  const { success } = await checkAiRateLimit(ip);
+  const { success } = await checkAiRateLimit(rateLimitIdentifier(account?.accountId ?? null, ip), 'generate');
   if (!success) {
     return new Response(JSON.stringify({ error: 'Too many requests — please wait a few minutes before generating another proposal.' }), { status: 429 });
   }
 
-  const { summary } = await req.json();
+  const { summary, styleReference, brief, brandKitId } = await req.json();
 
   if (!summary) {
     return new Response(JSON.stringify({ error: 'Missing summary' }), { status: 400 });
@@ -23,7 +27,8 @@ export async function POST(req: Request) {
     const today = new Date();
     const defaultValidUntil = new Date(today);
     defaultValidUntil.setDate(today.getDate() + 14);
-    const currency = await getAccountCurrency();
+    const currency = account?.currency || 'USD';
+    const brandKit = await resolveBrandKit(account?.accountId ?? null, brandKitId);
 
     const { object } = await generateObject({
       model: openai('gpt-4o'),
@@ -44,7 +49,7 @@ Requirements:
 
 Deal Facts Summary:
 ${summary}
-`,
+${styleReferenceBlock(styleReference)}${briefBlock(brief)}${brandContextBlock(brandKit)}`,
     });
 
     return new Response(JSON.stringify(object), {

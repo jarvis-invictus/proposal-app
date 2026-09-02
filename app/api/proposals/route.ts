@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const content = body.content
+    const requestedBrandKitId = typeof body.brandKitId === 'string' ? body.brandKitId : null
     if (!content) {
       return NextResponse.json({ error: 'Missing content' }, { status: 400 })
     }
@@ -66,16 +67,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No default template available' }, { status: 500 })
     }
 
-    // 4. Resolve the account's brand kit (no kit-selection UI exists yet — most recent wins)
-    // and seed the new proposal's theme color from it so "set your brand once" actually
-    // does something on the very first proposal, instead of always defaulting to indigo.
-    const { data: brandKit } = await supabase
-      .from('brand_kits')
-      .select('id, colors')
-      .eq('account_id', userRow.account_id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    // 4. Resolve the account's brand kit — prefer the one the user actually saw/confirmed
+    // during intake (re-verified here, never trusted verbatim from the client); fall back to
+    // the most-recently-updated kit when none was supplied. Seed the new proposal's theme color
+    // from it so "set your brand once" actually does something, instead of always defaulting
+    // to indigo.
+    let brandKit: { id: string; colors: any } | null = null
+    if (requestedBrandKitId) {
+      const { data } = await supabase
+        .from('brand_kits')
+        .select('id, colors')
+        .eq('id', requestedBrandKitId)
+        .eq('account_id', userRow.account_id)
+        .maybeSingle()
+      brandKit = data ?? null
+    }
+    if (!brandKit) {
+      const { data } = await supabase
+        .from('brand_kits')
+        .select('id, colors')
+        .eq('account_id', userRow.account_id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      brandKit = data ?? null
+    }
 
     const seededContent = brandKit?.colors?.primary
       ? { ...content, themeColor: content.themeColor || brandKit.colors.primary }
