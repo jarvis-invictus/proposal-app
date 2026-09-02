@@ -17,7 +17,12 @@ export function TermsPaymentBlock({ paymentSection, onPaymentSectionChange, term
   const updateTerm = (index: number, value: string) => {
     onTermsChange(terms.map((t, i) => (i === index ? value : t)))
   }
-  const removeTerm = (index: number) => onTermsChange(terms.filter((_, i) => i !== index))
+  const removeTerm = (index: number) => {
+    const text = (terms[index] || '').trim()
+    const label = text ? `"${text.length > 60 ? text.slice(0, 60) + '…' : text}"` : 'this term'
+    if (!window.confirm(`Delete ${label}? This can't be undone.`)) return
+    onTermsChange(terms.filter((_, i) => i !== index))
+  }
   const addTerm = () => onTermsChange([...terms, ''])
 
   return (

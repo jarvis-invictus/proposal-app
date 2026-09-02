@@ -15,7 +15,7 @@ import { SelectMenu } from '@/components/ui/SelectMenu'
 import { Icon } from '@/components/ui/Icon'
 import { PromptInput } from '@/components/ui/PromptInput'
 import { SkeletonCard } from '@/components/ui/Skeleton'
-import { Toast, ToastHost } from '@/components/ui/Toast'
+import { Toast, ToastHost, useToasts } from '@/components/ui/Toast'
 import { relativeTime } from '@/lib/relativeTime'
 import { duplicateProposalAsDraft, deleteProposal } from './actions'
 
@@ -71,7 +71,7 @@ export function DashboardClient({
   const [client, setClient] = React.useState('All clients')
   const [q, setQ] = React.useState('')
   const [menu, setMenu] = React.useState<string | null>(null)
-  const [toast, setToast] = React.useState<string | null>(null)
+  const { toasts, push: pushToast, dismiss: dismissToast } = useToasts()
   const [opening, setOpening] = React.useState<string | null>(null)
   const [nudge, setNudge] = React.useState(true)
   const [aiValue, setAiValue] = React.useState('')
@@ -92,20 +92,17 @@ export function DashboardClient({
     setMenu(null)
     try {
       const copy = await duplicateProposalAsDraft(p.id)
-      setToast(`Duplicated as a draft — "${copy.title}"`)
-      setTimeout(() => setToast(null), 2600)
+      pushToast(`Duplicated as a draft — "${copy.title}"`)
       router.refresh()
     } catch (err: any) {
-      setToast(err.message || 'Failed to duplicate')
-      setTimeout(() => setToast(null), 2600)
+      pushToast(err.message || 'Failed to duplicate', { tone: 'error' })
     }
   }
 
   const handleCopyLink = (p: DashboardProposal) => {
     setMenu(null)
     navigator.clipboard.writeText(`${window.location.origin}/p/${p.slug}`)
-    setToast('Public link copied')
-    setTimeout(() => setToast(null), 2600)
+    pushToast('Public link copied')
   }
 
   const handleExportPdf = (p: DashboardProposal) => {
@@ -115,8 +112,7 @@ export function DashboardClient({
 
   const handleSaveAsTemplate = () => {
     setMenu(null)
-    setToast('Saving a proposal as a template is coming soon')
-    setTimeout(() => setToast(null), 2600)
+    pushToast('Saving a proposal as a template is coming soon')
   }
 
   const handleDelete = async (p: DashboardProposal) => {
@@ -124,12 +120,10 @@ export function DashboardClient({
     if (!window.confirm(`Delete "${p.title}"? This can't be undone.`)) return
     try {
       await deleteProposal(p.id)
-      setToast('Proposal deleted')
-      setTimeout(() => setToast(null), 2600)
+      pushToast('Proposal deleted')
       router.refresh()
     } catch (err: any) {
-      setToast(err.message || 'Failed to delete')
-      setTimeout(() => setToast(null), 2600)
+      pushToast(err.message || 'Failed to delete', { tone: 'error' })
     }
   }
 
@@ -211,7 +205,15 @@ export function DashboardClient({
         </div>
       )}
 
-      {toast && <ToastHost><Toast>{toast}</Toast></ToastHost>}
+      {toasts.length > 0 && (
+        <ToastHost>
+          {toasts.map((t) => (
+            <Toast key={t.id} tone={t.tone} onDismiss={() => dismissToast(t.id)} action={t.action} actionLabel={t.actionLabel}>
+              {t.message}
+            </Toast>
+          ))}
+        </ToastHost>
+      )}
     </AppShell>
   )
 }
