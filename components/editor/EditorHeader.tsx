@@ -19,6 +19,7 @@ export interface EditorHeaderProps {
   proposalStatus: EditorProposalStatus
   saveStatus: SaveStatus
   onPreview: () => void
+  onPreviewDeck: () => void
   onPublish: () => void
   publishLabel: string
   canPublish: boolean
@@ -31,7 +32,7 @@ export interface EditorHeaderProps {
 
 /** Thin editor chrome: document title + save state center, Preview/Publish right — matches Editor.jsx's EditorToolbar. */
 export function EditorHeader({
-  title, proposalStatus, saveStatus, onPreview, onPublish, publishLabel, canPublish,
+  title, proposalStatus, saveStatus, onPreview, onPreviewDeck, onPublish, publishLabel, canPublish,
   themeColor, brandColor, onThemeChange, onExportPdf, locked = false,
 }: EditorHeaderProps) {
   return (
@@ -71,6 +72,7 @@ export function EditorHeader({
           />
         </fieldset>
         <Button variant="ghost" size="sm" icon="file-down" onClick={onExportPdf}>Export PDF</Button>
+        <Button variant="ghost" size="sm" icon="sparkles" onClick={onPreviewDeck}>Preview as deck</Button>
         <Button variant="ghost" size="sm" icon="eye" onClick={onPreview}>Preview</Button>
         {canPublish && <Button variant="primary" size="sm" onClick={onPublish}>{publishLabel}</Button>}
       </div>

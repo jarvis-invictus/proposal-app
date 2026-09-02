@@ -11,6 +11,7 @@ import { Modal } from '@/components/app/Modal'
 import { SignaturePad } from '@/components/app/SignaturePad'
 import { DealWon } from '@/components/app/DealWon'
 import { PdfExportModal, type PdfExportOptions } from '@/components/app/PdfExportModal'
+import { DeckView } from '@/components/presentation/DeckView'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { ESIGN_CONSENT_STATEMENT, type Signature } from '@/lib/signature'
 
@@ -56,6 +57,11 @@ export default function PublicProposalView({
   // Same fallback chain as the editor: an explicit choice on the proposal wins, then the
   // linked brand kit's primary color, then the old hardcoded default for accounts with no kit.
   const themeColor = content.themeColor || proposal.brand_kits?.colors?.primary || '#4F46E5'
+
+  const searchParams = useSearchParams()
+  // The document is the permanent, signable record — deck is a presentational extra, so a
+  // shared link defaults to the document unless explicitly asked for the deck via ?view=deck.
+  const [viewMode, setViewMode] = useState<'document' | 'deck'>(searchParams.get('view') === 'deck' ? 'deck' : 'document')
 
   // Accept & sign state
   const [acceptedAt, setAcceptedAt] = useState<string | null>(proposal.accepted_at)
@@ -139,7 +145,6 @@ export default function PublicProposalView({
   // so it opens this page with the chosen options encoded here instead — apply them and print
   // automatically. Guarded by a ref so React 18 Strict Mode's double-effect in dev can't
   // trigger the print dialog twice.
-  const searchParams = useSearchParams()
   const printTriggeredRef = useRef(false)
   useEffect(() => {
     if (printTriggeredRef.current) return
@@ -171,6 +176,22 @@ export default function PublicProposalView({
 
   const effectiveThemeColor = pdfConfig.inkSavingMode ? '#000000' : themeColor
   const headerTextToRender = pdfConfig.headerText || content.title
+
+  if (viewMode === 'deck') {
+    return (
+      <DeckView
+        content={content}
+        brand={{
+          primary: themeColor,
+          secondary: proposal.brand_kits?.colors?.secondary,
+          accent: proposal.brand_kits?.colors?.accent,
+          name: proposal.brand_kits?.name || null,
+        }}
+        currency={currency}
+        onExit={() => setViewMode('document')}
+      />
+    )
+  }
 
   // Generate page number CSS based on selection (Using CSS counter pseudo-elements in a fixed container)
   const getPageNumberClass = () => {
@@ -227,7 +248,10 @@ export default function PublicProposalView({
             </span>
           )}
         </div>
-        <Button variant="ink" size="sm" icon="settings" onClick={() => setShowConfigModal(true)}>Configure &amp; Print PDF</Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Button variant="ghost" size="sm" icon="sparkles" onClick={() => setViewMode('deck')}>View as deck</Button>
+          <Button variant="ink" size="sm" icon="settings" onClick={() => setShowConfigModal(true)}>Configure &amp; Print PDF</Button>
+        </div>
       </div>
 
       {/* Modal is designed to fill its nearest positioned ancestor — anchor that to the

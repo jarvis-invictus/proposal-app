@@ -4,6 +4,7 @@ import * as React from 'react'
 import { SkyBackdrop } from '@/components/app/AppShell'
 import { Icon } from '@/components/ui/Icon'
 import { Logo } from '@/components/ui/Logo'
+import { prefersReducedMotion } from '@/lib/reducedMotion'
 import type { BrandKitPreview } from './NewProposalClient'
 
 export type Preview = {
@@ -23,7 +24,7 @@ type Block =
   | { id: string; label: string; kind: 'cards'; heading: string; cards: string[]; caption: string }
   | { id: string; label: string; kind: 'brand'; colors: string[]; font: string }
 
-const reduced = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const reduced = prefersReducedMotion
 
 function buildSteps(preview: Preview, brandKit: BrandKitPreview | null): Block[] {
   const today = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
