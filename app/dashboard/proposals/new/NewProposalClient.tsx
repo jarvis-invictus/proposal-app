@@ -12,7 +12,13 @@ import { Pill } from '@/components/ui/Pill'
 import { PromptInput } from '@/components/ui/PromptInput'
 import { SelectMenu } from '@/components/ui/SelectMenu'
 import { Logo } from '@/components/ui/Logo'
+import { assessCompleteness } from '@/lib/generation/completeness'
 import { GeneratingScreen, type Preview } from './GeneratingScreen'
+
+function missingFollowUpMessage(missing: string[]): string {
+  if (missing.length === 1) return `Looks like I still need ${missing[0]} before I can put this together — mind filling that in?`
+  return `Looks like I still need a few things before I can put this together: ${missing.slice(0, -1).join(', ')}, and ${missing[missing.length - 1]}.`
+}
 
 export type PastProposalRef = { id: string; title: string; client: string; content: any }
 
@@ -70,6 +76,14 @@ export function NewProposalClient({
     onToolCall: ({ toolCall }) => {
       if (toolCall.toolName === 'finalize_proposal_details') {
         const args = toolCall.args as any
+        // The model's own "I'm ready" judgment isn't trusted on its own — gate on the same
+        // deterministic check the server runs, so an underspecified deal doesn't slip through
+        // just because the model felt confident.
+        const { complete, missing } = assessCompleteness(args.facts)
+        if (!complete) {
+          setMessages((msgs) => [...msgs, { id: `followup-${Date.now()}`, role: 'assistant', content: missingFollowUpMessage(missing) }])
+          return
+        }
         setSummary(args.summary)
         setPreview(args.preview)
         setConfirmClient(args.preview?.clientName || '')
@@ -133,11 +147,17 @@ export function NewProposalClient({
     })
     const data = await res.json()
     if (!res.ok) return { ok: false, error: data.error || 'Failed to generate the proposal.' }
+    // _critique is advisory-only and never persisted — stashed transiently for the Editor to
+    // show once, stripped from what actually gets saved as the proposal's content.
+    const { _critique, ...content } = data
     const saveRes = await fetch('/api/proposals', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: data, brandKitId: selectedBrandKitId }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, brandKitId: selectedBrandKitId }),
     })
     const saved = await saveRes.json()
-    if (!saveRes.ok) return { ok: false, error: saved.error || 'Failed to save the proposal.', partial: data }
+    if (!saveRes.ok) return { ok: false, error: saved.error || 'Failed to save the proposal.', partial: content }
+    if (Array.isArray(_critique) && _critique.length) {
+      try { sessionStorage.setItem(`critique:${saved.id}`, JSON.stringify(_critique)) } catch { /* best-effort only */ }
+    }
     return { ok: true, id: saved.id }
   }
 

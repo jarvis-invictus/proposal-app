@@ -6,8 +6,18 @@ import { currencyPromptInstruction } from '@/lib/accountCurrency';
 import { checkAiRateLimit, extractClientIp, rateLimitIdentifier } from '@/lib/ratelimit';
 import { resolveBrandKit, brandContextBlock } from '@/lib/brand-extraction/prompt';
 import { styleReferenceBlock, briefBlock } from '@/lib/generation/promptBlocks';
+import { correctPricing } from '@/lib/generation/pricing';
+import { CritiqueSchema, type CritiqueIssue } from '@/lib/generation/critique';
 
-export const maxDuration = 30;
+export const maxDuration = 60;
+
+// Section-by-section drafting instead of one combined call — each piece can be prompted,
+// evaluated, and retried independently, and none of them need a new AI schema shape, just a
+// narrower view of the existing one.
+const HeaderSchema = ProposalSchemaV1.pick({ title: true, clientName: true, preparedFor: true, preparedBy: true });
+const PackagesSchema = ProposalSchemaV1.pick({ packages: true, addOns: true });
+const TimelineSchema = ProposalSchemaV1.pick({ timeline: true });
+const TermsSchema = ProposalSchemaV1.pick({ terms: true, paymentSection: true });
 
 export async function POST(req: Request) {
   const account = await getAccountContext();
@@ -30,29 +40,82 @@ export async function POST(req: Request) {
     const currency = account?.currency || 'USD';
     const brandKit = await resolveBrandKit(account?.accountId ?? null, brandKitId);
 
-    const { object } = await generateObject({
-      model: openai('gpt-4o'),
-      schema: ProposalSchemaV1,
-      prompt: `You are a professional proposal generation engine.
-Below is a summary of facts gathered from the user about a prospective deal.
-Your task is to populate the ProposalSchemaV1 with this data.
+    // Shared across every drafting call below so tone/brand/style stay consistent between
+    // sections that are otherwise generated independently and can't see each other's output.
+    const contextBlock = `${styleReferenceBlock(styleReference)}${briefBlock(brief)}${brandContextBlock(brandKit)}`;
+    const buildPrompt = (sectionLabel: string, instructions: string) => `You are a professional proposal generation engine, drafting the "${sectionLabel}" section of a larger document. Stay consistent in tone with the rest of the proposal even though you can't see it directly — it's drafted from the same facts below.
 
 CURRENCY (critical): ${currencyPromptInstruction(currency)}
 
-Requirements:
-- Make sure originalPrice is higher than discountedPrice if both exist.
-- Ensure the description text sounds professional and persuasive.
-- Keep terms standard and concise unless specified otherwise in the summary.
-- Fill out all required schema fields accurately based on the facts provided.
-- If the issue date is not explicitly provided, default to today's date: ${today.toLocaleDateString()}.
-- If the valid until date is not explicitly provided, default to 14 days from today: ${defaultValidUntil.toLocaleDateString()}.
+${instructions}
 
 Deal Facts Summary:
 ${summary}
-${styleReferenceBlock(styleReference)}${briefBlock(brief)}${brandContextBlock(brandKit)}`,
-    });
+${contextBlock}`;
 
-    return new Response(JSON.stringify(object), {
+    const [headerResult, packagesResult, timelineResult, termsResult] = await Promise.all([
+      generateObject({
+        model: openai('gpt-4o'),
+        schema: HeaderSchema,
+        prompt: buildPrompt('header', 'Write a compelling title, and correctly identify the client, the specific person/team the proposal is prepared for, and who is preparing it.'),
+      }),
+      generateObject({
+        model: openai('gpt-4o'),
+        schema: PackagesSchema,
+        prompt: buildPrompt('packages and add-ons', `- Typically 2-3 packages, unless the summary clearly calls for a different count.
+- Make sure originalPrice is higher than discountedPrice if both exist.
+- Ensure description text sounds professional and persuasive.`),
+      }),
+      generateObject({
+        model: openai('gpt-4o'),
+        schema: TimelineSchema,
+        prompt: buildPrompt('timeline', 'Break the project into clear phases with realistic durations based on the summary.'),
+      }),
+      generateObject({
+        model: openai('gpt-4o'),
+        schema: TermsSchema,
+        prompt: buildPrompt('terms and payment', 'Keep terms standard and concise unless specified otherwise in the summary. Do not include payment methods like UPI/Stripe in paymentSection — schedule and text terms only.'),
+      }),
+    ]);
+
+    // Dates aren't a drafting decision — assembled directly rather than left to model
+    // consistency across a call that no longer sees them at all.
+    const draft = {
+      ...headerResult.object,
+      dateIssued: today.toLocaleDateString(),
+      validUntil: defaultValidUntil.toLocaleDateString(),
+      ...packagesResult.object,
+      ...timelineResult.object,
+      ...termsResult.object,
+    };
+
+    const corrected = correctPricing(draft);
+
+    // Critique is advisory only — flag, never block, and never let a failed critique call take
+    // down an otherwise-successful generation.
+    let critiqueIssues: CritiqueIssue[] = [];
+    try {
+      const { object: critique } = await generateObject({
+        model: openai('gpt-4o'),
+        schema: CritiqueSchema,
+        prompt: `Review this drafted proposal for anything a professional would want to double-check before sending — unrealistic or ungrounded pricing (a figure not supported by the summary), inconsistent tone across sections, or information that feels missing relative to what was discussed. Flag concerns only, do not rewrite anything.
+
+dateIssued and validUntil are already computed correctly by the app (today's date, and 14 days out) — do not flag them as suspicious just for being in the future.
+
+Original Deal Facts Summary:
+${summary}
+
+Drafted Proposal:
+${JSON.stringify(corrected)}`,
+      });
+      critiqueIssues = critique.issues;
+    } catch (err) {
+      console.error('Critique pass failed, continuing without it:', err);
+    }
+
+    // _critique rides alongside the real content but is never persisted — NewProposalClient
+    // strips it before saving and stashes it transiently for the Editor to show once.
+    return new Response(JSON.stringify({ ...corrected, _critique: critiqueIssues.length ? critiqueIssues : undefined }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
