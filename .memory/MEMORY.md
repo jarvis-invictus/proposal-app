@@ -44,11 +44,6 @@ recall from an earlier PR description.
 ## Known real gaps (see docs/FEATURE_AUDIT.md for full detail, this is the short list)
 - No real payment processing anywhere (client-side display-only; platform billing is a
   Subscribe scaffold with a real payload preview, no live Razorpay connection).
-- Editor is missing its theme color picker and PDF export button — a regression from Correction
-  6.4's rebuild, not a disclosed deferral. The components still exist, unused, in `components/`.
-- Proposal generation has no currency awareness (`ProposalSchemaV1` has no currency field) —
-  display formatting works, the generation layer underneath it doesn't know what currency was
-  meant.
 - E-signature capture doesn't meet the real ESIGN Act minimum bar (no IP/audit trail/consent
   line/reviewable copy) — currently just a name and a timestamp.
 - Zero automated tests anywhere in the repo. Every "verified" claim in every PR this project has
