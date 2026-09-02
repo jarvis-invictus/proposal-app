@@ -71,6 +71,10 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
     window.open(`/p/${proposal.slug}`, '_blank')
   }
 
+  const handlePreviewDeck = () => {
+    window.open(`/p/${proposal.slug}?view=deck`, '_blank')
+  }
+
   const handleThemeChange = (roles: ThemeRoles) => {
     updateField('themeColor', roles.accent)
   }
@@ -95,6 +99,7 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
         proposalStatus={proposal.status}
         saveStatus={saveStatus}
         onPreview={handlePreview}
+        onPreviewDeck={handlePreviewDeck}
         onPublish={() => setShowPublishModal(true)}
         publishLabel={userRole === 'drafter' ? 'Submit for approval' : 'Publish'}
         canPublish={proposal.status === 'DRAFT' && !isLocked}
