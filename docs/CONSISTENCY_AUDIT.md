@@ -35,15 +35,21 @@ literals) — the drift below is real but concentrated, not systemic to the whol
   (`#cfe4f2`/`#7cbcdc`/`#17384f` == `--brand-tint`/`--brand`/`--brand-ink`) instead of
   referencing them, plus a raw `fontSize: 9`/`12`.
 
-## 2. A documented rule being violated
+## 2. A documented rule being violated — one real instance, one false positive corrected
 
 🔴 **`components/ui/Badge.tsx`** states outright, in its own doc comment: *"Status pill.
-Monochrome-plus-brand only — never green/red/amber."* Confirmed still true and still violated
-in two places: `OnboardingWizard.tsx` and `BrandExtract.tsx` both render literal
-`['#e5554e','#e5b34e','#4eb56a']` (red/amber/green) status dots. The marketing homepage's
-`Pricing.tsx` separately renders a yellow "badge" using Tailwind's default `bg-yellow-100
-text-yellow-800` — same rule, same violation, but scoped to the marketing-page finding below
-rather than this app-chrome one.
+Monochrome-plus-brand only — never green/red/amber."* The marketing homepage's `Pricing.tsx`
+genuinely violates it: a hand-rolled "Dev Warning Badge" ("Placeholder Pricing") using
+Tailwind's default `bg-yellow-100 text-yellow-800`, bypassing the real `Badge` component
+entirely — scoped into the marketing-page finding below rather than fixed here in isolation.
+
+An earlier pass of this audit also flagged `OnboardingWizard.tsx` and `BrandExtract.tsx`
+rendering literal `['#e5554e','#e5b34e','#4eb56a']` (red/amber/green) dots as the same
+violation — **on closer reading, that's wrong.** Both are macOS/browser-window traffic-light
+chrome on a mock browser frame (`SampleFrame`/the URL-scan preview), not status pills, and don't
+use the `Badge` component at all. Red/amber/green is the universally-recognized convention for
+that specific decoration; changing it would make the mockup look broken, not more consistent.
+Left as-is — correcting the record here rather than "fixing" something that wasn't wrong.
 
 ## 3. The marketing homepage is inconsistent with itself
 
@@ -101,5 +107,6 @@ page retokenization, a stylelint/CI guard) is deliberately left for a separately
   one-off toast state (§5).
 - Add a real confirm step to the Editor's four remove actions (§5).
 - Delete the dead `components/SignatureCard.tsx` (§4).
-- Fix the two Badge-rule-violating colored-dot instances in `OnboardingWizard.tsx` and
-  `BrandExtract.tsx` (§2) — the marketing page's yellow badge is left for the §3 follow-up.
+
+The marketing page's yellow badge (§2) and the wider retokenization it's part of (§3) are left
+for a separately scoped design pass, not this PR.
