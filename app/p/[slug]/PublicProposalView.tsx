@@ -39,6 +39,7 @@ const FORMAT_MAP: Record<PdfExportOptions['dateFormat'], string> = {
 export const PDF_SECTIONS = [
   { id: 'addOns', label: 'Optional Add-ons' },
   { id: 'timeline', label: 'Project Timeline' },
+  { id: 'attachments', label: 'Attachments' },
   { id: 'terms', label: 'Terms & Conditions' },
 ]
 
@@ -116,6 +117,7 @@ export default function PublicProposalView({
     visibleSections: {
       addOns: true,
       timeline: true,
+      attachments: true,
       terms: true
     },
     hideLineItemPrices: false,
@@ -131,6 +133,7 @@ export default function PublicProposalView({
       visibleSections: {
         addOns: !opts.hiddenSections.includes('addOns'),
         timeline: !opts.hiddenSections.includes('timeline'),
+        attachments: !opts.hiddenSections.includes('attachments'),
         terms: !opts.hiddenSections.includes('terms'),
       },
       hideLineItemPrices: opts.totalOnly,
@@ -392,6 +395,28 @@ export default function PublicProposalView({
                   <div className="flex-1 pb-6 print:border-gray-300" style={{ borderBottom: '1px solid var(--border-hairline)' }}>
                     <p className="text-slate" style={{ whiteSpace: 'pre-wrap' }}>{phase.description}</p>
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Attachments Section */}
+        {pdfConfig.visibleSections.attachments && content.attachments && content.attachments.length > 0 && (
+          <div className="p-12 print:break-inside-avoid" style={{ borderBottom: '1px solid var(--border-hairline)' }}>
+            <h2 className="text-ink" style={{ fontSize: 'var(--text-h4)', fontWeight: 700, marginBottom: 24 }}>Attachments</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid print:grid-cols-2">
+              {content.attachments.map((a: any, idx: number) => (
+                <div key={idx} className="print:break-inside-avoid" style={{ borderRadius: 'var(--radius-card)', overflow: 'hidden', border: '1px solid var(--border-hairline)' }}>
+                  {a.type === 'video' ? (
+                    <video src={a.url} controls preload="none" style={{ width: '100%', display: 'block', background: 'var(--ink-06)' }} />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={a.url} alt={a.caption || 'Attachment'} loading="lazy" style={{ width: '100%', display: 'block' }} />
+                  )}
+                  {a.caption && (
+                    <p className="text-slate" style={{ fontSize: 'var(--text-sm)', padding: '10px 14px' }}>{a.caption}</p>
+                  )}
                 </div>
               ))}
             </div>
