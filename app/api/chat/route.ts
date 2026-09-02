@@ -1,26 +1,28 @@
 import { openai } from '@ai-sdk/openai';
 import { streamText, tool } from 'ai';
 import { z } from 'zod';
-import { getAccountCurrency, currencyPromptInstruction } from '@/lib/accountCurrency';
+import { getAccountContext } from '@/lib/accountContext';
+import { currencyPromptInstruction } from '@/lib/accountCurrency';
 import { currencySymbol } from '@/lib/formatCurrency';
-import { checkAiRateLimit, extractClientIp } from '@/lib/ratelimit';
+import { checkAiRateLimit, extractClientIp, rateLimitIdentifier } from '@/lib/ratelimit';
+import { resolveBrandKit, brandContextBlock } from '@/lib/brand-extraction/prompt';
+import { styleReferenceBlock } from '@/lib/generation/promptBlocks';
+import { assessCompleteness } from '@/lib/generation/completeness';
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+  const account = await getAccountContext();
   const ip = extractClientIp(req);
-  const { success } = await checkAiRateLimit(ip);
+  const { success } = await checkAiRateLimit(rateLimitIdentifier(account?.accountId ?? null, ip), 'chat');
   if (!success) {
     return new Response(JSON.stringify({ error: 'Too many requests — please wait a few minutes before continuing.' }), { status: 429 });
   }
 
-  const { messages, styleReference } = await req.json();
-  const currency = await getAccountCurrency();
+  const { messages, styleReference, brandKitId } = await req.json();
+  const currency = account?.currency || 'USD';
   const symbol = currencySymbol(currency);
-
-  const styleReferenceBlock = styleReference
-    ? `\n\nSTYLISTIC REFERENCE — the user picked a past proposal of theirs to match the tone and structure of. Use it only to guide voice, phrasing, and how packages/terms are typically framed — never copy its client name, prices, or specific facts into the new proposal unless the user separately tells you those same facts. Reference:\n${JSON.stringify(styleReference)}`
-    : '';
+  const brandKit = await resolveBrandKit(account?.accountId ?? null, brandKitId);
 
   const result = await streamText({
     model: openai('gpt-4o'),
@@ -38,9 +40,9 @@ You must ask follow-up questions until you have clear information on:
 5. Payment Terms: What is the payment schedule? (e.g. 50% advance, 50% on completion). Don't ask for payment links or methods, just the terms and schedule text.
 
 Do NOT generate the final proposal yet. You are just gathering the facts.
-Once you genuinely believe you have all the necessary information to fill out the proposal structure, call the \`finalize_proposal_details\` tool with a summary of the facts you gathered, plus a short structured preview.
+Once you genuinely believe you have all the necessary information to fill out the proposal structure, call the \`finalize_proposal_details\` tool with a summary of the facts you gathered, a short structured preview, and the same information again in the structured \`facts\` field — the app double-checks \`facts\` before proceeding, so fill every part of it you have real information for rather than leaving it sparse.
 If the user provides a very thorough transcript that already has all this info, you can call the tool immediately. Otherwise, ask 1-2 focused questions at a time. Do not overwhelm them. Be professional but concise.
-When you call finalize_proposal_details, fill in the \`preview\` object with short, honest values drawn only from what the user actually told you — never invent a figure, name, or term they did not provide.${styleReferenceBlock}`,
+When you call finalize_proposal_details, fill in the \`preview\` and \`facts\` objects with short, honest values drawn only from what the user actually told you — never invent a figure, name, or term they did not provide.${styleReferenceBlock(styleReference)}${brandContextBlock(brandKit)}`,
     messages,
     tools: {
       finalize_proposal_details: tool({
@@ -55,10 +57,20 @@ When you call finalize_proposal_details, fill in the \`preview\` object with sho
             terms: z.string().describe('One short phrase for the most important protective term discussed, e.g. "Two rounds of revisions per milestone." If nothing specific was discussed, say "Standard terms".'),
             paymentSchedule: z.string().describe('One short phrase for how payment is split, e.g. "50% upfront, 50% on delivery".'),
           }).describe('A short, honest structured preview of the deal, shown to the user before generating the full document.'),
-          isComplete: z.boolean().describe('Always set to true when calling this tool.')
+          facts: z.object({
+            clientName: z.string().optional().describe('The client or company name.'),
+            packages: z.array(z.object({
+              name: z.string().optional(),
+              discountedPrice: z.number().optional().describe('The actual selling price the user stated for this package.'),
+              deliverables: z.array(z.string()).optional(),
+            })).optional().describe('One entry per pricing tier discussed.'),
+            timeline: z.array(z.object({ phase: z.string().optional() })).optional().describe('One entry per project phase discussed.'),
+            paymentSchedule: z.string().optional().describe('How payment is split, e.g. "50% upfront, 50% on delivery".'),
+          }).describe('The same facts as summary/preview, in structured form, used to verify nothing important is missing before the app proceeds.'),
         }),
-        execute: async ({ summary, preview }: { summary: any; preview: any }) => {
-          return { status: 'ready_for_review', summary, preview };
+        execute: async ({ summary, preview, facts }: { summary: any; preview: any; facts: any }) => {
+          const { complete, missing } = assessCompleteness(facts);
+          return complete ? { status: 'ready_for_review', summary, preview } : { status: 'incomplete', missing };
         },
       }),
     },

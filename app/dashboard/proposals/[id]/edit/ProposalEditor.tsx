@@ -34,6 +34,21 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
   const [saveStatus, setSaveStatus] = React.useState<SaveStatus>('saved')
   const [showPublishModal, setShowPublishModal] = React.useState(false)
   const [showPdfModal, setShowPdfModal] = React.useState(false)
+  const [critiqueIssues, setCritiqueIssues] = React.useState<Array<{ field: string; severity: string; note: string }>>([])
+
+  // Transient, shown once: the AI review pass (if it flagged anything) stashes its findings
+  // here right before navigating from generation to this page. Read once, then cleared, so a
+  // refresh doesn't keep resurfacing it.
+  React.useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(`critique:${initialProposal.id}`)
+      if (raw) {
+        setCritiqueIssues(JSON.parse(raw))
+        sessionStorage.removeItem(`critique:${initialProposal.id}`)
+      }
+    } catch { /* best-effort only */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Signed proposals have no separate "ACCEPTED" status — acceptance is accepted_at/signature
   // on a PUBLISHED proposal (same real-schema check the API route enforces server-side).
@@ -117,6 +132,27 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
         }}>
           <Icon name="lock" size={15} color="var(--brand-ink)" />
           This proposal has been signed and is now locked as a legally binding document. Edits are disabled.
+        </div>
+      )}
+      {critiqueIssues.length > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 24px',
+          background: 'var(--status-caution-surface)', borderBottom: '1px solid var(--status-caution-border)',
+          fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)',
+        }}>
+          <Icon name="triangle-alert" size={15} color="var(--status-caution-text)" style={{ marginTop: 2, flex: 'none' }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 500, marginBottom: 4 }}>
+              AI review flagged {critiqueIssues.length} thing{critiqueIssues.length === 1 ? '' : 's'} worth a look
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {critiqueIssues.map((issue, i) => <li key={i}>{issue.note}</li>)}
+            </ul>
+          </div>
+          <button type="button" onClick={() => setCritiqueIssues([])} aria-label="Dismiss"
+            style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--status-caution-text)', flex: 'none', padding: 2 }}>
+            <Icon name="x" size={15} />
+          </button>
         </div>
       )}
       <DocStats />
