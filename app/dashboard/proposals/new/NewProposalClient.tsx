@@ -23,7 +23,7 @@ function styleReferenceFrom(ref: PastProposalRef | null) {
   const { clientName, preparedFor, dateIssued, validUntil, ...rest } = ref.content
   return rest
 }
-export type BrandKitPreview = { name: string; colors: { primary?: string; secondary?: string; accent?: string } | null; headingFont: string | null }
+export type BrandKitPreview = { id: string; name: string; colors: { primary?: string; secondary?: string; accent?: string } | null; headingFont: string | null }
 export type TemplateSeed = { id: string; name: string; category: string } | null
 
 const STARTERS = [
@@ -39,11 +39,11 @@ const STARTERS = [
 type GenResult = { ok: true; id: string } | { ok: false; error: string; partial?: unknown }
 
 export function NewProposalClient({
-  firstName, pastProposals, brandKit, starter, template,
+  firstName, pastProposals, brandKits, starter, template,
 }: {
   firstName: string
   pastProposals: PastProposalRef[]
-  brandKit: BrandKitPreview | null
+  brandKits: BrandKitPreview[]
   starter: string | null
   template: TemplateSeed
 }) {
@@ -52,14 +52,19 @@ export function NewProposalClient({
   const [summary, setSummary] = React.useState('')
   const [preview, setPreview] = React.useState<Preview | null>(null)
   const [showRaw, setShowRaw] = React.useState(false)
+  const [brief, setBrief] = React.useState('')
   const [confirmClient, setConfirmClient] = React.useState('')
   const [saveError, setSaveError] = React.useState('')
   const [generatedProposal, setGeneratedProposal] = React.useState<unknown>(null)
   const [listening, setListening] = React.useState(false)
   const [reference, setReference] = React.useState<PastProposalRef | null>(null)
+  const [selectedBrandKitId, setSelectedBrandKitId] = React.useState<string | null>(brandKits[0]?.id ?? null)
+  const selectedBrandKit = brandKits.find((k) => k.id === selectedBrandKitId) ?? null
   const recognitionRef = React.useRef<any>(null)
   const endRef = React.useRef<HTMLSpanElement>(null)
   const seededRef = React.useRef(false)
+
+  const chatBody = () => ({ styleReference: styleReferenceFrom(reference), brandKitId: selectedBrandKitId })
 
   const { messages, input, handleInputChange, handleSubmit, append, setMessages, isLoading } = useChat({
     onToolCall: ({ toolCall }) => {
@@ -82,10 +87,10 @@ export function NewProposalClient({
     if (seededRef.current) return
     seededRef.current = true
     if (template) {
-      append({ role: 'user', content: `I'd like to use the "${template.name}" template (${template.category}). Let's start from there.` }, { body: { styleReference: styleReferenceFrom(reference) } })
+      append({ role: 'user', content: `I'd like to use the "${template.name}" template (${template.category}). Let's start from there.` }, { body: chatBody() })
     } else if (starter) {
       const s = STARTERS.find((x) => x.id === starter)
-      if (s?.seed) append({ role: 'user', content: s.seed }, { body: { styleReference: styleReferenceFrom(reference) } })
+      if (s?.seed) append({ role: 'user', content: s.seed }, { body: chatBody() })
       else if (s) setMessages([{ id: 'seed-notes', role: 'assistant', content: "Go ahead and paste whatever you have — notes, a transcript, a rough email. I'll pull out what matters." }])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -96,7 +101,7 @@ export function NewProposalClient({
       setMessages([{ id: 'seed-notes', role: 'assistant', content: "Go ahead and paste whatever you have — notes, a transcript, a rough email. I'll pull out what matters." }])
       return
     }
-    append({ role: 'user', content: s.seed }, { body: { styleReference: styleReferenceFrom(reference) } })
+    append({ role: 'user', content: s.seed }, { body: chatBody() })
   }
 
   const toggleMic = () => {
@@ -123,12 +128,13 @@ export function NewProposalClient({
 
   const runGeneration = async (finalSummary: string): Promise<GenResult> => {
     const res = await fetch('/api/generate-proposal', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ summary: finalSummary }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ summary: finalSummary, styleReference: styleReferenceFrom(reference), brief, brandKitId: selectedBrandKitId }),
     })
     const data = await res.json()
     if (!res.ok) return { ok: false, error: data.error || 'Failed to generate the proposal.' }
     const saveRes = await fetch('/api/proposals', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: data }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: data, brandKitId: selectedBrandKitId }),
     })
     const saved = await saveRes.json()
     if (!saveRes.ok) return { ok: false, error: saved.error || 'Failed to save the proposal.', partial: data }
@@ -155,7 +161,7 @@ export function NewProposalClient({
 
   if (phase === 'generating' && preview) {
     return (
-      <GeneratingScreen preview={preview} brandKit={brandKit}
+      <GeneratingScreen preview={preview} brandKit={selectedBrandKit}
         onGenerate={() => runGeneration(summary)}
         onDone={(result) => router.push(`/dashboard/proposals/${result.id}/edit`)}
         onError={(message, partial) => { setSaveError(message); setGeneratedProposal(partial ?? null); setPhase('error') }} />
@@ -172,6 +178,8 @@ export function NewProposalClient({
         <span style={{ flex: 1 }} />
         <Button variant="ghost" size="sm" icon="layout-template" onClick={() => router.push('/dashboard/templates')}>Use a template</Button>
       </div>
+
+      <BrandKitBanner kits={brandKits} selectedId={selectedBrandKitId} onSelect={setSelectedBrandKitId} />
 
       <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: started ? 'flex-start' : 'center', padding: '0 24px 30px' }}>
         <div style={{ width: 'min(720px,100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22 }}>
@@ -203,7 +211,7 @@ export function NewProposalClient({
 
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12, position: 'sticky', bottom: 0, paddingBottom: 4 }}>
             <PromptInput size={started ? 'sm' : 'lg'} value={input} onChange={(e) => handleInputChange(e as React.ChangeEvent<HTMLTextAreaElement>)}
-              onSubmit={() => handleSubmit(undefined, { body: { styleReference: styleReferenceFrom(reference) } })}
+              onSubmit={() => handleSubmit(undefined, { body: chatBody() })}
               listening={listening} onToggleMic={toggleMic}
               placeholder={started ? 'Type your answer…' : 'Or just describe the deal in your own words…'} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -230,7 +238,7 @@ export function NewProposalClient({
         }>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
-            {brandKit && <Pill tone="solid" size="sm" icon="palette">{brandKit.name}</Pill>}
+            {selectedBrandKit && <Pill tone="solid" size="sm" icon="palette">{selectedBrandKit.name}</Pill>}
             {preview && <Pill tone="solid" size="sm" icon="layers">{preview.packageCount} {preview.packageCount === 1 ? 'package' : 'tiers'}</Pill>}
             {preview && <Pill tone="solid" size="sm" icon="calendar">{preview.timeline}</Pill>}
             {reference && <Pill tone="solid" size="sm" icon="files">Styled like &ldquo;{reference.title}&rdquo;</Pill>}
@@ -260,6 +268,11 @@ export function NewProposalClient({
             <textarea value={summary} onChange={(e) => setSummary(e.target.value)}
               style={{ width: '100%', height: 180, padding: 14, resize: 'vertical', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-hairline)', background: 'var(--surface-sunken)', outline: 'none', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--text-primary)' }} />
           )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+            <label style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--text-primary)' }}>Style or tone brief <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
+            <textarea value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="e.g. Keep it punchy and casual, or: make it sound enterprise-grade and formal."
+              style={{ width: '100%', height: 64, padding: 12, resize: 'vertical', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-hairline)', background: 'var(--surface-sunken)', outline: 'none', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }} />
+          </div>
         </div>
       </Modal>
     </div>
@@ -343,6 +356,29 @@ function ReferenceChip({ value, options, onSelect }: { value: PastProposalRef | 
         </div>
       )}
     </span>
+  )
+}
+
+function BrandKitBanner({ kits, selectedId, onSelect }: { kits: BrandKitPreview[]; selectedId: string | null; onSelect: (id: string) => void }) {
+  const selected = kits.find((k) => k.id === selectedId) ?? kits[0]
+  if (!selected) return null
+  return (
+    <div style={{ position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'center', padding: '0 24px 10px' }}>
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 10, padding: '7px 8px 7px 14px', borderRadius: 'var(--radius-pill)',
+        background: 'var(--glass-quiet)', border: '1px solid var(--border-hairline)', fontSize: 'var(--text-sm)',
+      }}>
+        <span style={{ width: 13, height: 13, borderRadius: '50%', background: selected.colors?.primary || 'var(--brand-deep)', border: '1px solid var(--border-hairline)', flexShrink: 0 }} />
+        <span style={{ color: 'var(--text-secondary)' }}>
+          Using your saved brand kit <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>&ldquo;{selected.name}&rdquo;</strong>
+        </span>
+        {kits.length > 1 && (
+          <SelectMenu value={selected.name} align="right"
+            options={kits.map((k) => k.name)}
+            onSelect={(name) => { const kit = kits.find((k) => k.name === name); if (kit) onSelect(kit.id) }} />
+        )}
+      </div>
+    </div>
   )
 }
 
