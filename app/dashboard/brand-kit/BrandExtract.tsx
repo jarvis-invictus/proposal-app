@@ -33,7 +33,7 @@ const FONT_OPTIONS = { heading: ['Inter Tight', 'Söhne', 'Fraunces'], body: ['I
 
 const reduced = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-type Extracted = { colors: Record<string, string>; fonts: Record<string, string>; logoUrl?: string; is_low_confidence?: boolean }
+type Extracted = { colors: Record<string, string>; fonts: Record<string, string>; logoUrl?: string; personality?: string; is_low_confidence?: boolean }
 
 export function BrandExtract({ onConfirm, onSkip, kitNameDefault, accountId }: {
   onConfirm: () => void
@@ -460,6 +460,7 @@ function BrandReview({ source, extracted, kitNameDefault, accountId, onRedo, onC
   const scrapedLogo = extracted?.logoUrl || null
   const [logoUrl, setLogoUrl] = React.useState<string | null>(null)
   const [rejectedScrapedLogo, setRejectedScrapedLogo] = React.useState(false)
+  const [personality, setPersonality] = React.useState(extracted?.personality || '')
   const [uploadingLogo, setUploadingLogo] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -495,6 +496,7 @@ function BrandReview({ source, extracted, kitNameDefault, accountId, onRedo, onC
         colors: { primary: colors[0], secondary: colors[1], accent: colors[2], background: colors[3], text: colors[4], extra: colors.slice(5) },
         fonts: { heading, body, accent },
         logoUrl,
+        personality: personality.trim() || null,
       })
       onConfirm()
     } catch (err: any) {
@@ -547,6 +549,17 @@ function BrandReview({ source, extracted, kitNameDefault, accountId, onRedo, onC
             <LogoUpload uploaded={logoUrl} uploading={uploadingLogo} onUpload={handleLogoUpload} onClear={() => setLogoUrl(null)} />
           )}
         </ReviewBlock>
+
+        {source === 'url' && extracted?.personality && (
+          <ReviewBlock title="Brand voice" note="Edit or clear this if it doesn't sound right — proposals fall back to a neutral tone either way">
+            <Textarea
+              value={personality}
+              onChange={(e) => setPersonality(e.target.value)}
+              rows={3}
+              placeholder="e.g. Confident and energetic, speaks to budget-conscious travelers"
+            />
+          </ReviewBlock>
+        )}
       </div>
 
       {error && <p style={{ marginBottom: 12, fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>{error}</p>}
