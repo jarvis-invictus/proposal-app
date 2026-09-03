@@ -35,8 +35,18 @@ const reduced = () => typeof window !== 'undefined' && window.matchMedia && wind
 
 type Extracted = { colors: Record<string, string>; fonts: Record<string, string>; logoUrl?: string; personality?: string; is_low_confidence?: boolean }
 
+/** The kit as actually persisted, handed back on confirm so callers don't have to re-fetch. */
+export type SavedBrandKit = {
+  id: string
+  name: string
+  colors: { primary?: string; secondary?: string; accent?: string; background?: string; text?: string } | null
+  fonts?: { heading?: string; body?: string } | null
+  logoUrl?: string | null
+}
+
 export function BrandExtract({ onConfirm, onSkip, kitNameDefault, accountId }: {
-  onConfirm: () => void
+  /** Receives the saved kit; callers that don't need it can ignore the argument. */
+  onConfirm: (kit?: SavedBrandKit) => void
   onSkip: () => void
   kitNameDefault: string
   accountId: string
@@ -447,7 +457,7 @@ function GenericScan({ source, onDone }: { source: SourceId; onDone: () => void 
 
 function BrandReview({ source, extracted, kitNameDefault, accountId, onRedo, onConfirm }: {
   source: SourceId; extracted: Extracted | null; kitNameDefault: string; accountId: string
-  onRedo: () => void; onConfirm: () => void
+  onRedo: () => void; onConfirm: (kit?: SavedBrandKit) => void
 }) {
   const seedColors = extracted
     ? [extracted.colors.primary, extracted.colors.secondary, extracted.colors.accent, extracted.colors.background, extracted.colors.text].filter(Boolean)
@@ -487,7 +497,7 @@ function BrandReview({ source, extracted, kitNameDefault, accountId, onRedo, onC
     setSaving(true)
     setError(null)
     try {
-      await saveBrandKit({
+      const saved = await saveBrandKit({
         name,
         // source_type_enum is only ever 'url' | 'image' | 'document' | 'manual' — every other
         // SourceId (assets/describe/file/code) maps onto one of those four real values.
@@ -498,7 +508,7 @@ function BrandReview({ source, extracted, kitNameDefault, accountId, onRedo, onC
         logoUrl,
         personality: personality.trim() || null,
       })
-      onConfirm()
+      onConfirm(saved)
     } catch (err: any) {
       setError(err.message || 'Failed to save')
       setSaving(false)

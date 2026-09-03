@@ -40,15 +40,25 @@ export default async function DashboardPage() {
     // attempt already exists, or it looks like a brand-new scan on every revisit.
     const { data: existingKitRows } = await supabase
       .from('brand_kits')
-      .select('id, name, colors')
+      .select('id, name, colors, fonts, logo_url')
       .eq('account_id', accountData.id)
       .order('updated_at', { ascending: false })
     const existingBrandKits = (existingKitRows ?? []).map((row) => ({
       id: row.id,
       name: row.name || 'Your brand kit',
       colors: (row.colors as any) || null,
+      fonts: (row.fonts as any) || null,
+      logoUrl: (row.logo_url as string | null) || null,
     }))
-    return <OnboardingWizard firstName={firstName} accountId={accountData.id} existingBrandKits={existingBrandKits} />
+    return (
+      <OnboardingWizard
+        firstName={firstName}
+        accountId={accountData.id}
+        existingBrandKits={existingBrandKits}
+        initialBusiness={accountData.name || ''}
+        initialCategory={accountData.category || null}
+      />
+    )
   }
 
   const [{ data: proposalRows }, { count: brandKitCount }] = await Promise.all([

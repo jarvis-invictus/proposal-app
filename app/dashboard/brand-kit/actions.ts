@@ -40,16 +40,22 @@ export async function saveBrandKit(data: any) {
 
   if (!userRecord?.account_id) throw new Error("Account not found")
 
-  const { error } = await supabase.from('brand_kits').insert({
-    account_id: userRecord.account_id,
-    name: data.name,
-    source_type: data.source_type,
-    source_reference: data.source_reference,
-    colors: data.colors,
-    fonts: data.fonts,
-    logo_url: data.logoUrl,
-    personality: data.personality || null,
-  })
+  // Returns the inserted row so the caller (e.g. the onboarding wizard) can use the real saved
+  // kit immediately, instead of downstream steps having to re-fetch or guess which kit is newest.
+  const { data: saved, error } = await supabase
+    .from('brand_kits')
+    .insert({
+      account_id: userRecord.account_id,
+      name: data.name,
+      source_type: data.source_type,
+      source_reference: data.source_reference,
+      colors: data.colors,
+      fonts: data.fonts,
+      logo_url: data.logoUrl,
+      personality: data.personality || null,
+    })
+    .select('id, name, colors, fonts, logo_url')
+    .single()
 
   if (error) {
     console.error("Failed to save brand kit", error)
@@ -57,4 +63,12 @@ export async function saveBrandKit(data: any) {
   }
 
   revalidatePath('/dashboard')
+
+  return {
+    id: saved.id as string,
+    name: (saved.name as string | null) || 'Your brand kit',
+    colors: (saved.colors as any) || null,
+    fonts: (saved.fonts as any) || null,
+    logoUrl: (saved.logo_url as string | null) || null,
+  }
 }
