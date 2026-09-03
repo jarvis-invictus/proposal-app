@@ -122,7 +122,7 @@ export function AppShell({ screen, title, subtitle, actions, search, scroll = tr
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--gradient-app)' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--gradient-app)' }}>
       <SidebarNav brand="Marg" active={screen} onSelect={go} items={NAV} utility={UTIL}
         collapsed={collapsed} onToggleCollapse={() => setCollapsed((c) => !c)}
         footer={<AccountRow collapsed={collapsed} name={accountName} planLabel={planLabel} onClick={() => go('settings')} />} />

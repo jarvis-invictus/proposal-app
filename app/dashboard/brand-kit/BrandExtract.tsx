@@ -33,7 +33,7 @@ const FONT_OPTIONS = { heading: ['Inter Tight', 'Söhne', 'Fraunces'], body: ['I
 
 const reduced = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-type Extracted = { colors: Record<string, string>; fonts: Record<string, string> }
+type Extracted = { colors: Record<string, string>; fonts: Record<string, string>; logoUrl?: string; is_low_confidence?: boolean }
 
 export function BrandExtract({ onConfirm, onSkip, kitNameDefault, accountId }: {
   onConfirm: () => void
@@ -457,7 +457,9 @@ function BrandReview({ source, extracted, kitNameDefault, accountId, onRedo, onC
   const [body, setBody] = React.useState(extracted?.fonts.body || FONT_OPTIONS.body[0])
   const [accent, setAccent] = React.useState('None')
   const [name, setName] = React.useState(kitNameDefault)
+  const scrapedLogo = extracted?.logoUrl || null
   const [logoUrl, setLogoUrl] = React.useState<string | null>(null)
+  const [rejectedScrapedLogo, setRejectedScrapedLogo] = React.useState(false)
   const [uploadingLogo, setUploadingLogo] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -538,8 +540,12 @@ function BrandReview({ source, extracted, kitNameDefault, accountId, onRedo, onC
           </div>
         </ReviewBlock>
 
-        <ReviewBlock title="Logo" note="Always uploaded by you — automatic logo grabs are never good enough">
-          <LogoUpload uploaded={logoUrl} uploading={uploadingLogo} onUpload={handleLogoUpload} onClear={() => setLogoUrl(null)} />
+        <ReviewBlock title="Logo" note={scrapedLogo && !rejectedScrapedLogo && !logoUrl ? 'We found this on your site — confirm it looks right' : 'Upload your own if the automatic grab isn’t good enough'}>
+          {scrapedLogo && !rejectedScrapedLogo && !logoUrl ? (
+            <ScrapedLogoChoice logoUrl={scrapedLogo} onAccept={() => setLogoUrl(scrapedLogo)} onReject={() => setRejectedScrapedLogo(true)} />
+          ) : (
+            <LogoUpload uploaded={logoUrl} uploading={uploadingLogo} onUpload={handleLogoUpload} onClear={() => setLogoUrl(null)} />
+          )}
         </ReviewBlock>
       </div>
 
@@ -643,5 +649,33 @@ function LogoUpload({ uploaded, uploading, onUpload, onClear }: { uploaded: stri
       </span>
       <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f) }} />
     </label>
+  )
+}
+
+function ScrapedLogoChoice({ logoUrl, onAccept, onReject }: { logoUrl: string; onAccept: () => void; onReject: () => void }) {
+  const [broken, setBroken] = React.useState(false)
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 'var(--radius-card)', background: 'var(--surface-card)', border: '1px solid var(--border-hairline)' }}>
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 52, height: 52, borderRadius: 'var(--radius-sm)', background: 'var(--glass-quiet)', border: '1px solid var(--border-hairline)', overflow: 'hidden', flex: 'none' }}>
+        {broken ? (
+          <Icon name="image" size={19} color="var(--text-muted)" />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoUrl} alt="Logo found on your site" onError={() => setBroken(true)} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+        )}
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'block', fontSize: 'var(--text-body)', fontWeight: 500 }}>{broken ? 'Couldn’t load the logo we found' : 'Is this your logo?'}</span>
+        <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{broken ? 'Upload your own instead' : 'Pulled from your site — use it, or upload your own'}</span>
+      </span>
+      {broken ? (
+        <Button variant="ghost" size="sm" onClick={onReject}>Upload instead</Button>
+      ) : (
+        <span style={{ display: 'flex', gap: 8, flex: 'none' }}>
+          <Button variant="ghost" size="sm" onClick={onReject}>Not this</Button>
+          <Button variant="primary" size="sm" onClick={onAccept}>Use this logo</Button>
+        </span>
+      )}
+    </div>
   )
 }
