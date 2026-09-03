@@ -10,6 +10,11 @@ Status legend: ✅ Real and working · 🟡 Partially real / honest gaps · ❌ 
 Update this file whenever a feature's real/fake status changes — it's meant to stay accurate,
 not become another stale snapshot like ROADMAP.md currently is.
 
+**Reconciled against the live code on 2026-09-02**: §6, §7, and §11 (team invites) have
+genuinely changed since the original 2026-09-01 audit below and are marked accordingly. §12
+now also reflects a real (if narrow) automated-test suite. Everything else was re-checked and
+stands exactly as originally written.
+
 ## 1. Auth & Onboarding — ✅
 Real Supabase Auth (signup/login/logout). Real 4-step onboarding wizard writing real
 `accounts`/`brand_kits` rows.
@@ -39,30 +44,34 @@ extraction. "Reference a past proposal" is real — verified via direct server c
 reference present, the model correctly reports seeing the referenced proposal's exact title;
 without it, it reports seeing nothing). Dictation uses the real browser Web Speech API.
 
-## 6. Generation — 🟡 real call, real correctness gap
-`/api/generate-proposal` is a genuine GPT-4o `generateObject` call against `ProposalSchemaV1`.
+## 6. Generation — ✅ (currency gap fixed since the original audit)
+`/api/generate-proposal` is a genuine GPT-4o call against `ProposalSchemaV1`.
 
-**Currency-semantics gap (confirmed, not yet fixed):** `ProposalSchemaV1`
-(`lib/schema/proposal.ts`) has no `currency` field, and the generation prompt never mentions
-currency. A deal described in rupees gets extracted as a bare number with no unit. Display
-formatting then applies whichever currency the *account* has selected, independent of what the
-user actually meant. A ₹50,000 deal on a USD-configured account will render as "$50,000". The
-Milestone 4 currency work fixed display formatting only — the AI has no concept of currency at
-all, and needs one (either extract a currency alongside every number, or accept the account's
-selected currency as a hint in the prompt).
+**Currency-semantics gap — fixed as of 2026-09-02.** The original finding here was that
+`ProposalSchemaV1` has no `currency` field and the generation prompt never mentioned currency,
+so a deal described in rupees could render as "$50,000" on a USD-configured account. Confirmed
+by reading the current route directly: the account's selected currency is now injected into
+every generation prompt via `currencyPromptInstruction()` (`lib/accountCurrency.ts`), shared
+between the chat intake and the generation call so the instruction can't drift between them.
 
-## 7. Editor — 🟡 real for what's built, one confirmed regression
+Separately, generation went through a substantial rebuild in PRs #39/#40/#41 (proposal-generation
+overhaul, see `docs/PHASE2_INITIATIVES_PLAN.md` §1): brand kit colors/fonts/name and an optional
+style brief now genuinely shape the writing (previously extracted and then never read by any
+prompt), and the single `generateObject` call was split into section-by-section drafting plus an
+advisory critique pass that flags concerns (fabricated pricing, tone inconsistencies) without
+blocking generation.
+
+## 7. Editor — 🟡 real for what's built, one item never built (regression below now fixed)
 Confirmed by re-reading the current `ProposalEditor.tsx` directly:
 - ✅ Real, autosaving: title, packages, add-ons, timeline, terms & payment — all five confirmed
   persisting correctly, including nested arrays.
-- 🔴 **Regression, not "coming soon":** no `ThemeColorPicker`, no `PdfExportModal`, no "Download
-  PDF" button anywhere in the current Editor. The pre-correction editor had both, wired to real
-  brand kit colors. Rebuilding the Editor around the real design (Correction 6.4) dropped them
-  without re-wiring.
-- 🟢 **They're not gone, just disconnected:** `components/app/ThemeColorPicker.tsx`,
-  `PdfExportModal.tsx` (still live on the public view), `AIDock.tsx`, and `SectionRail.tsx` all
-  still exist, fully built and styled — `grep` confirms zero usage anywhere in `app/`.
-  Re-wiring the theme picker and PDF button into the Editor is a rewire job, not a build job.
+- ✅ **Regression fixed as of 2026-09-02.** The original finding here was that no
+  `ThemeColorPicker` and no `PdfExportModal`/"Download PDF" button existed anywhere in the
+  current Editor, a real drop from the pre-correction editor. Confirmed directly in the current
+  code: both are wired in and working now — `EditorHeader.tsx` renders a live `ThemeColorPicker`
+  bound to the proposal's brand color, and an "Export PDF" button opens the same
+  `PdfExportModal` used on the public view. `AIDock.tsx` and `SectionRail.tsx` were not part of
+  this fix and remain unused — not re-checked this pass.
 - ❌ **Never built, not even orphaned:** version history (no code exists anywhere for this — the
   only "version" reference in the whole app is the mockup source file), the docked AI assistant
   for section rewrites, drag-to-reorder. These are the two features flagged at the start of
@@ -94,9 +103,10 @@ service.
 - ✅ Profile & business — fully real.
 - ✅ Payment details — real display fields (UPI ID, link, QR upload). No processing, by design
   — honest, not incomplete.
-- 🔴 Team — real invite records, but confirmed via the actual code: **no email ever sends**. An
-  invited teammate has no way to know except being told directly. 1 real invitation sits
-  permanently stuck at "Pending" in the DB right now.
+- ✅ **Team — fixed as of 2026-09-02.** The original finding was that invite records were real
+  but no email ever sent. Confirmed directly in the current code: `lib/email.ts` has a real
+  Resend integration, and the invite action actually calls it — an invited teammate now gets a
+  real email.
 - 🔴 Custom domains — real DB rows and real slot-limit enforcement, but confirmed zero
   DNS/CNAME verification code and zero routing logic anywhere (`proxy.ts` included) that would
   serve a proposal from a custom domain even if verification existed. Currently a naming
@@ -111,9 +121,11 @@ service.
 - **Mobile responsiveness** — real, verified fixes (sidebar auto-collapse, grid stacking).
   Editor header stays visually cramped on very narrow phones — disclosed, not fixed; a real
   mobile-native Editor redesign is a feature project, not a polish task.
-- **Automated tests** — zero, anywhere in the repo. Every "verified" claim across this entire
-  project means a human-equivalent live click-through happened once, not that a regression
-  suite exists.
+- **Automated tests** — improved as of 2026-09-02, still far from comprehensive. The original
+  finding was zero, anywhere in the repo. A real (if narrow) end-to-end suite now exists,
+  covering the signature loop and the login flow (merged PR #36). Every other "verified" claim
+  across this project still means a human-equivalent live click-through happened once, not that
+  a regression suite exists.
 - **`credit_transactions` table** — real migration, real RLS policy, zero rows, zero code
   references anywhere. Pure scaffolding for the pay-per-proposal plan tier; nothing reads or
   writes it yet.

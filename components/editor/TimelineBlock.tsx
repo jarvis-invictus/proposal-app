@@ -21,7 +21,11 @@ export function TimelineBlock({ timeline, onChange }: TimelineBlockProps) {
   const updatePhase = (index: number, patch: Partial<TimelinePhase>) => {
     onChange(timeline.map((p, i) => (i === index ? { ...p, ...patch } : p)))
   }
-  const removePhase = (index: number) => onChange(timeline.filter((_, i) => i !== index))
+  const removePhase = (index: number) => {
+    const name = timeline[index]?.phase || 'this phase'
+    if (!window.confirm(`Delete "${name}"? This can't be undone.`)) return
+    onChange(timeline.filter((_, i) => i !== index))
+  }
   const addPhase = () => onChange([...timeline, { ...BLANK_PHASE }])
 
   return (

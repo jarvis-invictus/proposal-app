@@ -30,7 +30,11 @@ export function AddOnsBlock({ addOns, onChange, currency = 'USD' }: AddOnsBlockP
   const updateAddOn = (index: number, patch: Partial<AddOnItem>) => {
     onChange(addOns.map((a, i) => (i === index ? { ...a, ...patch } : a)))
   }
-  const removeAddOn = (index: number) => onChange(addOns.filter((_, i) => i !== index))
+  const removeAddOn = (index: number) => {
+    const name = addOns[index]?.name || 'this add-on'
+    if (!window.confirm(`Delete "${name}"? This can't be undone.`)) return
+    onChange(addOns.filter((_, i) => i !== index))
+  }
   const addAddOn = () => onChange([...addOns, { ...BLANK_ADDON }])
 
   return (

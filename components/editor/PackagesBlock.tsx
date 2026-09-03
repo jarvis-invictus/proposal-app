@@ -31,6 +31,8 @@ export function PackagesBlock({ packages, onChange, currency = 'USD' }: Packages
     onChange(packages.map((p, i) => (i === index ? { ...p, ...patch } : p)))
   }
   const removePackage = (index: number) => {
+    const name = packages[index]?.name || 'this package'
+    if (!window.confirm(`Delete "${name}"? This can't be undone.`)) return
     onChange(packages.filter((_, i) => i !== index))
   }
   const addPackage = () => {

@@ -11,7 +11,7 @@ import { Icon } from '@/components/ui/Icon'
 import { IconButton } from '@/components/ui/IconButton'
 import { SelectMenu } from '@/components/ui/SelectMenu'
 import { Modal } from '@/components/app/Modal'
-import { Toast, ToastHost } from '@/components/ui/Toast'
+import { Toast, ToastHost, useToasts } from '@/components/ui/Toast'
 import { createClient } from '@/lib/supabase/client'
 import { validateSubdomain } from '@/lib/publicUrl'
 import {
@@ -686,7 +686,7 @@ function BillingTab({ account }: { account: Account }) {
   const [switching, setSwitching] = React.useState<string | null>(null)
   const [checkingOut, setCheckingOut] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
-  const [toast, setToast] = React.useState<string | null>(null)
+  const { toasts, push: pushToast, dismiss: dismissToast } = useToasts()
   const [subscribeTier, setSubscribeTier] = React.useState<(typeof PLANS)[number] | null>(null)
 
   const handleSwitch = async (tier: string) => {
@@ -720,7 +720,7 @@ function BillingTab({ account }: { account: Account }) {
       // Locally, until Sahil adds real Stripe keys, this is the only way the route can fail —
       // every other rejection path in /api/billing/checkout returns a specific reason, but this
       // toast is what the task asked for and matches the actual local dev experience today.
-      setToast('Stripe keys not configured. Checkout disabled in development.')
+      pushToast('Stripe keys not configured. Checkout disabled in development.', { tone: 'error' })
       setCheckingOut(null)
     }
   }
@@ -783,7 +783,13 @@ function BillingTab({ account }: { account: Account }) {
           </Modal>
         </div>
       )}
-      {toast && <ToastHost><Toast tone="error" onDismiss={() => setToast(null)}>{toast}</Toast></ToastHost>}
+      {toasts.length > 0 && (
+        <ToastHost>
+          {toasts.map((t) => (
+            <Toast key={t.id} tone={t.tone} onDismiss={() => dismissToast(t.id)}>{t.message}</Toast>
+          ))}
+        </ToastHost>
+      )}
     </>
   )
 }

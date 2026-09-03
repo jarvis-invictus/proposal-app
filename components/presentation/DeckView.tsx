@@ -209,6 +209,28 @@ function SlideContent({ slide, accent, currency, reduced, onExit }: { slide: Dec
     )
   }
 
+  if (slide.kind === 'attachments') {
+    return (
+      <div>
+        <h2 style={{ textAlign: 'center', fontSize: 28, marginBottom: 28 }}>Attachments</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(slide.attachments.length, 2)}, minmax(0, 1fr))`, gap: 16 }}>
+          {slide.attachments.map((a: any, i: number) => (
+            <motion.div key={i} initial={stagger()} animate={{ opacity: 1, y: 0 }} transition={staggerTransition(i)}
+              style={{ borderRadius: 'var(--radius-card-lg)', overflow: 'hidden', border: '1px solid var(--border-hairline)', background: 'var(--surface-card)' }}>
+              {a.type === 'video' ? (
+                <video src={a.url} controls preload="none" style={{ width: '100%', display: 'block' }} />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={a.url} alt={a.caption || 'Attachment'} loading="lazy" style={{ width: '100%', display: 'block' }} />
+              )}
+              {a.caption && <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', padding: '10px 14px' }}>{a.caption}</p>}
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   if (slide.kind === 'terms') {
     return (
       <div style={{ display: 'grid', gridTemplateColumns: slide.terms.length ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 32 }}>
