@@ -12,6 +12,7 @@ import { SignaturePad } from '@/components/app/SignaturePad'
 import { DealWon } from '@/components/app/DealWon'
 import { PdfExportModal, type PdfExportOptions } from '@/components/app/PdfExportModal'
 import { DeckView } from '@/components/presentation/DeckView'
+import { BrandFontLink } from '@/components/app/BrandFontLink'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { ESIGN_CONSENT_STATEMENT, type Signature } from '@/lib/signature'
 
@@ -58,6 +59,9 @@ export default function PublicProposalView({
   // Same fallback chain as the editor: an explicit choice on the proposal wins, then the
   // linked brand kit's primary color, then the old hardcoded default for accounts with no kit.
   const themeColor = content.themeColor || proposal.brand_kits?.colors?.primary || '#4F46E5'
+  const headingFontName = proposal.brand_kits?.fonts?.heading || null
+  const bodyFontName = proposal.brand_kits?.fonts?.body || null
+  const headingFontFamily = headingFontName ? `"${headingFontName}", var(--font-serif)` : undefined
 
   const searchParams = useSearchParams()
   // The document is the permanent, signable record — deck is a presentational extra, so a
@@ -189,6 +193,8 @@ export default function PublicProposalView({
           secondary: proposal.brand_kits?.colors?.secondary,
           accent: proposal.brand_kits?.colors?.accent,
           name: proposal.brand_kits?.name || null,
+          headingFont: headingFontName,
+          bodyFont: bodyFontName,
         }}
         currency={currency}
         onExit={() => setViewMode('document')}
@@ -209,6 +215,7 @@ export default function PublicProposalView({
 
   return (
     <div className={`relative min-h-screen print:min-h-0 ${pdfConfig.inkSavingMode ? 'print:text-black' : ''}`} style={{ background: 'var(--surface-page)' }}>
+      <BrandFontLink heading={headingFontName} body={bodyFontName} />
 
       {/* Anchored to the viewport, not this potentially long-scrolling document — same fix as
           the Modal/PdfExportModal below, so the celebration centers on screen regardless of
@@ -281,7 +288,7 @@ export default function PublicProposalView({
           className={`p-12 text-white print:text-black ${pdfConfig.inkSavingMode ? 'print:bg-transparent print:border-b print:border-gray-300' : ''}`}
           style={!pdfConfig.inkSavingMode ? { backgroundColor: themeColor } : {}}
         >
-          <h1 className="text-4xl font-bold mb-4 print:text-5xl">{headerTextToRender}</h1>
+          <h1 className="text-4xl font-bold mb-4 print:text-5xl" style={{ fontFamily: headingFontFamily }}>{headerTextToRender}</h1>
           <div className="grid grid-cols-2 gap-8 mt-8 opacity-90 text-sm print:opacity-100">
             <div>
               <p className="uppercase tracking-wider text-xs mb-1 opacity-70 print:text-gray-500">Prepared For</p>
@@ -315,7 +322,7 @@ export default function PublicProposalView({
         {/* Packages Section */}
         {content.packages && content.packages.length > 0 && (
           <div className="p-12 print:break-inside-avoid" style={{ borderBottom: '1px solid var(--border-hairline)' }}>
-            <h2 className="text-ink" style={{ fontSize: 'var(--text-h3)', fontWeight: 700, marginBottom: 32 }}>Investment Options</h2>
+            <h2 className="text-ink" style={{ fontSize: 'var(--text-h3)', fontWeight: 700, marginBottom: 32, fontFamily: headingFontFamily }}>Investment Options</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid print:grid-cols-2">
               {content.packages.map((pkg: any, idx: number) => (
                 <div
@@ -361,7 +368,7 @@ export default function PublicProposalView({
         {/* Add-ons Section */}
         {pdfConfig.visibleSections.addOns && content.addOns && content.addOns.length > 0 && (
           <div className="p-12 print:break-inside-avoid" style={{ borderBottom: '1px solid var(--border-hairline)' }}>
-            <h2 className="text-ink" style={{ fontSize: 'var(--text-h4)', fontWeight: 700, marginBottom: 24 }}>Optional Add-ons</h2>
+            <h2 className="text-ink" style={{ fontSize: 'var(--text-h4)', fontWeight: 700, marginBottom: 24, fontFamily: headingFontFamily }}>Optional Add-ons</h2>
             <div className="space-y-4">
               {content.addOns.map((addon: any, idx: number) => (
                 <div key={idx} className="flex items-start justify-between rounded-lg p-4 print:bg-white print:border-gray-200"
@@ -384,7 +391,7 @@ export default function PublicProposalView({
         {/* Timeline Section */}
         {pdfConfig.visibleSections.timeline && content.timeline && content.timeline.length > 0 && (
           <div className="p-12 print:break-inside-avoid" style={{ borderBottom: '1px solid var(--border-hairline)' }}>
-            <h2 className="text-ink" style={{ fontSize: 'var(--text-h3)', fontWeight: 700, marginBottom: 32 }}>Project Timeline</h2>
+            <h2 className="text-ink" style={{ fontSize: 'var(--text-h3)', fontWeight: 700, marginBottom: 32, fontFamily: headingFontFamily }}>Project Timeline</h2>
             <div className="space-y-6">
               {content.timeline.map((phase: any, idx: number) => (
                 <div key={idx} className="flex gap-6">
@@ -404,7 +411,7 @@ export default function PublicProposalView({
         {/* Attachments Section */}
         {pdfConfig.visibleSections.attachments && content.attachments && content.attachments.length > 0 && (
           <div className="p-12 print:break-inside-avoid" style={{ borderBottom: '1px solid var(--border-hairline)' }}>
-            <h2 className="text-ink" style={{ fontSize: 'var(--text-h4)', fontWeight: 700, marginBottom: 24 }}>Attachments</h2>
+            <h2 className="text-ink" style={{ fontSize: 'var(--text-h4)', fontWeight: 700, marginBottom: 24, fontFamily: headingFontFamily }}>Attachments</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid print:grid-cols-2">
               {content.attachments.map((a: any, idx: number) => (
                 <div key={idx} className="print:break-inside-avoid" style={{ borderRadius: 'var(--radius-card)', overflow: 'hidden', border: '1px solid var(--border-hairline)' }}>
@@ -428,7 +435,7 @@ export default function PublicProposalView({
           style={{ background: pdfConfig.inkSavingMode ? 'var(--surface-card)' : 'var(--surface-sunken)' }}>
           {content.paymentSection && (
             <div>
-              <h2 className="text-ink" style={{ fontSize: 'var(--text-body-lg)', fontWeight: 700, marginBottom: 16 }}>Payment Schedule</h2>
+              <h2 className="text-ink" style={{ fontSize: 'var(--text-body-lg)', fontWeight: 700, marginBottom: 16, fontFamily: headingFontFamily }}>Payment Schedule</h2>
               <div className="text-slate" style={{ fontSize: 'var(--text-sm)' }}>
                 <p className="text-ink" style={{ fontWeight: 'var(--weight-medium)', marginBottom: 8 }}>{content.paymentSection.schedule}</p>
                 <p style={{ whiteSpace: 'pre-wrap' }}>{content.paymentSection.terms}</p>
@@ -464,7 +471,7 @@ export default function PublicProposalView({
 
           {pdfConfig.visibleSections.terms && content.terms && content.terms.length > 0 && (
             <div>
-              <h2 className="text-ink" style={{ fontSize: 'var(--text-body-lg)', fontWeight: 700, marginBottom: 16 }}>Terms & Conditions</h2>
+              <h2 className="text-ink" style={{ fontSize: 'var(--text-body-lg)', fontWeight: 700, marginBottom: 16, fontFamily: headingFontFamily }}>Terms & Conditions</h2>
               <ul className="text-slate list-disc pl-4 space-y-2" style={{ fontSize: 'var(--text-sm)' }}>
                 {content.terms.map((term: string, idx: number) => (
                   <li key={idx} style={{ whiteSpace: 'pre-wrap' }}>{term}</li>

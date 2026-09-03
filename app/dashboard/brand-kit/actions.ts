@@ -72,3 +72,35 @@ export async function saveBrandKit(data: any) {
     logoUrl: (saved.logo_url as string | null) || null,
   }
 }
+
+export async function deleteBrandKit(id: string) {
+  if (!id) throw new Error("Brand kit id is required")
+  const supabase = await createClient()
+
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) throw new Error("Unauthorized")
+
+  const { data: userRecord } = await supabase
+    .from('users')
+    .select('account_id')
+    .eq('id', userData.user.id)
+    .single()
+
+  if (!userRecord?.account_id) throw new Error("Account not found")
+
+  // Scoped to the caller's own account, not just the row id — RLS enforces the same boundary,
+  // but filtering here too means a foreign id fails the query outright instead of relying on a
+  // single layer of defense.
+  const { error } = await supabase
+    .from('brand_kits')
+    .delete()
+    .eq('id', id)
+    .eq('account_id', userRecord.account_id)
+
+  if (error) {
+    console.error("Failed to delete brand kit", error)
+    throw new Error("Failed to delete brand kit")
+  }
+
+  revalidatePath('/dashboard')
+}
