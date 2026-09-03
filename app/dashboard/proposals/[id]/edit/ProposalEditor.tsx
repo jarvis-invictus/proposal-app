@@ -7,7 +7,9 @@ import { StructuredDocument } from '@/components/editor/StructuredDocument'
 import { PackagesBlock, type PackageItem } from '@/components/editor/PackagesBlock'
 import { AddOnsBlock, type AddOnItem } from '@/components/editor/AddOnsBlock'
 import { TimelineBlock, type TimelinePhase } from '@/components/editor/TimelineBlock'
+import { AttachmentsBlock } from '@/components/editor/AttachmentsBlock'
 import { TermsPaymentBlock, type PaymentSection } from '@/components/editor/TermsPaymentBlock'
+import type { Attachment } from '@/lib/attachments'
 import { PublishModal } from '@/components/editor/PublishModal'
 import { type ThemeRoles } from '@/components/app/ThemeColorPicker'
 import { PdfExportModal, type PdfExportOptions } from '@/components/app/PdfExportModal'
@@ -186,6 +188,12 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
           <TimelineBlock
             timeline={(content.timeline as TimelinePhase[]) || []}
             onChange={(next) => updateField('timeline', next)}
+          />
+          <AttachmentsBlock
+            attachments={(content.attachments as Attachment[]) || []}
+            onChange={(next) => updateField('attachments', next)}
+            accountId={initialProposal.account_id}
+            proposalId={proposal.id}
           />
           <TermsPaymentBlock
             paymentSection={(content.paymentSection as PaymentSection) || { schedule: '', terms: '' }}

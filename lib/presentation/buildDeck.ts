@@ -8,6 +8,7 @@ export type DeckSlide =
   | { id: string; kind: 'packages'; packages: any[] }
   | { id: string; kind: 'addOns'; addOns: any[] }
   | { id: string; kind: 'timeline'; timeline: any[] }
+  | { id: string; kind: 'attachments'; attachments: any[] }
   | { id: string; kind: 'terms'; terms: string[]; paymentSection: { schedule: string; terms: string } | null }
   | { id: string; kind: 'closing'; clientName: string }
 
@@ -31,6 +32,9 @@ export function buildDeckSlides(content: any): DeckSlide[] {
   }
   if (Array.isArray(content?.timeline) && content.timeline.length > 0) {
     slides.push({ id: 'timeline', kind: 'timeline', timeline: content.timeline })
+  }
+  if (Array.isArray(content?.attachments) && content.attachments.length > 0) {
+    slides.push({ id: 'attachments', kind: 'attachments', attachments: content.attachments })
   }
   if ((Array.isArray(content?.terms) && content.terms.length > 0) || content?.paymentSection) {
     slides.push({ id: 'terms', kind: 'terms', terms: content?.terms || [], paymentSection: content?.paymentSection || null })
