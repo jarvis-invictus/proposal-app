@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Pill } from '@/components/ui/Pill'
 import { SkyBackdrop } from '@/components/app/AppShell'
 import { BrandExtract } from './brand-kit/BrandExtract'
-import { finishOnboarding } from './onboarding-actions'
+import { finishOnboarding, saveOnboardingBusiness } from './onboarding-actions'
 
 const STEPS = [
   { id: 'business', n: '1', label: 'Your business' },
@@ -142,10 +142,17 @@ function BusinessStep({ business, setBusiness, category, setCategory, onNext }: 
   )
 }
 
-type ExistingBrandKit = { id: string; name: string; colors: { primary?: string; secondary?: string; accent?: string } | null }
+type ExistingBrandKit = {
+  id: string
+  name: string
+  colors: { primary?: string; secondary?: string; accent?: string; background?: string; text?: string } | null
+  fonts?: { heading?: string; body?: string } | null
+  logoUrl?: string | null
+}
 
-function BrandStep({ onNext, accountId, business, existingBrandKits }: {
-  onNext: () => void; accountId: string; business: string; existingBrandKits: ExistingBrandKit[]
+function BrandStep({ onNext, onSaved, accountId, business, existingBrandKits }: {
+  onNext: () => void; onSaved: (kit: ExistingBrandKit) => void
+  accountId: string; business: string; existingBrandKits: ExistingBrandKit[]
 }) {
   const [creatingNew, setCreatingNew] = React.useState(false)
   const kit = existingBrandKits[0]
@@ -180,12 +187,56 @@ function BrandStep({ onNext, accountId, business, existingBrandKits }: {
 
   return (
     <WizardPanel className="liquid-flat">
-      <BrandExtract accountId={accountId} kitNameDefault={business || 'Marg Studio'} onConfirm={onNext} onSkip={onNext} />
+      <BrandExtract
+        accountId={accountId}
+        kitNameDefault={business || 'Marg Studio'}
+        onConfirm={(kit) => { if (kit) onSaved(kit); onNext() }}
+        onSkip={onNext}
+      />
     </WizardPanel>
   )
 }
 
-function SampleFrame({ business }: { business: string }) {
+/** Accepts '#rgb', '#rrggbb' or 'rgb(r,g,b)' — kits saved before the Firecrawl swap hold
+ * computed `rgb(...)` strings from the old Playwright extraction, so both shapes turn up. */
+function parseColor(value?: string | null): [number, number, number] | null {
+  if (!value || typeof value !== 'string') return null
+  const hex = value.trim()
+  const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(hex)
+  if (short) return [parseInt(short[1] + short[1], 16), parseInt(short[2] + short[2], 16), parseInt(short[3] + short[3], 16)]
+  const long = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex)
+  if (long) return [parseInt(long[1], 16), parseInt(long[2], 16), parseInt(long[3], 16)]
+  const rgb = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(hex)
+  if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])]
+  return null
+}
+
+/** Tints a brand colour so it can be used as a surface without guessing at contrast — every
+ * tint sits over the kit's own background and all text stays the kit's own text colour, so this
+ * stays readable for dark palettes too instead of only working for light ones. */
+function withAlpha(value: string | null | undefined, alpha: number, fallback: string): string {
+  const rgb = parseColor(value)
+  if (!rgb) return fallback
+  return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha})`
+}
+
+function SampleFrame({ business, brandKit }: { business: string; brandKit: ExistingBrandKit | null }) {
+  const primary = brandKit?.colors?.primary || '#7cbcdc'
+  const ink = brandKit?.colors?.text || '#171717'
+  const paper = brandKit?.colors?.background || '#ffffff'
+  const logoUrl = brandKit?.logoUrl || null
+  const headingFont = brandKit?.fonts?.heading ? `"${brandKit.fonts.heading}", var(--font-sans)` : undefined
+  const bodyFont = brandKit?.fonts?.body ? `"${brandKit.fonts.body}", var(--font-sans)` : undefined
+  const accentFamily = headingFont || 'var(--font-serif)'
+
+  const hairline = withAlpha(ink, 0.1, 'rgba(23,23,23,0.10)')
+  const label = withAlpha(ink, 0.55, '#6b7280')
+  const bodyText = withAlpha(ink, 0.78, '#3d4451')
+  const tintSoft = withAlpha(primary, 0.08, '#f2f8fc')
+  const tintBadge = withAlpha(primary, 0.14, '#cfe4f2')
+  const badgeBorder = withAlpha(primary, 0.45, '#7cbcdc')
+  const neutralBlock = withAlpha(ink, 0.06, '#f1f1f1')
+
   return (
     <div style={{ borderRadius: 'var(--radius-card)', overflow: 'hidden', border: '1px solid var(--border-strong)', boxShadow: 'var(--shadow-raised)', background: 'var(--surface-card)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderBottom: '1px solid var(--border-hairline)', background: 'var(--glass-quiet)' }}>
@@ -197,50 +248,54 @@ function SampleFrame({ business }: { business: string }) {
         </span>
         <Pill tone="solid" size="sm">Sample</Pill>
       </div>
-      <div className="force-light" style={{ height: 330, overflowY: 'auto', background: '#fff' }}>
+      <div className="force-light" style={{ height: 330, overflowY: 'auto', background: paper, fontFamily: bodyFont }}>
         <div style={{ padding: '30px 38px 40px' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 26 }}>
             <div>
-              <div style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6b7280', marginBottom: 10 }}>Sample · Prepared for Northwind Co</div>
-              <div style={{ fontSize: 30, fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.1, color: '#171717', maxWidth: 400 }}>
-                Website redesign for <em style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400, letterSpacing: 0 }}>Northwind</em>
+              <div style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: label, marginBottom: 10 }}>Sample · Prepared for Northwind Co</div>
+              <div style={{ fontSize: 30, fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.1, color: ink, maxWidth: 400, fontFamily: headingFont }}>
+                Website redesign for <em style={{ fontFamily: accentFamily, fontStyle: 'italic', fontWeight: 400, letterSpacing: 0 }}>Northwind</em>
               </div>
             </div>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 13px', borderRadius: 999, background: '#cfe4f2', border: '1px solid #7cbcdc', fontSize: 12, fontWeight: 500, color: '#17384f', whiteSpace: 'nowrap' }}>
-              <Logo size={14} /> {business}
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 13px', borderRadius: 999, background: tintBadge, border: '1px solid ' + badgeBorder, fontSize: 12, fontWeight: 500, color: ink, whiteSpace: 'nowrap' }}>
+              {logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt="" style={{ height: 14, maxWidth: 60, objectFit: 'contain' }} />
+              )}
+              {business}
             </span>
           </div>
           <div style={{ display: 'flex', gap: 32, marginBottom: 28, flexWrap: 'wrap' }}>
             {[['Prepared by', business], ['Date', '13 August 2026'], ['Valid until', '13 September 2026']].map(([k, v]) => (
               <div key={k}>
-                <div style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6b7280', marginBottom: 5 }}>{k}</div>
-                <div style={{ fontSize: 14, fontWeight: 500, color: '#171717' }}>{v}</div>
+                <div style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: label, marginBottom: 5 }}>{k}</div>
+                <div style={{ fontSize: 14, fontWeight: 500, color: ink }}>{v}</div>
               </div>
             ))}
           </div>
-          <div style={{ height: 1, background: 'rgba(23,23,23,0.10)', marginBottom: 24 }} />
-          <div style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 24, color: '#171717', marginBottom: 12 }}>Executive Summary</div>
-          <p style={{ fontSize: 15, lineHeight: 1.75, color: '#3d4451', maxWidth: 560, marginBottom: 28 }}>
+          <div style={{ height: 1, background: hairline, marginBottom: 24 }} />
+          <div style={{ fontFamily: accentFamily, fontStyle: 'italic', fontSize: 24, color: ink, marginBottom: 12 }}>Executive Summary</div>
+          <p style={{ fontSize: 15, lineHeight: 1.75, color: bodyText, maxWidth: 560, marginBottom: 28 }}>
             Northwind Co needs a website that converts as well as it looks. Over eight weeks {business} will rebuild the marketing site on a design system your team can extend, with copy and structure aimed squarely at booking more qualified calls.
           </p>
-          <div style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 24, color: '#171717', marginBottom: 14 }}>Packages</div>
+          <div style={{ fontFamily: accentFamily, fontStyle: 'italic', fontSize: 24, color: ink, marginBottom: 14 }}>Packages</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, maxWidth: 560, marginBottom: 28 }}>
             {[['Essential', '$14,000', 'Five core pages, design and build.'], ['Complete', '$24,000', 'Everything in Essential, plus CMS and copywriting.']].map(([n, p, d], i) => (
-              <div key={n} style={{ padding: 16, borderRadius: 14, border: '1px solid ' + (i === 1 ? '#7cbcdc' : 'rgba(23,23,23,0.10)'), background: i === 1 ? '#f2f8fc' : '#fff' }}>
+              <div key={n} style={{ padding: 16, borderRadius: 14, border: '1px solid ' + (i === 1 ? primary : hairline), background: i === 1 ? tintSoft : paper }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 7 }}>
-                  <span style={{ fontSize: 15, fontWeight: 600, color: '#171717' }}>{n}</span>
-                  <span style={{ fontSize: 15, fontWeight: 600, color: '#171717', fontVariantNumeric: 'tabular-nums' }}>{p}</span>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: ink }}>{n}</span>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: ink, fontVariantNumeric: 'tabular-nums' }}>{p}</span>
                 </div>
-                <div style={{ fontSize: 13, lineHeight: 1.6, color: '#6b7280' }}>{d}</div>
+                <div style={{ fontSize: 13, lineHeight: 1.6, color: label }}>{d}</div>
               </div>
             ))}
           </div>
-          <div style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 24, color: '#171717', marginBottom: 12 }}>Payment</div>
+          <div style={{ fontFamily: accentFamily, fontStyle: 'italic', fontSize: 24, color: ink, marginBottom: 12 }}>Payment</div>
           <div style={{ display: 'flex', gap: 10, maxWidth: 560 }}>
             {[['Deposit', '50% · $12,000'], ['On delivery', '50% · $12,000']].map(([k, v]) => (
-              <div key={k} style={{ flex: 1, padding: '12px 14px', borderRadius: 10, background: '#f1f1f1' }}>
-                <div style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6b7280', marginBottom: 5 }}>{k}</div>
-                <div style={{ fontSize: 14, fontWeight: 500, color: '#171717' }}>{v}</div>
+              <div key={k} style={{ flex: 1, padding: '12px 14px', borderRadius: 10, background: neutralBlock }}>
+                <div style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: label, marginBottom: 5 }}>{k}</div>
+                <div style={{ fontSize: 14, fontWeight: 500, color: ink }}>{v}</div>
               </div>
             ))}
           </div>
@@ -250,18 +305,24 @@ function SampleFrame({ business }: { business: string }) {
   )
 }
 
-function PreviewStep({ business, onNext }: { business: string; onNext: () => void }) {
+function PreviewStep({ business, brandKit, onNext }: { business: string; brandKit: ExistingBrandKit | null; onNext: () => void }) {
   const name = business || 'Marg Studio'
+  // Only promise "your brand applied" when there's actually a kit driving the preview — if the
+  // brand step was skipped this is Marg's default styling, and saying otherwise is just a lie.
   return (
     <WizardPanel className="liquid-flat">
       <div style={{ marginBottom: 22 }}>
         <Badge tone="new" style={{ marginBottom: 10 }}>Nothing to do here — just look</Badge>
         <h1 style={{ fontSize: 30, letterSpacing: 'var(--tracking-tight)', lineHeight: 1.15 }}>
-          Here&apos;s what a proposal looks like in <em style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400, letterSpacing: 0 }}>your</em> brand
+          Here&apos;s what a proposal looks like in <em style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400, letterSpacing: 0 }}>{brandKit ? 'your' : 'Marg’s default'}</em> brand
         </h1>
-        <p style={{ marginTop: 9, fontSize: 'var(--text-body-lg)', color: 'var(--text-muted)', maxWidth: 460 }}>Your colours, fonts and logo, already applied. Scroll it — this is a real page, not a picture.</p>
+        <p style={{ marginTop: 9, fontSize: 'var(--text-body-lg)', color: 'var(--text-muted)', maxWidth: 460 }}>
+          {brandKit
+            ? 'Your colours and logo, already applied. Scroll it — this is a real page, not a picture.'
+            : 'You skipped the brand kit, so this uses Marg’s default styling. Set one up any time and every proposal picks it up.'}
+        </p>
       </div>
-      <SampleFrame business={name} />
+      <SampleFrame business={name} brandKit={brandKit} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 22, flexWrap: 'wrap' }}>
         <Button variant="primary" iconRight="arrow-right" onClick={onNext}>Looks good — what&apos;s next?</Button>
         <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Sample content. Your real proposals use your words.</span>
@@ -300,14 +361,39 @@ function FirstProposalStep({ onCreate, onLater }: { onCreate: () => void; onLate
   )
 }
 
-export function OnboardingWizard({ firstName, accountId, existingBrandKits = [] }: { firstName: string; accountId: string; existingBrandKits?: ExistingBrandKit[] }) {
+export function OnboardingWizard({ firstName, accountId, existingBrandKits = [], initialBusiness = '', initialCategory = null }: {
+  firstName: string; accountId: string; existingBrandKits?: ExistingBrandKit[]
+  initialBusiness?: string; initialCategory?: string | null
+}) {
   const router = useRouter()
-  const [phase, setPhase] = React.useState<'welcome' | 0 | 1 | 2 | 3>('welcome')
-  const [business, setBusiness] = React.useState('')
-  const [category, setCategory] = React.useState<string | null>(null)
+  // Only pre-fill the name when step 1 was genuinely completed before (see the phase note below):
+  // accounts.name is seeded with the user's email at signup, and pre-filling *that* into the
+  // "Business name" box is worse than leaving the placeholder showing.
+  const [business, setBusiness] = React.useState(initialCategory ? initialBusiness : '')
+  const [category, setCategory] = React.useState<string | null>(initialCategory)
+  const [brandKit, setBrandKit] = React.useState<ExistingBrandKit | null>(existingBrandKits[0] ?? null)
+
+  // Resume where the last attempt got to, rather than always restarting from the welcome screen.
+  // `category` is the reliable "step 1 was actually completed" signal — accounts.name is always
+  // pre-populated at signup by the on_auth_user_created trigger, so a non-empty name proves nothing.
+  const [phase, setPhase] = React.useState<'welcome' | 0 | 1 | 2 | 3>(() => {
+    if (!initialCategory) return 'welcome'
+    return existingBrandKits.length > 0 ? 2 : 1
+  })
 
   const step = phase === 'welcome' ? -1 : phase
   const next = () => setPhase((p) => (p === 'welcome' ? 0 : Math.min((p as number) + 1, STEPS.length - 1) as 0 | 1 | 2 | 3))
+
+  const leaveBusinessStep = async () => {
+    next()
+    // Fire-and-forget: advancing shouldn't be blocked on (or reverted by) a failed background
+    // save — the same values are written again authoritatively by finishOnboarding at the end.
+    try {
+      await saveOnboardingBusiness({ business, category })
+    } catch (err) {
+      console.error('Failed to persist onboarding business step', err)
+    }
+  }
 
   const finish = async (dest: 'proposals' | 'new') => {
     await finishOnboarding({ business: business || 'Marg Studio', category })
@@ -328,9 +414,9 @@ export function OnboardingWizard({ firstName, accountId, existingBrandKits = [] 
 
         <div key={phase} className="screen-in" style={{ width: 'min(860px,100%)' }}>
           {phase === 'welcome' && <Welcome firstName={firstName} onStart={next} />}
-          {phase === 0 && <BusinessStep business={business} setBusiness={setBusiness} category={category} setCategory={setCategory} onNext={next} />}
-          {phase === 1 && <BrandStep onNext={next} accountId={accountId} business={business} existingBrandKits={existingBrandKits} />}
-          {phase === 2 && <PreviewStep business={business} onNext={next} />}
+          {phase === 0 && <BusinessStep business={business} setBusiness={setBusiness} category={category} setCategory={setCategory} onNext={leaveBusinessStep} />}
+          {phase === 1 && <BrandStep onNext={next} onSaved={setBrandKit} accountId={accountId} business={business} existingBrandKits={existingBrandKits} />}
+          {phase === 2 && <PreviewStep business={business} brandKit={brandKit} onNext={next} />}
           {phase === 3 && <FirstProposalStep onCreate={() => finish('new')} onLater={() => finish('proposals')} />}
         </div>
       </div>
