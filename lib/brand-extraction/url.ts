@@ -33,7 +33,7 @@ export async function extractBrandKitFromUrl(url: string) {
     },
     body: JSON.stringify({
       url: target,
-      formats: [{ type: 'branding' }],
+      formats: ['branding'],
     }),
   })
 

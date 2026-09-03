@@ -11,3 +11,5 @@ if (dsn) {
 } else if (process.env.NODE_ENV !== 'production') {
   console.warn('[sentry] NEXT_PUBLIC_SENTRY_DSN not set — client-side error tracking is disabled.')
 }
+
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart
