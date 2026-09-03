@@ -142,7 +142,42 @@ function BusinessStep({ business, setBusiness, category, setCategory, onNext }: 
   )
 }
 
-function BrandStep({ onNext, accountId, business }: { onNext: () => void; accountId: string; business: string }) {
+type ExistingBrandKit = { id: string; name: string; colors: { primary?: string; secondary?: string; accent?: string } | null }
+
+function BrandStep({ onNext, accountId, business, existingBrandKits }: {
+  onNext: () => void; accountId: string; business: string; existingBrandKits: ExistingBrandKit[]
+}) {
+  const [creatingNew, setCreatingNew] = React.useState(false)
+  const kit = existingBrandKits[0]
+
+  if (kit && !creatingNew) {
+    const swatches = [kit.colors?.primary, kit.colors?.secondary, kit.colors?.accent].filter(Boolean) as string[]
+    return (
+      <WizardPanel className="liquid-flat">
+        <Head title="Your brand kit is already set up" accent="already set up" sub="From an earlier attempt — no need to scan again." />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 18px', marginBottom: 20, borderRadius: 'var(--radius-card)', background: 'var(--surface-card)', border: '1px solid var(--border-hairline)' }}>
+          <span style={{ width: 40, height: 40, borderRadius: 'var(--radius-sm)', background: 'var(--brand-12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-deep)', flex: 'none' }}>
+            <Icon name="palette" size={17} />
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: 'var(--text-body)', fontWeight: 500 }}>{kit.name}</span>
+          </span>
+          {swatches.length > 0 && (
+            <span style={{ display: 'flex', gap: 6 }}>
+              {swatches.map((c, i) => <span key={i} style={{ width: 20, height: 20, borderRadius: 'var(--radius-xs)', background: c, border: '1px solid var(--border-hairline)' }} />)}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Button variant="primary" iconRight="arrow-right" onClick={onNext}>Continue</Button>
+          <button type="button" onClick={() => setCreatingNew(true)} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', textDecoration: 'underline' }}>
+            Set up a different one instead
+          </button>
+        </div>
+      </WizardPanel>
+    )
+  }
+
   return (
     <WizardPanel className="liquid-flat">
       <BrandExtract accountId={accountId} kitNameDefault={business || 'Marg Studio'} onConfirm={onNext} onSkip={onNext} />
@@ -265,7 +300,7 @@ function FirstProposalStep({ onCreate, onLater }: { onCreate: () => void; onLate
   )
 }
 
-export function OnboardingWizard({ firstName, accountId }: { firstName: string; accountId: string }) {
+export function OnboardingWizard({ firstName, accountId, existingBrandKits = [] }: { firstName: string; accountId: string; existingBrandKits?: ExistingBrandKit[] }) {
   const router = useRouter()
   const [phase, setPhase] = React.useState<'welcome' | 0 | 1 | 2 | 3>('welcome')
   const [business, setBusiness] = React.useState('')
@@ -294,7 +329,7 @@ export function OnboardingWizard({ firstName, accountId }: { firstName: string; 
         <div key={phase} className="screen-in" style={{ width: 'min(860px,100%)' }}>
           {phase === 'welcome' && <Welcome firstName={firstName} onStart={next} />}
           {phase === 0 && <BusinessStep business={business} setBusiness={setBusiness} category={category} setCategory={setCategory} onNext={next} />}
-          {phase === 1 && <BrandStep onNext={next} accountId={accountId} business={business} />}
+          {phase === 1 && <BrandStep onNext={next} accountId={accountId} business={business} existingBrandKits={existingBrandKits} />}
           {phase === 2 && <PreviewStep business={business} onNext={next} />}
           {phase === 3 && <FirstProposalStep onCreate={() => finish('new')} onLater={() => finish('proposals')} />}
         </div>

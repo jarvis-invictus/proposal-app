@@ -35,7 +35,20 @@ export default async function DashboardPage() {
   // once — by completing it or using "Skip setup" — which persists onboarding_completed_at.
   if (accountData && !accountData.onboarding_completed_at) {
     const firstName = (user.user_metadata?.full_name as string | undefined)?.split(' ')[0] || user.email?.split('@')[0] || 'there'
-    return <OnboardingWizard firstName={firstName} accountId={accountData.id} />
+    // Reloading before the wizard is finished restarts it from the welcome screen every time
+    // (progress isn't persisted) — so the brand-kit step needs to know a kit from an earlier
+    // attempt already exists, or it looks like a brand-new scan on every revisit.
+    const { data: existingKitRows } = await supabase
+      .from('brand_kits')
+      .select('id, name, colors')
+      .eq('account_id', accountData.id)
+      .order('updated_at', { ascending: false })
+    const existingBrandKits = (existingKitRows ?? []).map((row) => ({
+      id: row.id,
+      name: row.name || 'Your brand kit',
+      colors: (row.colors as any) || null,
+    }))
+    return <OnboardingWizard firstName={firstName} accountId={accountData.id} existingBrandKits={existingBrandKits} />
   }
 
   const [{ data: proposalRows }, { count: brandKitCount }] = await Promise.all([
