@@ -9,6 +9,7 @@ import { Logo } from '@/components/ui/Logo'
 import { Badge } from '@/components/ui/Badge'
 import { Pill } from '@/components/ui/Pill'
 import { SkyBackdrop } from '@/components/app/AppShell'
+import { BrandFontLink } from '@/components/app/BrandFontLink'
 import { BrandExtract } from './brand-kit/BrandExtract'
 import { finishOnboarding, saveOnboardingBusiness } from './onboarding-actions'
 
@@ -239,6 +240,7 @@ function SampleFrame({ business, brandKit }: { business: string; brandKit: Exist
 
   return (
     <div style={{ borderRadius: 'var(--radius-card)', overflow: 'hidden', border: '1px solid var(--border-strong)', boxShadow: 'var(--shadow-raised)', background: 'var(--surface-card)' }}>
+      <BrandFontLink heading={brandKit?.fonts?.heading} body={brandKit?.fonts?.body} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderBottom: '1px solid var(--border-hairline)', background: 'var(--glass-quiet)' }}>
         <span style={{ display: 'flex', gap: 5 }}>
           {['#e5554e', '#e5b34e', '#4eb56a'].map((c) => <span key={c} style={{ width: 9, height: 9, borderRadius: '50%', background: c, opacity: 0.75 }} />)}
@@ -361,23 +363,23 @@ function FirstProposalStep({ onCreate, onLater }: { onCreate: () => void; onLate
   )
 }
 
-export function OnboardingWizard({ firstName, accountId, existingBrandKits = [], initialBusiness = '', initialCategory = null }: {
+export function OnboardingWizard({ firstName, accountId, existingBrandKits = [], initialBusiness = '', initialCategory = null, stepOneDone = false }: {
   firstName: string; accountId: string; existingBrandKits?: ExistingBrandKit[]
-  initialBusiness?: string; initialCategory?: string | null
+  initialBusiness?: string; initialCategory?: string | null; stepOneDone?: boolean
 }) {
   const router = useRouter()
   // Only pre-fill the name when step 1 was genuinely completed before (see the phase note below):
   // accounts.name is seeded with the user's email at signup, and pre-filling *that* into the
   // "Business name" box is worse than leaving the placeholder showing.
-  const [business, setBusiness] = React.useState(initialCategory ? initialBusiness : '')
+  const [business, setBusiness] = React.useState(stepOneDone ? initialBusiness : '')
   const [category, setCategory] = React.useState<string | null>(initialCategory)
   const [brandKit, setBrandKit] = React.useState<ExistingBrandKit | null>(existingBrandKits[0] ?? null)
 
   // Resume where the last attempt got to, rather than always restarting from the welcome screen.
-  // `category` is the reliable "step 1 was actually completed" signal — accounts.name is always
-  // pre-populated at signup by the on_auth_user_created trigger, so a non-empty name proves nothing.
+  // `stepOneDone` is computed server-side (page.tsx) from category OR a name that differs from
+  // the signup-seeded email — category alone under-detects "typed a name, skipped the category".
   const [phase, setPhase] = React.useState<'welcome' | 0 | 1 | 2 | 3>(() => {
-    if (!initialCategory) return 'welcome'
+    if (!stepOneDone) return 'welcome'
     return existingBrandKits.length > 0 ? 2 : 1
   })
 

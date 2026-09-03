@@ -29,7 +29,10 @@ const SCAN_STEPS = [
   { label: 'Brand read complete' },
 ]
 
-const FONT_OPTIONS = { heading: ['Inter Tight', 'Söhne', 'Fraunces'], body: ['Inter Tight', 'Söhne', 'Georgia'], accent: ['Instrument Serif', 'Fraunces', 'None'] }
+// Every name here must actually be loadable — either a real Google Font (fetched at runtime via
+// BrandFontLink) or a font every OS already ships (Georgia). 'Söhne' was neither: a paid,
+// non-Google webfont that silently never rendered no matter who picked it.
+const FONT_OPTIONS = { heading: ['Inter Tight', 'Manrope', 'Fraunces'], body: ['Inter Tight', 'Manrope', 'Georgia'], accent: ['Instrument Serif', 'Fraunces', 'None'] }
 
 const reduced = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 

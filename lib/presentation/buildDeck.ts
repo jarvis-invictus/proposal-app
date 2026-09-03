@@ -1,7 +1,7 @@
 /** Derives a slide sequence from the same proposal `content` JSON the static document already
  * renders — no parallel AI schema, no persisted data, computed fresh at render time. */
 
-export type DeckBrand = { primary?: string; secondary?: string; accent?: string; name?: string | null } | null
+export type DeckBrand = { primary?: string; secondary?: string; accent?: string; name?: string | null; headingFont?: string | null; bodyFont?: string | null } | null
 
 export type DeckSlide =
   | { id: string; kind: 'cover'; title: string; clientName: string; preparedFor: string; preparedBy: string; dateIssued: string; validUntil: string }

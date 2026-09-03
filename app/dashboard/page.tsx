@@ -50,6 +50,9 @@ export default async function DashboardPage() {
       fonts: (row.fonts as any) || null,
       logoUrl: (row.logo_url as string | null) || null,
     }))
+    // `category` alone under-detects: skipping step 1 without picking a category still saves
+    // the business name, so a name that differs from the signup-seeded email also counts.
+    const stepOneDone = Boolean(accountData.category) || Boolean(accountData.name && accountData.name !== user.email)
     return (
       <OnboardingWizard
         firstName={firstName}
@@ -57,6 +60,7 @@ export default async function DashboardPage() {
         existingBrandKits={existingBrandKits}
         initialBusiness={accountData.name || ''}
         initialCategory={accountData.category || null}
+        stepOneDone={stepOneDone}
       />
     )
   }

@@ -8,6 +8,7 @@ import { formatCurrency } from '@/lib/formatCurrency'
 import { prefersReducedMotion } from '@/lib/reducedMotion'
 import { buildDeckSlides, type DeckSlide, type DeckBrand } from '@/lib/presentation/buildDeck'
 import { DURATION_BASE, DURATION_SLOW, EASE_OUT_SOFT, EASE_SPRING } from '@/lib/presentation/motionTokens'
+import { BrandFontLink } from '@/components/app/BrandFontLink'
 
 const SLIDE_VARIANTS = {
   enter: (direction: number) => ({ opacity: 0, x: direction * 48 }),
@@ -27,6 +28,8 @@ export function DeckView({
   const [[index, direction], setIndexState] = React.useState<[number, number]>([0, 0])
   const reduced = React.useMemo(() => prefersReducedMotion(), [])
   const accent = brand?.primary || '#4F46E5'
+  const bodyFamily = brand?.bodyFont ? `"${brand.bodyFont}", var(--font-sans)` : 'var(--font-sans)'
+  const headingFamily = brand?.headingFont ? `"${brand.headingFont}", var(--font-sans)` : 'inherit'
 
   const go = React.useCallback((next: number) => {
     setIndexState(([current]) => {
@@ -52,8 +55,9 @@ export function DeckView({
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 55, display: 'flex', flexDirection: 'column',
-      background: 'var(--surface-page)', fontFamily: 'var(--font-sans)', overflow: 'hidden',
+      background: 'var(--surface-page)', fontFamily: bodyFamily, overflow: 'hidden',
     }}>
+      <BrandFontLink heading={brand?.headingFont} body={brand?.bodyFont} />
       <div aria-hidden style={{
         position: 'absolute', top: '-30%', left: '50%', transform: 'translateX(-50%)', width: '140%', height: '70%',
         background: `radial-gradient(closest-side, ${accent}22, transparent 70%)`, pointerEvents: 'none',
@@ -93,7 +97,7 @@ export function DeckView({
             transition={{ duration: reduced ? 0 : DURATION_SLOW, ease: EASE_OUT_SOFT }}
             style={{ width: 'min(760px, 100%)', maxHeight: '100%', overflowY: 'auto' }}
           >
-            <SlideContent slide={slide} accent={accent} currency={currency} reduced={reduced} onExit={onExit} />
+            <SlideContent slide={slide} accent={accent} currency={currency} reduced={reduced} onExit={onExit} headingFamily={headingFamily} />
           </motion.div>
         </AnimatePresence>
       </div>
@@ -110,7 +114,7 @@ export function DeckView({
   )
 }
 
-function SlideContent({ slide, accent, currency, reduced, onExit }: { slide: DeckSlide; accent: string; currency: string; reduced: boolean; onExit: () => void }) {
+function SlideContent({ slide, accent, currency, reduced, onExit, headingFamily }: { slide: DeckSlide; accent: string; currency: string; reduced: boolean; onExit: () => void; headingFamily: string }) {
   const stagger = () => (reduced ? undefined : { opacity: 0, y: 14 })
   const staggerTransition = (i: number) => ({ duration: DURATION_BASE, delay: reduced ? 0 : 0.08 * i, ease: EASE_SPRING })
 
@@ -120,7 +124,7 @@ function SlideContent({ slide, accent, currency, reduced, onExit }: { slide: Dec
         <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)' }}>
           Prepared for {slide.clientName}
         </span>
-        <h1 style={{ fontSize: 44, lineHeight: 1.1, letterSpacing: 'var(--tracking-tight)', maxWidth: 640, margin: 0 }}>{slide.title}</h1>
+        <h1 style={{ fontSize: 44, lineHeight: 1.1, letterSpacing: 'var(--tracking-tight)', maxWidth: 640, margin: 0, fontFamily: headingFamily }}>{slide.title}</h1>
         <div style={{ display: 'flex', gap: 24, marginTop: 8, fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', flexWrap: 'wrap', justifyContent: 'center' }}>
           {slide.preparedBy && <span>Prepared by {slide.preparedBy}</span>}
           {slide.dateIssued && <span>&middot; {slide.dateIssued}</span>}
@@ -134,7 +138,7 @@ function SlideContent({ slide, accent, currency, reduced, onExit }: { slide: Dec
   if (slide.kind === 'packages') {
     return (
       <div>
-        <h2 style={{ textAlign: 'center', fontSize: 28, marginBottom: 28 }}>Investment Options</h2>
+        <h2 style={{ textAlign: 'center', fontSize: 28, marginBottom: 28, fontFamily: headingFamily }}>Investment Options</h2>
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(slide.packages.length, 3)}, minmax(0, 1fr))`, gap: 16 }}>
           {slide.packages.map((pkg: any, i: number) => (
             <motion.div key={i} initial={stagger()} animate={{ opacity: 1, y: 0 }} transition={staggerTransition(i)}
@@ -144,7 +148,7 @@ function SlideContent({ slide, accent, currency, reduced, onExit }: { slide: Dec
                 boxShadow: pkg.popular ? 'var(--shadow-brand)' : 'none',
               }}>
               {pkg.popular && <span style={{ display: 'inline-block', marginBottom: 10, padding: '3px 10px', borderRadius: 'var(--radius-pill)', background: accent, color: '#fff', fontSize: 'var(--text-micro)', fontWeight: 600, textTransform: 'uppercase' }}>Most popular</span>}
-              <h3 style={{ fontSize: 'var(--text-h4)', marginBottom: 6 }}>{pkg.name}</h3>
+              <h3 style={{ fontSize: 'var(--text-h4)', marginBottom: 6, fontFamily: headingFamily }}>{pkg.name}</h3>
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', minHeight: 36 }}>{pkg.description}</p>
               <div style={{ margin: '14px 0', display: 'flex', alignItems: 'baseline', gap: 8 }}>
                 <span style={{ fontSize: 26, fontWeight: 700 }}>{formatCurrency(pkg.discountedPrice, currency)}</span>
@@ -169,7 +173,7 @@ function SlideContent({ slide, accent, currency, reduced, onExit }: { slide: Dec
   if (slide.kind === 'addOns') {
     return (
       <div>
-        <h2 style={{ textAlign: 'center', fontSize: 28, marginBottom: 28 }}>Optional Add-ons</h2>
+        <h2 style={{ textAlign: 'center', fontSize: 28, marginBottom: 28, fontFamily: headingFamily }}>Optional Add-ons</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {slide.addOns.map((a: any, i: number) => (
             <motion.div key={i} initial={stagger()} animate={{ opacity: 1, y: 0 }} transition={staggerTransition(i)}
@@ -189,7 +193,7 @@ function SlideContent({ slide, accent, currency, reduced, onExit }: { slide: Dec
   if (slide.kind === 'timeline') {
     return (
       <div>
-        <h2 style={{ textAlign: 'center', fontSize: 28, marginBottom: 28 }}>Project Timeline</h2>
+        <h2 style={{ textAlign: 'center', fontSize: 28, marginBottom: 28, fontFamily: headingFamily }}>Project Timeline</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {slide.timeline.map((phase: any, i: number) => (
             <motion.div key={i} initial={stagger()} animate={{ opacity: 1, y: 0 }} transition={staggerTransition(i)}
@@ -212,7 +216,7 @@ function SlideContent({ slide, accent, currency, reduced, onExit }: { slide: Dec
   if (slide.kind === 'attachments') {
     return (
       <div>
-        <h2 style={{ textAlign: 'center', fontSize: 28, marginBottom: 28 }}>Attachments</h2>
+        <h2 style={{ textAlign: 'center', fontSize: 28, marginBottom: 28, fontFamily: headingFamily }}>Attachments</h2>
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(slide.attachments.length, 2)}, minmax(0, 1fr))`, gap: 16 }}>
           {slide.attachments.map((a: any, i: number) => (
             <motion.div key={i} initial={stagger()} animate={{ opacity: 1, y: 0 }} transition={staggerTransition(i)}
@@ -236,14 +240,14 @@ function SlideContent({ slide, accent, currency, reduced, onExit }: { slide: Dec
       <div style={{ display: 'grid', gridTemplateColumns: slide.terms.length ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 32 }}>
         {slide.paymentSection && (
           <div>
-            <h2 style={{ fontSize: 22, marginBottom: 14 }}>Payment Schedule</h2>
+            <h2 style={{ fontSize: 22, marginBottom: 14, fontFamily: headingFamily }}>Payment Schedule</h2>
             <p style={{ fontWeight: 600, marginBottom: 6 }}>{slide.paymentSection.schedule}</p>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>{slide.paymentSection.terms}</p>
           </div>
         )}
         {slide.terms.length > 0 && (
           <div>
-            <h2 style={{ fontSize: 22, marginBottom: 14 }}>Terms &amp; Conditions</h2>
+            <h2 style={{ fontSize: 22, marginBottom: 14, fontFamily: headingFamily }}>Terms &amp; Conditions</h2>
             <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
               {slide.terms.map((t, i) => <li key={i} style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>{t}</li>)}
             </ul>
@@ -258,7 +262,7 @@ function SlideContent({ slide, accent, currency, reduced, onExit }: { slide: Dec
       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 52, height: 52, borderRadius: '50%', background: accent }}>
         <Icon name="check" size={24} color="#fff" />
       </span>
-      <h2 style={{ fontSize: 26, margin: 0 }}>Ready to move forward, {slide.clientName}?</h2>
+      <h2 style={{ fontSize: 26, margin: 0, fontFamily: headingFamily }}>Ready to move forward, {slide.clientName}?</h2>
       <p style={{ fontSize: 'var(--text-body)', color: 'var(--text-secondary)', maxWidth: 420 }}>
         Head back to the full proposal to review the details and add your signature.
       </p>
