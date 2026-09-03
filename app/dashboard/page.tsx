@@ -26,7 +26,7 @@ export default async function DashboardPage() {
 
   const { data: accountData } = await supabase
     .from('accounts')
-    .select('id, name, onboarding_completed_at, category, plan_tier, currency')
+    .select('id, name, onboarding_completed_at, category, plan_tier, currency, subdomain')
     .single()
 
   const accountName = accountData?.name || 'Marg Studio'
@@ -94,6 +94,7 @@ export default async function DashboardPage() {
       clients={clients}
       setupDone={setupDone}
       showNudge={showNudge}
+      accountSubdomain={accountData?.subdomain ?? null}
     />
   )
 }

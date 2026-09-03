@@ -18,7 +18,7 @@ export default async function ProposalEditorPage({ params }: { params: Promise<{
 
   const [{ data: proposal, error }, { data: accountRecord }] = await Promise.all([
     supabase.from('proposals').select('*, brand_kits(*)').eq('id', resolvedParams.id).single(),
-    userRecord ? supabase.from('accounts').select('currency').eq('id', userRecord.account_id).single() : Promise.resolve({ data: null }),
+    userRecord ? supabase.from('accounts').select('currency, subdomain').eq('id', userRecord.account_id).single() : Promise.resolve({ data: null }),
   ])
 
   if (error || !proposal) {
@@ -27,7 +27,7 @@ export default async function ProposalEditorPage({ params }: { params: Promise<{
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <ProposalEditor initialProposal={proposal} userRole={userRecord?.role || 'owner'} accountCurrency={accountRecord?.currency || 'USD'} />
+      <ProposalEditor initialProposal={proposal} userRole={userRecord?.role || 'owner'} accountCurrency={accountRecord?.currency || 'USD'} accountSubdomain={accountRecord?.subdomain || null} />
     </div>
   )
 }

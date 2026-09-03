@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { sendEmail } from '@/lib/email'
 import { TeamInviteEmail } from '@/emails/TeamInviteEmail'
+import { validateSubdomain } from '@/lib/publicUrl'
 
 async function requireAccount() {
   const supabase = await createClient()
@@ -134,6 +135,25 @@ export async function connectDomain(domainName: string) {
 
   const { error } = await supabase.from('domains').insert({ account_id: accountId, domain_name: domainName.trim() })
   if (error) throw new Error(error.message)
+  revalidatePath('/dashboard/settings')
+}
+
+// Free branded link (yourstudio.<root-domain>/p/<slug>) — no DNS/CNAME work for the account
+// owner, unlike the paid custom-domain slots above. Re-runs the same validateSubdomain() the
+// Settings form already checks client-side — never trust the client didn't skip it. The DB's
+// own CHECK constraint is the final backstop for the charset.
+export async function updateSubdomain(subdomain: string) {
+  const { supabase, accountId } = await requireAccount()
+
+  const trimmed = subdomain.trim().toLowerCase()
+  const validationError = validateSubdomain(trimmed)
+  if (validationError) throw new Error(validationError)
+
+  const { error } = await supabase.from('accounts').update({ subdomain: trimmed }).eq('id', accountId)
+  if (error) {
+    if (error.code === '23505') throw new Error('That link is already taken — try another.')
+    throw new Error(error.message)
+  }
   revalidatePath('/dashboard/settings')
 }
 

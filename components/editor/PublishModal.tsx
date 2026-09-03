@@ -5,6 +5,7 @@ import { Modal } from '@/components/app/Modal'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import { Badge } from '@/components/ui/Badge'
+import { getPublicProposalUrl } from '@/lib/publicUrl'
 
 export interface PublishModalProps {
   open: boolean
@@ -14,6 +15,8 @@ export interface PublishModalProps {
   content: any
   brandKitName: string | null
   userRole: string
+  /** The account's branded subdomain, if set — see Settings → Custom domain → "Your Marg link". */
+  accountSubdomain?: string | null
   onPublished: (result: { status: 'PUBLISHED' | 'PENDING_APPROVAL'; slug: string }) => void
 }
 
@@ -29,7 +32,7 @@ function filledSectionsSummary(content: any): string {
   return `${filled} of ${checks.length}, filled in`
 }
 
-export function PublishModal({ open, onClose, proposalId, slug, content, brandKitName, userRole, onPublished }: PublishModalProps) {
+export function PublishModal({ open, onClose, proposalId, slug, content, brandKitName, userRole, accountSubdomain, onPublished }: PublishModalProps) {
   const [stage, setStage] = React.useState<'review' | 'result'>('review')
   const [publishing, setPublishing] = React.useState(false)
   const [error, setError] = React.useState('')
@@ -41,7 +44,7 @@ export function PublishModal({ open, onClose, proposalId, slug, content, brandKi
   }, [open])
 
   const isDrafter = userRole === 'drafter'
-  const publicUrl = typeof window !== 'undefined' ? `${window.location.origin}/p/${slug}` : `/p/${slug}`
+  const publicUrl = getPublicProposalUrl(slug, accountSubdomain, typeof window !== 'undefined' ? window.location.origin : '')
 
   const rows: [string, string][] = [
     ['Brand kit applied', brandKitName || 'No brand kit selected'],

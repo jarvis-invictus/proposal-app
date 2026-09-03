@@ -15,6 +15,7 @@ import { type ThemeRoles } from '@/components/app/ThemeColorPicker'
 import { PdfExportModal, type PdfExportOptions } from '@/components/app/PdfExportModal'
 import { PDF_SECTIONS } from '@/app/p/[slug]/PublicProposalView'
 import { Icon } from '@/components/ui/Icon'
+import { getPublicProposalUrl } from '@/lib/publicUrl'
 
 const AUTOSAVE_DEBOUNCE_MS = 2500
 
@@ -30,7 +31,7 @@ function useDebouncedCallback<T extends (...args: any[]) => void>(callback: T, d
   )
 }
 
-export default function ProposalEditor({ initialProposal, userRole = 'owner', accountCurrency = 'USD' }: { initialProposal: any; userRole?: string; accountCurrency?: string }) {
+export default function ProposalEditor({ initialProposal, userRole = 'owner', accountCurrency = 'USD', accountSubdomain = null }: { initialProposal: any; userRole?: string; accountCurrency?: string; accountSubdomain?: string | null }) {
   const [proposal, setProposal] = React.useState(initialProposal)
   const [content, setContent] = React.useState<any>(initialProposal.content)
   const [saveStatus, setSaveStatus] = React.useState<SaveStatus>('saved')
@@ -85,11 +86,11 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
   }
 
   const handlePreview = () => {
-    window.open(`/p/${proposal.slug}`, '_blank')
+    window.open(getPublicProposalUrl(proposal.slug, accountSubdomain, window.location.origin), '_blank')
   }
 
   const handlePreviewDeck = () => {
-    window.open(`/p/${proposal.slug}?view=deck`, '_blank')
+    window.open(`${getPublicProposalUrl(proposal.slug, accountSubdomain, window.location.origin)}?view=deck`, '_blank')
   }
 
   const handleThemeChange = (roles: ThemeRoles) => {
@@ -102,7 +103,8 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
   // on load when present.
   const handleExportPdf = (options: PdfExportOptions) => {
     setShowPdfModal(false)
-    window.open(`/p/${proposal.slug}?pdfExport=${encodeURIComponent(JSON.stringify(options))}`, '_blank')
+    const base = getPublicProposalUrl(proposal.slug, accountSubdomain, window.location.origin)
+    window.open(`${base}?pdfExport=${encodeURIComponent(JSON.stringify(options))}`, '_blank')
   }
 
   const handlePublished = (result: { status: 'PUBLISHED' | 'PENDING_APPROVAL'; slug: string }) => {
@@ -223,6 +225,7 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
         content={content}
         brandKitName={initialProposal.brand_kits?.name || null}
         userRole={userRole}
+        accountSubdomain={accountSubdomain}
         onPublished={handlePublished}
       />
     </div>

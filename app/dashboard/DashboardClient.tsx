@@ -17,6 +17,7 @@ import { PromptInput } from '@/components/ui/PromptInput'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { Toast, ToastHost, useToasts } from '@/components/ui/Toast'
 import { relativeTime } from '@/lib/relativeTime'
+import { getPublicProposalUrl } from '@/lib/publicUrl'
 import { duplicateProposalAsDraft, deleteProposal } from './actions'
 
 /** Mirrors the starter ids NewProposal.jsx will branch on once it's rebuilt (Correction 6, item 4) —
@@ -52,7 +53,7 @@ export type DashboardProposal = {
 }
 
 export function DashboardClient({
-  accountName, planLabel, category, proposals, counts, clients, setupDone, showNudge,
+  accountName, planLabel, category, proposals, counts, clients, setupDone, showNudge, accountSubdomain = null,
 }: {
   accountName: string
   planLabel: string
@@ -62,6 +63,7 @@ export function DashboardClient({
   clients: string[]
   setupDone: { brand: boolean; proposal: boolean; share: boolean }
   showNudge: boolean
+  accountSubdomain?: string | null
 }) {
   const router = useRouter()
   const [loading, setLoading] = React.useState(true)
@@ -101,7 +103,7 @@ export function DashboardClient({
 
   const handleCopyLink = (p: DashboardProposal) => {
     setMenu(null)
-    navigator.clipboard.writeText(`${window.location.origin}/p/${p.slug}`)
+    navigator.clipboard.writeText(getPublicProposalUrl(p.slug, accountSubdomain, window.location.origin))
     pushToast('Public link copied')
   }
 

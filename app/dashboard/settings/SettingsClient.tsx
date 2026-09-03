@@ -13,10 +13,11 @@ import { SelectMenu } from '@/components/ui/SelectMenu'
 import { Modal } from '@/components/app/Modal'
 import { Toast, ToastHost, useToasts } from '@/components/ui/Toast'
 import { createClient } from '@/lib/supabase/client'
+import { validateSubdomain } from '@/lib/publicUrl'
 import {
   updateUserProfile, updateBusinessDetails, updatePaymentDetails, updateAvatarUrl,
   inviteMember, changeMemberRole, approveProposal, requestChanges,
-  connectDomain, buyDomainSlot, switchPlan, updateCurrency,
+  connectDomain, buyDomainSlot, switchPlan, updateCurrency, updateSubdomain,
 } from './actions'
 
 type Account = {
@@ -27,6 +28,7 @@ type Account = {
   currency: 'USD' | 'EUR' | 'INR'
   stripe_customer_id: string | null; stripe_subscription_id: string | null; stripe_price_id: string | null
   billing_status: 'free' | 'trialing' | 'active' | 'past_due' | 'canceled'
+  subdomain: string | null
 } | null
 type Member = { id: string; role: string; avatar_url: string | null; email: string }
 type Invitation = { id: string; email: string; role: string; invited_at: string; accepted_at: string | null }
@@ -488,6 +490,33 @@ function DomainTab({ account, domains, onSeePlan }: { account: Account; domains:
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'your-root-domain.com'
+  const [subdomainInput, setSubdomainInput] = React.useState(account?.subdomain || '')
+  const [subdomainSaving, setSubdomainSaving] = React.useState(false)
+  const [subdomainSaved, setSubdomainSaved] = React.useState(false)
+  const [subdomainError, setSubdomainError] = React.useState<string | null>(null)
+
+  const handleSaveSubdomain = async () => {
+    setSubdomainSaving(true)
+    setSubdomainError(null)
+    setSubdomainSaved(false)
+    const clientError = validateSubdomain(subdomainInput)
+    if (clientError) {
+      setSubdomainError(clientError)
+      setSubdomainSaving(false)
+      return
+    }
+    try {
+      await updateSubdomain(subdomainInput)
+      setSubdomainSaved(true)
+      setTimeout(() => setSubdomainSaved(false), 2500)
+    } catch (err: any) {
+      setSubdomainError(err.message)
+    } finally {
+      setSubdomainSaving(false)
+    }
+  }
+
   const handleConnect = async () => {
     setBusy(true)
     setError(null)
@@ -514,6 +543,31 @@ function DomainTab({ account, domains, onSeePlan }: { account: Account; domains:
 
   return (
     <>
+      <Section
+        title="Your Marg link"
+        description="Free on every plan — no DNS setup needed. Give your proposals a branded link instead of a shared one."
+        footer={<Button variant="primary" size="sm" loading={subdomainSaving} disabled={subdomainInput.trim() === (account?.subdomain || '')} onClick={handleSaveSubdomain}>
+          {subdomainSaved ? 'Saved' : 'Save'}
+        </Button>}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <Input
+              value={subdomainInput}
+              onChange={(e) => setSubdomainInput(e.target.value.toLowerCase())}
+              placeholder="yourstudio"
+              error={subdomainError || undefined}
+            />
+          </div>
+          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>.{rootDomain}</span>
+        </div>
+        {!process.env.NEXT_PUBLIC_ROOT_DOMAIN && (
+          <p style={{ marginTop: 10, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+            No root domain configured yet — this link will start working once one is set up and connected in Vercel. Saving now still reserves your name.
+          </p>
+        )}
+      </Section>
+
       <Section
         title="Custom domain"
         description={`The ${PLAN_NAME[planTier]} plan includes ${slots} connected domain${slots === 1 ? '' : 's'}. Proposals are served from your domain instead of marg.app.`}
