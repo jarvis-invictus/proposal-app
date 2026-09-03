@@ -48,6 +48,7 @@ export async function saveBrandKit(data: any) {
     colors: data.colors,
     fonts: data.fonts,
     logo_url: data.logoUrl,
+    personality: data.personality || null,
   })
 
   if (error) {

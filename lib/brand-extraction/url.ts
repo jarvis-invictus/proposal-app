@@ -18,8 +18,41 @@ type FirecrawlBrandingResponse = {
       typography?: {
         fontFamilies?: { primary?: string; heading?: string; code?: string }
       }
+      // Exact sub-field names aren't confirmed against a real response yet — Firecrawl's own
+      // docs only describe this in prose ("tone, energy, target audience"). Parsed defensively
+      // below so a wrong guess here just means no personality text, not a crash.
+      personality?: Record<string, unknown> | null
     }
   }
+}
+
+function asText(value: unknown): string | undefined {
+  if (typeof value === 'string' && value.trim()) return value.trim()
+  if (Array.isArray(value)) {
+    const joined = value.filter((v) => typeof v === 'string' && v.trim()).join(', ')
+    return joined || undefined
+  }
+  return undefined
+}
+
+/** Condenses Firecrawl's personality object into one plain-English sentence for the generation
+ * prompt. Defensive against unconfirmed field names — tries a few plausible keys per concept
+ * and simply omits anything it can't find, rather than guessing wrong and failing loudly. */
+function summarizePersonality(personality: Record<string, unknown> | null | undefined): string | undefined {
+  if (!personality || typeof personality !== 'object') return undefined
+  const tone = asText(personality.tone)
+  const energy = asText(personality.energy)
+  const audience = asText(personality.audience) || asText(personality.targetAudience) || asText((personality as any).target_audience)
+
+  const parts: string[] = []
+  if (tone) parts.push(`Tone: ${tone}.`)
+  if (energy) parts.push(`Energy: ${energy}.`)
+  if (audience) parts.push(`Speaks to: ${audience}.`)
+  if (!parts.length) {
+    console.warn('[brand-extraction] personality object present but no known fields matched — raw shape:', JSON.stringify(personality))
+    return undefined
+  }
+  return parts.join(' ')
 }
 
 export async function extractBrandKitFromUrl(url: string) {
@@ -72,6 +105,7 @@ export async function extractBrandKitFromUrl(url: string) {
       body: fontFamilies.primary || fontFamilies.heading || 'sans-serif',
     },
     logoUrl: branding.logo || '',
+    personality: summarizePersonality(branding.personality),
     is_low_confidence: isLowConfidence,
   }
 }

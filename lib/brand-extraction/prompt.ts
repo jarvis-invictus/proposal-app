@@ -5,6 +5,7 @@ export type BrandKitContext = {
   name: string | null
   colors: { primary?: string; secondary?: string; accent?: string; background?: string; text?: string } | null
   fonts: { heading?: string; body?: string } | null
+  personality: string | null
 }
 
 /** Server-side only. Re-resolves a brand kit by id, scoped to the caller's own account, rather
@@ -16,7 +17,7 @@ export async function resolveBrandKit(accountId: string | null, brandKitId: unkn
     const supabase = await createClient()
     const { data } = await supabase
       .from('brand_kits')
-      .select('id, name, colors, fonts')
+      .select('id, name, colors, fonts, personality')
       .eq('id', brandKitId)
       .eq('account_id', accountId)
       .maybeSingle()
@@ -39,6 +40,12 @@ export function brandContextBlock(kit: BrandKitContext | null): string {
   if (kit.fonts?.heading || kit.fonts?.body) {
     parts.push(`Brand typography: heading "${kit.fonts?.heading || 'default'}", body "${kit.fonts?.body || 'default'}"`)
   }
-  if (!parts.length) return ''
-  return `\n\nBRAND CONTEXT — this business has an established brand identity. Let it subtly inform tone (e.g. a bold, saturated palette suggests a confident, energetic voice; muted neutrals suggest a refined, understated one) — never state these colors or fonts as literal text anywhere in the proposal:\n${parts.join('\n')}`
+  if (!parts.length && !kit.personality) return ''
+
+  const toneGuidance = kit.personality
+    ? `This business's actual brand voice: ${kit.personality} Let this directly guide the proposal's tone and word choice — it's a stronger signal than color/font alone.`
+    : `Let it subtly inform tone (e.g. a bold, saturated palette suggests a confident, energetic voice; muted neutrals suggest a refined, understated one).`
+  const details = parts.length ? `\n${parts.join('\n')}` : ''
+
+  return `\n\nBRAND CONTEXT — this business has an established brand identity. ${toneGuidance} Never state raw colors, fonts, or this description as literal text anywhere in the proposal:${details}`
 }
