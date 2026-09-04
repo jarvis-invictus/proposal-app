@@ -241,24 +241,24 @@ export default function PublicProposalView({
       `}</style>
 
       {/* Top action bar - Hidden in Print */}
-      <div className="print:hidden" style={{
-        position: 'sticky', top: 0, zIndex: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '16px 32px', background: 'var(--glass-quiet)', backdropFilter: 'var(--blur-glass)', WebkitBackdropFilter: 'var(--blur-glass)',
+      <div className="print:hidden px-4 sm:px-8" style={{
+        position: 'sticky', top: 0, zIndex: 40, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center',
+        rowGap: 10, columnGap: 16, padding: '16px 0', background: 'var(--glass-quiet)', backdropFilter: 'var(--blur-glass)', WebkitBackdropFilter: 'var(--blur-glass)',
         borderBottom: '1px solid var(--border-hairline)', fontFamily: 'var(--font-sans)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flexWrap: 'wrap', rowGap: 6 }}>
           <h2 style={{ margin: 0, fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)', color: 'var(--text-primary)' }}>{content.clientName} Proposal</h2>
           {isOwner && proposal.status === 'DRAFT' && (
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 9px', borderRadius: 'var(--radius-pill)',
               background: 'var(--status-caution-surface)', border: '1px solid var(--status-caution-border)', color: 'var(--status-caution-text)',
-              fontSize: 'var(--text-micro)', fontWeight: 'var(--weight-medium)',
+              fontSize: 'var(--text-micro)', fontWeight: 'var(--weight-medium)', flex: 'none',
             }}>
               Preview Mode (DRAFT)
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <Button variant="ghost" size="sm" icon="sparkles" onClick={() => setViewMode('deck')}>View as deck</Button>
           <Button variant="ink" size="sm" icon="settings" onClick={() => setShowConfigModal(true)}>Configure &amp; Print PDF</Button>
         </div>
@@ -336,7 +336,7 @@ export default function PublicProposalView({
         {content.packages && content.packages.length > 0 && (
           <div className="p-12 print:break-inside-avoid" style={{ borderBottom: '1px solid var(--border-hairline)' }}>
             <h2 className="text-ink" style={{ fontSize: 'var(--text-h3)', fontWeight: 700, marginBottom: 32, fontFamily: headingFontFamily }}>Investment Options</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid print:grid-cols-2">
+            <div className={content.packages.length === 1 ? 'grid grid-cols-1 gap-6 print:grid print:grid-cols-1 max-w-md' : 'grid grid-cols-1 md:grid-cols-2 gap-6 print:grid print:grid-cols-2'}>
               {content.packages.map((pkg: any, idx: number) => (
                 <div
                   key={idx}

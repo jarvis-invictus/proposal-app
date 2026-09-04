@@ -15,6 +15,7 @@ const SAVE_LABEL: Record<SaveStatus, string> = {
 }
 
 export interface EditorHeaderProps {
+  onBack: () => void
   title: string
   proposalStatus: EditorProposalStatus
   saveStatus: SaveStatus
@@ -32,7 +33,7 @@ export interface EditorHeaderProps {
 
 /** Thin editor chrome: document title + save state center, Preview/Publish right — matches Editor.jsx's EditorToolbar. */
 export function EditorHeader({
-  title, proposalStatus, saveStatus, onPreview, onPreviewDeck, onPublish, publishLabel, canPublish,
+  onBack, title, proposalStatus, saveStatus, onPreview, onPreviewDeck, onPublish, publishLabel, canPublish,
   themeColor, brandColor, onThemeChange, onExportPdf, locked = false,
 }: EditorHeaderProps) {
   return (
@@ -41,6 +42,13 @@ export function EditorHeader({
       borderBottom: '1px solid var(--border-hairline)', background: 'var(--glass-quiet)',
       backdropFilter: 'var(--blur-glass)', WebkitBackdropFilter: 'var(--blur-glass)', fontFamily: 'var(--font-sans)',
     }}>
+      <button type="button" onClick={onBack} aria-label="Back to dashboard" title="Back to dashboard" style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, flex: 'none',
+        border: '1px solid var(--border-hairline)', borderRadius: 'var(--radius-sm)', background: 'transparent',
+        color: 'var(--text-secondary)', cursor: 'pointer',
+      }}>
+        <Icon name="arrow-left" size={14} />
+      </button>
       <span style={{
         padding: '3px 9px', borderRadius: 'var(--radius-pill)', fontSize: 'var(--text-micro)', fontWeight: 'var(--weight-medium)',
         background: proposalStatus === 'PUBLISHED' ? 'var(--brand-12)' : 'transparent',
