@@ -145,18 +145,27 @@ export function NewProposalClient({
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ summary: finalSummary, styleReference: styleReferenceFrom(reference), brief, brandKitId: selectedBrandKitId }),
     })
-    const data = await res.json()
-    if (!res.ok) return { ok: false, error: data.error || 'Failed to generate the proposal.' }
-    // _critique is advisory-only and never persisted — stashed transiently for the Editor to
-    // show once, stripped from what actually gets saved as the proposal's content.
-    const { _critique, ...content } = data
+    const content = await res.json()
+    if (!res.ok) return { ok: false, error: content.error || 'Failed to generate the proposal.' }
+
+    // Fired now, awaited later — critique runs concurrently with the save below instead of
+    // sequentially after it, so it no longer adds to the user's wait on top of generation.
+    const critiquePromise = fetch('/api/generate-proposal/critique', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ summary: finalSummary, proposal: content }),
+    }).then((r) => (r.ok ? r.json() : { issues: [] })).catch(() => ({ issues: [] }))
+
     const saveRes = await fetch('/api/proposals', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, brandKitId: selectedBrandKitId }),
     })
     const saved = await saveRes.json()
     if (!saveRes.ok) return { ok: false, error: saved.error || 'Failed to save the proposal.', partial: content }
-    if (Array.isArray(_critique) && _critique.length) {
-      try { sessionStorage.setItem(`critique:${saved.id}`, JSON.stringify(_critique)) } catch { /* best-effort only */ }
+
+    // Awaited here (not fired-and-forgotten) so sessionStorage is populated before the caller
+    // navigates to the Editor, which only checks it once on mount.
+    const { issues } = await critiquePromise
+    if (Array.isArray(issues) && issues.length) {
+      try { sessionStorage.setItem(`critique:${saved.id}`, JSON.stringify(issues)) } catch { /* best-effort only */ }
     }
     return { ok: true, id: saved.id }
   }

@@ -89,7 +89,8 @@ export function PackagesBlock({ packages, onChange, currency = 'USD' }: Packages
 
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 16 }}>
               <PriceInput value={pkg.discountedPrice} onChange={(v) => updatePackage(idx, { discountedPrice: v })} size={30} weight={700} currency={currency} />
-              <PriceInput value={pkg.originalPrice} onChange={(v) => updatePackage(idx, { originalPrice: v })} size={16} weight={400} strike muted currency={currency} />
+              <PriceInput value={pkg.originalPrice} onChange={(v) => updatePackage(idx, { originalPrice: v })} size={16} weight={400}
+                strike={pkg.originalPrice > pkg.discountedPrice} muted={pkg.originalPrice > pkg.discountedPrice} currency={currency} />
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
