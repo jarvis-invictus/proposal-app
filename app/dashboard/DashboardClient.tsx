@@ -14,10 +14,11 @@ import { FilterChip } from '@/components/ui/FilterChip'
 import { SelectMenu } from '@/components/ui/SelectMenu'
 import { Icon } from '@/components/ui/Icon'
 import { PromptInput } from '@/components/ui/PromptInput'
-import { SkeletonCard } from '@/components/ui/Skeleton'
 import { Toast, ToastHost, useToasts } from '@/components/ui/Toast'
+import { ConfirmDialog } from '@/components/app/ConfirmDialog'
 import { relativeTime } from '@/lib/relativeTime'
 import { getPublicProposalUrl } from '@/lib/publicUrl'
+import { prefersReducedMotion } from '@/lib/reducedMotion'
 import { duplicateProposalAsDraft, deleteProposal } from './actions'
 
 /** Mirrors the starter ids NewProposal.jsx will branch on once it's rebuilt (Correction 6, item 4) —
@@ -66,8 +67,6 @@ export function DashboardClient({
   accountSubdomain?: string | null
 }) {
   const router = useRouter()
-  const [loading, setLoading] = React.useState(true)
-  React.useEffect(() => { const t = setTimeout(() => setLoading(false), 900); return () => clearTimeout(t) }, [])
 
   const [filter, setFilter] = React.useState<typeof STATUS_FILTERS[number]>('All')
   const [client, setClient] = React.useState('All clients')
@@ -78,6 +77,7 @@ export function DashboardClient({
   const [nudge, setNudge] = React.useState(true)
   const [aiValue, setAiValue] = React.useState('')
   const [listening, setListening] = React.useState(false)
+  const [pendingDelete, setPendingDelete] = React.useState<DashboardProposal | null>(null)
 
   const list = proposals.filter((p) =>
     (filter === 'All' || p.displayStatus === filter.toLowerCase()) &&
@@ -117,9 +117,15 @@ export function DashboardClient({
     pushToast('Saving a proposal as a template is coming soon')
   }
 
-  const handleDelete = async (p: DashboardProposal) => {
+  const handleDelete = (p: DashboardProposal) => {
     setMenu(null)
-    if (!window.confirm(`Delete "${p.title}"? This can't be undone.`)) return
+    setPendingDelete(p)
+  }
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return
+    const p = pendingDelete
+    setPendingDelete(null)
     try {
       await deleteProposal(p.id)
       pushToast('Proposal deleted')
@@ -179,10 +185,6 @@ export function DashboardClient({
 
       {proposals.length === 0 ? (
         <FirstRunEmpty />
-      ) : loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 22 }}>
-          {[0, 1, 2, 3, 4, 5].map((i) => <SkeletonCard key={i} lines={2} />)}
-        </div>
       ) : list.length === 0 ? (
         <EmptyState title="Nothing matches that filter" description="Clear the filters, or describe a new deal and we'll draft the whole proposal for you."
           action={<Button icon="sparkles" onClick={() => goNew()}>Create with AI</Button>} />
@@ -191,7 +193,11 @@ export function DashboardClient({
           {list.map((p) => (
             <ProposalCard key={p.id} title={p.title} client={p.client} updated={`Updated ${relativeTime(p.updatedAt)}`}
               status={p.displayStatus} statusLabel={p.statusLabel} value={p.value}
-              onOpen={() => { setOpening(p.id); setTimeout(() => router.push(`/dashboard/proposals/${p.id}/edit`), 320) }}
+              onOpen={() => {
+                setOpening(p.id)
+                if (prefersReducedMotion()) router.push(`/dashboard/proposals/${p.id}/edit`)
+                else setTimeout(() => router.push(`/dashboard/proposals/${p.id}/edit`), 320)
+              }}
               style={opening && opening !== p.id ? { opacity: 0.35, transform: 'scale(0.985)', transition: 'all 300ms var(--ease-standard)' } :
                 opening === p.id ? { transform: 'scale(1.02)', transition: 'transform 300ms var(--ease-out-soft)', zIndex: 2 } : undefined}
               onMenu={() => setMenu(menu === p.id ? null : p.id)}
@@ -216,6 +222,13 @@ export function DashboardClient({
           ))}
         </ToastHost>
       )}
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title={`Delete "${pendingDelete?.title || 'this proposal'}"?`}
+        body="This can't be undone."
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </AppShell>
   )
 }
@@ -258,17 +271,17 @@ function AILauncher({ value, setValue, listening, setListening, onSubmit, onQuic
           placeholder="Dashboard redesign for Acme Corp, around $50k, three months…"
           style={{ maxWidth: 660 }} />
         <div style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-          {QUICK.map((x) => <QuickChip key={x.id} onClick={() => onQuick(x.id)}>{x.label}</QuickChip>)}
+          {QUICK.map((x) => <QuickChip key={x.id} label={`Start a new proposal: ${x.label}`} onClick={() => onQuick(x.id)}>{x.label}</QuickChip>)}
         </div>
       </div>
     </section>
   )
 }
 
-function QuickChip({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+function QuickChip({ children, label, onClick }: { children: React.ReactNode; label?: string; onClick: () => void }) {
   const [hover, setHover] = React.useState(false)
   return (
-    <button type="button" onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+    <button type="button" onClick={onClick} aria-label={label} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       style={{
         padding: '7px 15px', borderRadius: 'var(--radius-pill)', cursor: 'pointer', fontFamily: 'var(--font-sans)',
         fontSize: 'var(--text-sm)', border: '1px solid ' + (hover ? 'var(--brand)' : 'var(--brand-38)'),
@@ -352,7 +365,7 @@ function RecommendedRow({ category, onBrowse }: { category: string; onBrowse: ()
       </div>
       <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
         {list.map(([name, icon]) => (
-          <button key={name} type="button" onClick={onBrowse} className="liquid liquid-hover"
+          <button key={name} type="button" onClick={onBrowse} aria-label={`Use ${name} template`} className="liquid liquid-hover"
             style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '13px 15px', textAlign: 'left', cursor: 'pointer', borderRadius: 'var(--radius-card)', fontFamily: 'var(--font-sans)' }}>
             <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, flex: 'none', borderRadius: 'var(--radius-pill)', background: 'var(--brand-12)', color: 'var(--brand-deep)' }}>
               <Icon name={icon} size={15} />

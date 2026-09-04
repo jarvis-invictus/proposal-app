@@ -126,7 +126,7 @@ export function AppShell({ screen, title, subtitle, actions, search, scroll = tr
       <SidebarNav brand="Marg" active={screen} onSelect={go} items={NAV} utility={UTIL}
         collapsed={collapsed} onToggleCollapse={() => setCollapsed((c) => !c)}
         footer={<AccountRow collapsed={collapsed} name={accountName} planLabel={planLabel} onClick={() => go('settings')} />} />
-      <main style={{ position: 'relative', flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      <main id="main-content" style={{ position: 'relative', flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <SkyBackdrop />
         <div style={{
           position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', flexWrap: 'wrap', rowGap: 10, gap: 16,

@@ -8,12 +8,13 @@ import { logError } from '@/lib/logging'
 // yet.
 const configured = !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN
 
-export type Bucket = 'chat' | 'generate'
+export type Bucket = 'chat' | 'generate' | 'extract'
 
-// Two independent buckets, not one shared one: conversational turns and a full document
-// generation have very different cost/behavior profiles, and sharing one budget meant a normal
-// multi-turn conversation could exhaust the limit before the user ever reached "generate."
-const limiters: Record<Bucket, Ratelimit | null> = { chat: null, generate: null }
+// Three independent buckets, not one shared one: conversational turns, a full document
+// generation, and brand-kit extraction have very different cost/behavior profiles, and sharing
+// one budget meant e.g. a normal multi-turn conversation could exhaust the limit before the user
+// ever reached "generate."
+const limiters: Record<Bucket, Ratelimit | null> = { chat: null, generate: null, extract: null }
 
 if (configured) {
   const redis = Redis.fromEnv()
@@ -29,6 +30,14 @@ if (configured) {
     limiter: Ratelimit.slidingWindow(6, '10 m'),
     analytics: true,
     prefix: 'marg-ai-ratelimit-generate',
+  })
+  limiters.extract = new Ratelimit({
+    redis,
+    // extractFromUrl also pays for a Firecrawl scrape on top of the GPT-4o call — same order of
+    // cost as 'generate', so the same strict window.
+    limiter: Ratelimit.slidingWindow(6, '10 m'),
+    analytics: true,
+    prefix: 'marg-ai-ratelimit-extract',
   })
 } else if (process.env.NODE_ENV !== 'production') {
   console.warn('[ratelimit] UPSTASH_REDIS_REST_URL/TOKEN not set — rate limiting is bypassed. Fine for local dev, not for production.')
@@ -62,9 +71,15 @@ export function rateLimitIdentifier(accountId: string | null, ip: string): strin
 
 /** x-forwarded-for can carry a client-supplied chain ("client, proxy1, proxy2") — the first
  * entry is the original client. Falls back to 127.0.0.1 locally, where there's no proxy chain
- * at all. */
-export function extractClientIp(request: Request): string {
-  const forwardedFor = request.headers.get('x-forwarded-for')
+ * at all. Takes a bare headers-getter rather than a full Request so it also works from a Server
+ * Action, which only has next/headers()'s ReadonlyHeaders (structurally compatible: both expose
+ * .get(name)), not a Request object. */
+export function extractIpFromHeaders(headers: { get(name: string): string | null }): string {
+  const forwardedFor = headers.get('x-forwarded-for')
   if (forwardedFor) return forwardedFor.split(',')[0].trim()
-  return request.headers.get('x-real-ip') || '127.0.0.1'
+  return headers.get('x-real-ip') || '127.0.0.1'
+}
+
+export function extractClientIp(request: Request): string {
+  return extractIpFromHeaders(request.headers)
 }

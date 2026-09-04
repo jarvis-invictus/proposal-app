@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { IconButton } from '@/components/ui/IconButton'
 import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/app/ConfirmDialog'
 import { currencySymbol } from '@/lib/formatCurrency'
 
 // ProposalSchemaV1's addOns shape: name, description, price, deliverables. There is no
@@ -27,13 +28,14 @@ export interface AddOnsBlockProps {
 const BLANK_ADDON: AddOnItem = { name: 'New add-on', description: '', price: 0, deliverables: [] }
 
 export function AddOnsBlock({ addOns, onChange, currency = 'USD' }: AddOnsBlockProps) {
+  const [pendingDelete, setPendingDelete] = React.useState<number | null>(null)
   const updateAddOn = (index: number, patch: Partial<AddOnItem>) => {
     onChange(addOns.map((a, i) => (i === index ? { ...a, ...patch } : a)))
   }
-  const removeAddOn = (index: number) => {
-    const name = addOns[index]?.name || 'this add-on'
-    if (!window.confirm(`Delete "${name}"? This can't be undone.`)) return
-    onChange(addOns.filter((_, i) => i !== index))
+  const confirmRemoveAddOn = () => {
+    if (pendingDelete === null) return
+    onChange(addOns.filter((_, i) => i !== pendingDelete))
+    setPendingDelete(null)
   }
   const addAddOn = () => onChange([...addOns, { ...BLANK_ADDON }])
 
@@ -57,11 +59,18 @@ export function AddOnsBlock({ addOns, onChange, currency = 'USD' }: AddOnsBlockP
               <input type="number" value={addon.price} onChange={(e) => updateAddOn(idx, { price: Number(e.target.value) || 0 })}
                 style={{ width: `${Math.max(2, String(addon.price).length + 1)}ch`, border: 'none', outline: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-body)', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }} />
             </span>
-            <IconButton icon="trash-2" size="sm" variant="ghost" label="Delete add-on" onClick={() => removeAddOn(idx)} />
+            <IconButton icon="trash-2" size="sm" variant="ghost" label="Delete add-on" onClick={() => setPendingDelete(idx)} />
           </div>
         ))}
       </div>
       <Button variant="secondary" size="sm" icon="plus" onClick={addAddOn} style={{ marginTop: 16 }}>Add add-on</Button>
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={`Delete "${(pendingDelete !== null && addOns[pendingDelete]?.name) || 'this add-on'}"?`}
+        body="This can't be undone."
+        onConfirm={confirmRemoveAddOn}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }

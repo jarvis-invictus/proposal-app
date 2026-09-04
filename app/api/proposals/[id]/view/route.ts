@@ -14,9 +14,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   // 1. Get the current proposal to check its content
   const { data: proposal, error: fetchError } = await adminSupabase
     .from('proposals')
-    .select('id, content, account_id')
+    .select('id, account_id, title:content->>title')
     .eq('slug', resolvedParams.id) // The URL param acts as the slug here
-    .single()
+    .single<{ id: string; account_id: string; title: string | null }>()
 
   if (fetchError || !proposal) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -51,21 +51,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
   }
 
-  // 2. Patch the JSONB content to include view tracking metadata
-  const updatedContent = {
-    ...proposal.content,
-    metadata: {
-      ...(proposal.content.metadata || {}),
-      lastViewedAt: new Date().toISOString()
-    }
-  }
-
+  // 2. Stamp the view timestamp — last_viewed_at is its own column, no need to touch the
+  // (potentially large) JSONB content just to record this.
   const { error: updateError } = await adminSupabase
     .from('proposals')
-    .update({ 
-      content: updatedContent,
-      last_viewed_at: new Date().toISOString()
-    })
+    .update({ last_viewed_at: new Date().toISOString() })
     .eq('id', proposal.id)
 
   if (updateError) {
@@ -74,7 +64,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   // 3. Insert Notification for the owner
-  const message = `A client viewed your proposal: ${proposal.content.title || 'Untitled Proposal'}`
+  const message = `A client viewed your proposal: ${proposal.title || 'Untitled Proposal'}`
   const { error: notifError } = await adminSupabase
     .from('notifications')
     .insert({
