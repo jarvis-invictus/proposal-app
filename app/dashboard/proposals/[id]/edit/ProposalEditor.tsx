@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useRouter } from 'next/navigation'
 import { EditorHeader, type SaveStatus } from '@/components/editor/EditorHeader'
 import { DocStats } from '@/components/editor/DocStats'
 import { StructuredDocument } from '@/components/editor/StructuredDocument'
@@ -10,6 +11,7 @@ import { TimelineBlock, type TimelinePhase } from '@/components/editor/TimelineB
 import { AttachmentsBlock } from '@/components/editor/AttachmentsBlock'
 import { TermsPaymentBlock, type PaymentSection } from '@/components/editor/TermsPaymentBlock'
 import { RevisionChat } from '@/components/editor/RevisionChat'
+import { ResizablePanel } from '@/components/editor/ResizablePanel'
 import type { Attachment } from '@/lib/attachments'
 import { PublishModal } from '@/components/editor/PublishModal'
 import { type ThemeRoles } from '@/components/app/ThemeColorPicker'
@@ -40,6 +42,7 @@ function useDebouncedCallback<T extends (...args: any[]) => void>(callback: T, d
 }
 
 export default function ProposalEditor({ initialProposal, userRole = 'owner', accountCurrency = 'USD', accountSubdomain = null }: { initialProposal: any; userRole?: string; accountCurrency?: string; accountSubdomain?: string | null }) {
+  const router = useRouter()
   const [proposal, setProposal] = React.useState(initialProposal)
   const [content, setContent] = React.useState<any>(initialProposal.content)
   const [saveStatus, setSaveStatus] = React.useState<SaveStatus>('saved')
@@ -143,6 +146,7 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
   return (
     <div style={{ position: 'relative', height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gradient-app)' }}>
       <EditorHeader
+        onBack={() => router.push('/dashboard')}
         title={content.title || 'Untitled proposal'}
         proposalStatus={proposal.status}
         saveStatus={saveStatus}
@@ -237,7 +241,7 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
         </fieldset>
       </StructuredDocument>
       </div>
-      <div style={{ width: 340, flex: 'none' }}>
+      <ResizablePanel storageKey="marg-revise-panel-width" defaultWidth={340} min={280} max={640}>
         <RevisionChat
           proposalId={proposal.id}
           content={content}
@@ -245,7 +249,7 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
           disabled={isLocked}
           onApply={applyChanges}
         />
-      </div>
+      </ResizablePanel>
       </div>
       {showPdfModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
