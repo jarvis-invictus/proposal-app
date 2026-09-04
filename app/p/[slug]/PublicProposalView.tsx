@@ -283,12 +283,24 @@ export default function PublicProposalView({
         background: 'var(--surface-card)', borderRadius: 'var(--radius-card-lg)', boxShadow: 'var(--shadow-modal)', overflow: 'hidden',
       }}>
 
-        {/* Header Section */}
+        {/* Header Section — a soft radial highlight and an accent rule give this the same
+            "hero" language the deck view already uses for its cover slide, instead of a flat
+            block of color. Skipped for print/ink-saving, same as the background color itself. */}
         <div
-          className={`p-12 text-white print:text-black ${pdfConfig.inkSavingMode ? 'print:bg-transparent print:border-b print:border-gray-300' : ''}`}
-          style={!pdfConfig.inkSavingMode ? { backgroundColor: themeColor } : {}}
+          className={`relative p-12 text-white print:text-black ${pdfConfig.inkSavingMode ? 'print:bg-transparent print:border-b print:border-gray-300' : ''}`}
+          style={{ overflow: 'hidden', ...(!pdfConfig.inkSavingMode ? { backgroundColor: themeColor } : {}) }}
         >
-          <h1 className="text-4xl font-bold mb-4 print:text-5xl" style={{ fontFamily: headingFontFamily }}>{headerTextToRender}</h1>
+          {!pdfConfig.inkSavingMode && (
+            <div aria-hidden="true" className="print:hidden" style={{
+              position: 'absolute', top: '-40%', right: '-8%', width: '65%', height: '180%',
+              background: 'radial-gradient(closest-side, rgba(255,255,255,0.18), transparent 70%)', pointerEvents: 'none',
+            }} />
+          )}
+          <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 className="text-4xl font-bold mb-1 print:text-5xl" style={{ fontFamily: headingFontFamily }}>{headerTextToRender}</h1>
+          {!pdfConfig.inkSavingMode && (
+            <span aria-hidden="true" className="print:hidden" style={{ display: 'block', width: 48, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.55)', margin: '14px 0 20px' }} />
+          )}
           <div className="grid grid-cols-2 gap-8 mt-8 opacity-90 text-sm print:opacity-100">
             <div>
               <p className="uppercase tracking-wider text-xs mb-1 opacity-70 print:text-gray-500">Prepared For</p>
@@ -316,6 +328,7 @@ export default function PublicProposalView({
                 )}
               </>
             )}
+          </div>
           </div>
         </div>
 
@@ -394,7 +407,8 @@ export default function PublicProposalView({
             <h2 className="text-ink" style={{ fontSize: 'var(--text-h3)', fontWeight: 700, marginBottom: 32, fontFamily: headingFontFamily }}>Project Timeline</h2>
             <div className="space-y-6">
               {content.timeline.map((phase: any, idx: number) => (
-                <div key={idx} className="flex gap-6">
+                <div key={idx} className="flex gap-4">
+                  <span aria-hidden="true" className="print:hidden" style={{ width: 10, height: 10, borderRadius: '50%', background: themeColor, marginTop: 6, flex: 'none' }} />
                   <div className="w-32 shrink-0">
                     <div className="text-ink" style={{ fontWeight: 700 }}>{phase.phase}</div>
                     <div className="text-mist" style={{ fontSize: 'var(--text-sm)' }}>{phase.duration}</div>
@@ -485,8 +499,11 @@ export default function PublicProposalView({
             and stays visible to both the signer and the owner reviewing the same page. */}
         {acceptedAt && (
           <div className="p-12 print:break-inside-avoid" style={{ borderTop: '1px solid var(--border-hairline)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-              <Icon name="lock" size={18} color="var(--text-muted)" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+              <span aria-hidden="true" className="print:hidden" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '50%', background: themeColor, flex: 'none' }}>
+                <Icon name="lock" size={15} color="#fff" />
+              </span>
+              <Icon name="lock" size={15} color="var(--text-muted)" className="hidden print:inline" />
               <h2 className="text-ink" style={{ fontSize: 'var(--text-body-lg)', fontWeight: 700, margin: 0 }}>Signature Certificate</h2>
             </div>
             <div style={{

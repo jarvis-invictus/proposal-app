@@ -47,6 +47,8 @@ export async function POST(req: Request) {
 
 CURRENCY (critical): ${currencyPromptInstruction(currency)}
 
+SPECIFICITY (critical): every sentence must earn its place by referencing something real from the deal facts below — a deliverable, a number, a named phase, the client's actual situation. Do not write filler that could apply to any project ("we look forward to partnering with you," "our team is excited to bring your vision to life," "a solution tailored to your needs"). If a brand voice is given below, that voice should be audible in the word choice, not just mentioned — write the way that business would actually talk to this client, not a generic proposal template with their name inserted.
+
 ${instructions}
 
 Deal Facts Summary:

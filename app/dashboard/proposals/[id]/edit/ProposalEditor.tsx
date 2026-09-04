@@ -9,6 +9,7 @@ import { AddOnsBlock, type AddOnItem } from '@/components/editor/AddOnsBlock'
 import { TimelineBlock, type TimelinePhase } from '@/components/editor/TimelineBlock'
 import { AttachmentsBlock } from '@/components/editor/AttachmentsBlock'
 import { TermsPaymentBlock, type PaymentSection } from '@/components/editor/TermsPaymentBlock'
+import { RevisionChat } from '@/components/editor/RevisionChat'
 import type { Attachment } from '@/lib/attachments'
 import { PublishModal } from '@/components/editor/PublishModal'
 import { type ThemeRoles } from '@/components/app/ThemeColorPicker'
@@ -80,6 +81,16 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
   const updateField = (field: string, value: any) => {
     setContent((prev: any) => {
       const next = { ...prev, [field]: value }
+      debouncedSave(next)
+      return next
+    })
+  }
+
+  // Same merge-then-save shape as updateField, but for several fields returned by the revise
+  // panel at once — one state update and one debounced save instead of one per changed field.
+  const applyChanges = (changes: Record<string, any>) => {
+    setContent((prev: any) => {
+      const next = { ...prev, ...changes }
       debouncedSave(next)
       return next
     })
@@ -159,6 +170,8 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
           </button>
         </div>
       )}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
       <DocStats />
       <StructuredDocument>
         <fieldset disabled={isLocked} style={{ border: 'none', margin: 0, padding: 0 }}>
@@ -205,6 +218,17 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
           />
         </fieldset>
       </StructuredDocument>
+      </div>
+      <div style={{ width: 340, flex: 'none' }}>
+        <RevisionChat
+          proposalId={proposal.id}
+          content={content}
+          brandKitId={initialProposal.brand_kit_id ?? null}
+          disabled={isLocked}
+          onApply={applyChanges}
+        />
+      </div>
+      </div>
       {showPdfModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
           <PdfExportModal
