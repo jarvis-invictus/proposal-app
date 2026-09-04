@@ -1,5 +1,6 @@
 import { openai } from '@ai-sdk/openai';
 import { streamText, tool } from 'ai';
+import { AI_MODEL } from '@/lib/generation/model';
 import { z } from 'zod';
 import { getAccountContext } from '@/lib/accountContext';
 import { currencyPromptInstruction } from '@/lib/accountCurrency';
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
   const brandKit = await resolveBrandKit(account?.accountId ?? null, brandKitId);
 
   const result = await streamText({
-    model: openai('gpt-4o'),
+    model: openai(AI_MODEL),
     system: `You are an expert proposal generation assistant for freelancers and agencies.
 Your goal is to extract all necessary details to generate a high-quality, professional proposal.
 The user will describe a deal in plain language or paste a call transcript.

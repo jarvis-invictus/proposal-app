@@ -13,6 +13,7 @@ import { DealWon } from '@/components/app/DealWon'
 import { PdfExportModal, type PdfExportOptions } from '@/components/app/PdfExportModal'
 import { DeckView } from '@/components/presentation/DeckView'
 import { BrandFontLink } from '@/components/app/BrandFontLink'
+import { firstFontFamily } from '@/lib/webfonts'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { ESIGN_CONSENT_STATEMENT, type Signature } from '@/lib/signature'
 
@@ -61,7 +62,7 @@ export default function PublicProposalView({
   const themeColor = content.themeColor || proposal.brand_kits?.colors?.primary || '#4F46E5'
   const headingFontName = proposal.brand_kits?.fonts?.heading || null
   const bodyFontName = proposal.brand_kits?.fonts?.body || null
-  const headingFontFamily = headingFontName ? `"${headingFontName}", var(--font-serif)` : undefined
+  const headingFontFamily = firstFontFamily(headingFontName) ? `"${firstFontFamily(headingFontName)}", var(--font-serif)` : undefined
 
   const searchParams = useSearchParams()
   // The document is the permanent, signable record — deck is a presentational extra, so a

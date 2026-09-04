@@ -1,5 +1,6 @@
 import { openai } from '@ai-sdk/openai'
 import { generateObject } from 'ai'
+import { AI_MODEL } from '@/lib/generation/model'
 import { z } from 'zod'
 
 export async function extractBrandKitFromImage(imageUrl: string | Uint8Array) {
@@ -18,7 +19,7 @@ export async function extractBrandKitFromImage(imageUrl: string | Uint8Array) {
   }
 
   const { object } = await generateObject({
-    model: openai('gpt-4o'),
+    model: openai(AI_MODEL),
     schema: z.object({
       colors: z.object({
         primary: z.string().describe("Primary brand color in hex format (e.g. #000000)"),

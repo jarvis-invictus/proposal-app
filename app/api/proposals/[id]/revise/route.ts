@@ -1,5 +1,6 @@
 import { openai } from '@ai-sdk/openai'
 import { generateObject } from 'ai'
+import { AI_MODEL } from '@/lib/generation/model'
 import { z } from 'zod'
 import { ProposalSchemaV1 } from '@/lib/schema/proposal'
 import { createClient } from '@/lib/supabase/server'
@@ -10,13 +11,44 @@ import { resolveBrandKit, brandContextBlock } from '@/lib/brand-extraction/promp
 
 export const maxDuration = 60
 
-// .partial() is the whole trick — every field becomes optional, so the model can return just
-// the top-level keys the request actually concerns, each still fully validated against the real
-// schema. No new schema to author, no diff/patch format to invent.
+// .deepPartial() (not just .partial()) is the whole trick — .partial() only makes the TOP-LEVEL
+// fields optional, so every field inside an array item (packages[].popular, etc.) was still
+// required the moment the model included that array at all. The prompt below demands the model
+// re-send every existing item's full shape when only one changed — a single dropped nested
+// field on any untouched item used to fail the whole revision with a generic error.
+// .deepPartial() makes fields inside nested objects/arrays optional too, so a minor omission on
+// an item the model wasn't even trying to change no longer kills the request.
 const ReviseSchema = z.object({
-  changes: ProposalSchemaV1.partial(),
+  changes: ProposalSchemaV1.deepPartial(),
   summary: z.string().describe("One short sentence describing what changed, shown to the user in the chat — e.g. \"Dropped the Essential package to $6,500.\""),
 })
+
+// deepPartial only stops a dropped field from failing validation — it doesn't stop the field
+// from actually being missing. Left as-is, a package the model returned without `popular` would
+// ship to the client, get merged into content, and then fail the PATCH route's own (shallow)
+// content validation the next autosave. Backfilling each array item against the original item at
+// the same index (and each object field against the original object) means what actually reaches
+// the client is always a complete shape — a genuinely dropped field falls back to what was
+// already there, not undefined.
+function repairChanges(rawChanges: Record<string, any>, original: Record<string, any>): Record<string, any> {
+  const repaired: Record<string, any> = {}
+  for (const key of Object.keys(rawChanges)) {
+    const value = rawChanges[key]
+    const originalValue = original?.[key]
+    if (Array.isArray(value) && Array.isArray(originalValue)) {
+      repaired[key] = value.map((item, i) => (
+        item && typeof item === 'object' && !Array.isArray(item)
+          ? { ...(originalValue[i] || {}), ...item }
+          : item
+      ))
+    } else if (value && typeof value === 'object' && !Array.isArray(value) && originalValue && typeof originalValue === 'object') {
+      repaired[key] = { ...originalValue, ...value }
+    } else {
+      repaired[key] = value
+    }
+  }
+  return repaired
+}
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -62,12 +94,13 @@ Requested change:
 ${instruction.trim()}`
 
     const { object } = await generateObject({
-      model: openai('gpt-4o'),
+      model: openai(AI_MODEL),
       schema: ReviseSchema,
       prompt,
     })
 
-    return new Response(JSON.stringify(object), { status: 200 })
+    const repaired = { ...object, changes: repairChanges(object.changes, content) }
+    return new Response(JSON.stringify(repaired), { status: 200 })
   } catch (err: any) {
     console.error('Failed to revise proposal:', err)
     return new Response(JSON.stringify({ error: "Couldn't process that request — try rephrasing it." }), { status: 500 })

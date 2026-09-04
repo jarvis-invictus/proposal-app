@@ -1,5 +1,6 @@
 import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
+import { AI_MODEL } from '@/lib/generation/model';
 import { ProposalSchemaV1 } from '@/lib/schema/proposal';
 import { getAccountContext } from '@/lib/accountContext';
 import { currencyPromptInstruction } from '@/lib/accountCurrency';
@@ -7,7 +8,6 @@ import { checkAiRateLimit, extractClientIp, rateLimitIdentifier } from '@/lib/ra
 import { resolveBrandKit, brandContextBlock } from '@/lib/brand-extraction/prompt';
 import { styleReferenceBlock, briefBlock } from '@/lib/generation/promptBlocks';
 import { correctPricing } from '@/lib/generation/pricing';
-import { CritiqueSchema, type CritiqueIssue } from '@/lib/generation/critique';
 
 export const maxDuration = 60;
 
@@ -57,24 +57,24 @@ ${contextBlock}`;
 
     const [headerResult, packagesResult, timelineResult, termsResult] = await Promise.all([
       generateObject({
-        model: openai('gpt-4o'),
+        model: openai(AI_MODEL),
         schema: HeaderSchema,
         prompt: buildPrompt('header', 'Write a compelling title, and correctly identify the client, the specific person/team the proposal is prepared for, and who is preparing it.'),
       }),
       generateObject({
-        model: openai('gpt-4o'),
+        model: openai(AI_MODEL),
         schema: PackagesSchema,
         prompt: buildPrompt('packages and add-ons', `- Typically 2-3 packages, unless the summary clearly calls for a different count.
 - Make sure originalPrice is higher than discountedPrice if both exist.
 - Ensure description text sounds professional and persuasive.`),
       }),
       generateObject({
-        model: openai('gpt-4o'),
+        model: openai(AI_MODEL),
         schema: TimelineSchema,
         prompt: buildPrompt('timeline', 'Break the project into clear phases with realistic durations based on the summary.'),
       }),
       generateObject({
-        model: openai('gpt-4o'),
+        model: openai(AI_MODEL),
         schema: TermsSchema,
         prompt: buildPrompt('terms and payment', 'Keep terms standard and concise unless specified otherwise in the summary. Do not include payment methods like UPI/Stripe in paymentSection — schedule and text terms only.'),
       }),
@@ -93,31 +93,12 @@ ${contextBlock}`;
 
     const corrected = correctPricing(draft);
 
-    // Critique is advisory only — flag, never block, and never let a failed critique call take
-    // down an otherwise-successful generation.
-    let critiqueIssues: CritiqueIssue[] = [];
-    try {
-      const { object: critique } = await generateObject({
-        model: openai('gpt-4o'),
-        schema: CritiqueSchema,
-        prompt: `Review this drafted proposal for anything a professional would want to double-check before sending — unrealistic or ungrounded pricing (a figure not supported by the summary), inconsistent tone across sections, or information that feels missing relative to what was discussed. Flag concerns only, do not rewrite anything.
-
-dateIssued and validUntil are already computed correctly by the app (today's date, and 14 days out) — do not flag them as suspicious just for being in the future.
-
-Original Deal Facts Summary:
-${summary}
-
-Drafted Proposal:
-${JSON.stringify(corrected)}`,
-      });
-      critiqueIssues = critique.issues;
-    } catch (err) {
-      console.error('Critique pass failed, continuing without it:', err);
-    }
-
-    // _critique rides alongside the real content but is never persisted — NewProposalClient
-    // strips it before saving and stashes it transiently for the Editor to show once.
-    return new Response(JSON.stringify({ ...corrected, _critique: critiqueIssues.length ? critiqueIssues : undefined }), {
+    // Critique (advisory-only review pass) used to run right here, sequentially, adding a full
+    // extra GPT-4o round trip to every generation despite its own comment calling it
+    // "never block." It's now a separate endpoint (/api/generate-proposal/critique) the client
+    // calls concurrently with saving the draft — so it no longer delays the response containing
+    // the actual proposal, which is what the user is waiting on.
+    return new Response(JSON.stringify(corrected), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
