@@ -1,4 +1,5 @@
 import { env } from '@/env'
+import { logError } from '@/lib/logging'
 
 type FirecrawlBrandingColors = {
   primary?: string
@@ -58,21 +59,31 @@ function summarizePersonality(personality: Record<string, unknown> | null | unde
 export async function extractBrandKitFromUrl(url: string) {
   const target = /^https?:\/\//i.test(url) ? url : `https://${url}`
 
-  const response = await fetch('https://api.firecrawl.dev/v2/scrape', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${env.FIRECRAWL_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      url: target,
-      formats: ['branding'],
-    }),
-  })
+  let response: Response
+  try {
+    response = await fetch('https://api.firecrawl.dev/v2/scrape', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.FIRECRAWL_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url: target,
+        formats: ['branding'],
+      }),
+      // A slow/hung target site previously hung this indefinitely — the caller (a Server
+      // Action with no maxDuration of its own until now) would just ride the platform's default
+      // timeout and surface a raw, unhelpful error.
+      signal: AbortSignal.timeout(30_000),
+    })
+  } catch (err) {
+    logError('Firecrawl scrape request failed:', err, { url: target })
+    throw new Error("Couldn't reach that site — check the URL and try again")
+  }
 
   if (!response.ok) {
     const body = await response.text().catch(() => '')
-    console.error('Firecrawl scrape failed:', response.status, body)
+    logError('Firecrawl scrape failed:', new Error(`Firecrawl responded ${response.status}`), { url: target, status: response.status, body })
     throw new Error('Failed to extract brand kit from URL')
   }
 
@@ -80,7 +91,7 @@ export async function extractBrandKitFromUrl(url: string) {
   const branding = json.data?.branding
 
   if (!branding) {
-    console.error('Firecrawl response missing branding data:', JSON.stringify(json))
+    logError('Firecrawl response missing branding data:', new Error('Firecrawl response missing branding data'), { url: target, response: json })
     throw new Error('Failed to extract brand kit from URL')
   }
 

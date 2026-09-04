@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getStripeClient, STRIPE_PRICE_ID_BY_TIER } from '@/lib/stripe'
+import { logError } from '@/lib/logging'
 
 type PaidTier = keyof typeof STRIPE_PRICE_ID_BY_TIER
 
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ checkout_url: session.url })
   } catch (err: any) {
-    console.error('Failed to create Stripe checkout session:', err)
+    logError('Failed to create Stripe checkout session:', err, { accountId: account.id })
     return NextResponse.json({ error: 'Failed to start checkout.' }, { status: 500 })
   }
 }

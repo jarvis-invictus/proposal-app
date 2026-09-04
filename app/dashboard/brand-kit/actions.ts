@@ -5,21 +5,53 @@ import { extractBrandKitFromImage } from '@/lib/brand-extraction/vision'
 import { extractBrandKitFromText } from '@/lib/brand-extraction/text'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { publicAssetPath } from '@/lib/attachments'
+import { logError, logAction } from '@/lib/logging'
+import { headers } from 'next/headers'
+import { getAccountContext } from '@/lib/accountContext'
+import { checkAiRateLimit, extractIpFromHeaders, rateLimitIdentifier } from '@/lib/ratelimit'
+
+// No `export const maxDuration` here — a file with a top-level 'use server' may only export
+// async functions; Next.js rejects any other export (confirmed by actually trying it: "Only
+// async functions are allowed to be exported in a 'use server' file", which breaks every page
+// that imports from this module, not just this one). The abortSignal timeout on each network
+// call below (Firecrawl fetch, and inside vision.ts/text.ts) is what actually bounds a
+// slow/hung call now — that's the real protection the platform's own default timeout used to be
+// the only backstop for.
+const MAX_URL_LENGTH = 2000
+const MAX_DESCRIPTION_LENGTH = 5000
+
+// Unlike saveBrandKit/deleteBrandKit below (which already require auth), these three had no
+// auth check at all — meaning nothing stopped an unauthenticated caller from triggering paid
+// OpenAI/Firecrawl calls, and there was no accountId to rate-limit by. Required here so
+// rate-limiting is actually meaningful, matching every other AI route in the app.
+async function requireAccountForExtraction() {
+  const account = await getAccountContext()
+  if (!account) throw new Error('Unauthorized')
+  const ip = extractIpFromHeaders((await headers()))
+  const { success } = await checkAiRateLimit(rateLimitIdentifier(account.accountId, ip), 'extract')
+  if (!success) throw new Error('Too many requests — please wait a few minutes before extracting another brand kit.')
+}
 
 export async function extractFromUrl(url: string) {
   if (!url) throw new Error("URL is required")
+  if (url.length > MAX_URL_LENGTH) throw new Error("That URL is too long")
+  await requireAccountForExtraction()
   const extracted = await extractBrandKitFromUrl(url)
   return extracted
 }
 
 export async function extractFromImage(fileData: string) {
   if (!fileData) throw new Error("Image data is required")
+  await requireAccountForExtraction()
   const extracted = await extractBrandKitFromImage(fileData)
   return extracted
 }
 
 export async function extractFromText(description: string) {
   if (!description || !description.trim()) throw new Error("A description is required")
+  if (description.length > MAX_DESCRIPTION_LENGTH) throw new Error(`Keep the description under ${MAX_DESCRIPTION_LENGTH.toLocaleString()} characters`)
+  await requireAccountForExtraction()
   const extracted = await extractBrandKitFromText(description.trim())
   return extracted
 }
@@ -58,7 +90,7 @@ export async function saveBrandKit(data: any) {
     .single()
 
   if (error) {
-    console.error("Failed to save brand kit", error)
+    logError("Failed to save brand kit", error, { accountId: userRecord.account_id })
     throw new Error("Failed to save brand kit")
   }
 
@@ -88,6 +120,10 @@ export async function deleteBrandKit(id: string) {
 
   if (!userRecord?.account_id) throw new Error("Account not found")
 
+  // Fetched before the delete — needed to decide (after) whether the underlying logo file is
+  // now safe to remove.
+  const { data: kitRow } = await supabase.from('brand_kits').select('logo_url').eq('id', id).eq('account_id', userRecord.account_id).maybeSingle()
+
   // Scoped to the caller's own account, not just the row id — RLS enforces the same boundary,
   // but filtering here too means a foreign id fails the query outright instead of relying on a
   // single layer of defense.
@@ -98,9 +134,30 @@ export async function deleteBrandKit(id: string) {
     .eq('account_id', userRecord.account_id)
 
   if (error) {
-    console.error("Failed to delete brand kit", error)
+    logError("Failed to delete brand kit", error, { accountId: userRecord.account_id, brandKitId: id })
     throw new Error("Failed to delete brand kit")
   }
 
+  // Logos upload to a fixed, upsertable `${accountId}/logo.*` path (BrandExtract.tsx), so more
+  // than one brand kit row in this account can legitimately point at the exact same file —
+  // only remove it once nothing else still references that URL. Best-effort: a failure here
+  // just leaves an orphaned file, the row is already gone either way.
+  if (kitRow?.logo_url) {
+    try {
+      const { count } = await supabase
+        .from('brand_kits')
+        .select('id', { count: 'exact', head: true })
+        .eq('account_id', userRecord.account_id)
+        .eq('logo_url', kitRow.logo_url)
+      if (!count) {
+        const path = publicAssetPath(kitRow.logo_url)
+        if (path) await supabase.storage.from('public-assets').remove([path])
+      }
+    } catch (storageErr) {
+      logError('Failed to clean up brand kit logo from storage', storageErr, { accountId: userRecord.account_id, brandKitId: id })
+    }
+  }
+
+  logAction('delete_brand_kit', userData.user.id, { accountId: userRecord.account_id, brandKitId: id })
   revalidatePath('/dashboard')
 }

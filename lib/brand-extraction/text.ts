@@ -1,10 +1,11 @@
 import { openai } from '@ai-sdk/openai'
 import { generateObject } from 'ai'
+import { AI_MODEL } from '@/lib/generation/model'
 import { z } from 'zod'
 
 export async function extractBrandKitFromText(description: string) {
   const { object } = await generateObject({
-    model: openai('gpt-4o'),
+    model: openai(AI_MODEL),
     schema: z.object({
       colors: z.object({
         primary: z.string().describe('Primary brand color in hex format (e.g. #000000)'),
@@ -22,6 +23,8 @@ export async function extractBrandKitFromText(description: string) {
 
 Brand description:
 ${description}`,
+    maxTokens: 500,
+    abortSignal: AbortSignal.timeout(20_000),
   })
 
   return object

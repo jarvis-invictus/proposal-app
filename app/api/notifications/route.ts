@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { logError } from '@/lib/logging'
 
 // GET /api/notifications
 // Fetch recent notifications for the authenticated user's account
@@ -35,7 +36,7 @@ export async function GET(request: Request) {
     .limit(20)
 
   if (error) {
-    console.error('Error fetching notifications:', error)
+    logError('Error fetching notifications:', error, { userId: user.id })
     return NextResponse.json({ error: 'Failed to fetch notifications' }, { status: 500 })
   }
 
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error updating notifications:', error)
+    logError('Error updating notifications:', error, { userId: user.id })
     return NextResponse.json({ error: 'Failed to update notifications' }, { status: 500 })
   }
 }
