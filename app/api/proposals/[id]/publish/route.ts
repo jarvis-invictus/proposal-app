@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { env } from '@/env'
+import { logError } from '@/lib/logging'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -46,7 +47,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .single()
 
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
+    logError('Failed to update proposal status', updateError, { proposalId: id, nextStatus })
+    return NextResponse.json({ error: 'Failed to update the proposal — please try again.' }, { status: 500 })
   }
 
   if (isDrafter) {
@@ -60,7 +62,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       message: `${title} was submitted for approval.`,
     })
     if (notifError) {
-      console.error('Failed to insert approval notification', notifError)
+      logError('Failed to insert approval notification', notifError, { proposalId: id })
       // Don't fail the request over this — the status transition itself already succeeded.
     }
   }

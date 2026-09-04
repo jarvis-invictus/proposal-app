@@ -8,6 +8,7 @@ import { resolveBrandKit, brandContextBlock } from '@/lib/brand-extraction/promp
 import { styleReferenceBlock, briefBlock } from '@/lib/generation/promptBlocks';
 import { correctPricing } from '@/lib/generation/pricing';
 import { CritiqueSchema, type CritiqueIssue } from '@/lib/generation/critique';
+import { logError } from '@/lib/logging';
 
 export const maxDuration = 60;
 
@@ -112,7 +113,7 @@ ${JSON.stringify(corrected)}`,
       });
       critiqueIssues = critique.issues;
     } catch (err) {
-      console.error('Critique pass failed, continuing without it:', err);
+      logError('Critique pass failed, continuing without it:', err, { accountId: account?.accountId ?? null });
     }
 
     // _critique rides alongside the real content but is never persisted — NewProposalClient
@@ -122,7 +123,7 @@ ${JSON.stringify(corrected)}`,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Failed to generate proposal:', error);
+    logError('Failed to generate proposal:', error, { accountId: account?.accountId ?? null });
     return new Response(JSON.stringify({ error: 'Generation failed' }), { status: 500 });
   }
 }

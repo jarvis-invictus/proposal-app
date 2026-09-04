@@ -15,6 +15,7 @@ import { DeckView } from '@/components/presentation/DeckView'
 import { BrandFontLink } from '@/components/app/BrandFontLink'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { ESIGN_CONSENT_STATEMENT, type Signature } from '@/lib/signature'
+import { logError } from '@/lib/logging'
 
 function formatUtc(dateStr: string): string {
   const d = new Date(dateStr)
@@ -107,7 +108,7 @@ export default function PublicProposalView({
   // View Tracking (only fire if not owner)
   useEffect(() => {
     if (!isOwner && proposal.status === 'PUBLISHED') {
-      fetch(`/api/proposals/${proposal.slug}/view`, { method: 'POST' }).catch(console.error)
+      fetch(`/api/proposals/${proposal.slug}/view`, { method: 'POST' }).catch((err) => logError('Failed to record proposal view', err, { slug: proposal.slug }))
     }
   }, [proposal.slug, proposal.status, isOwner])
 

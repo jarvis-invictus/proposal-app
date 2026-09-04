@@ -7,6 +7,7 @@ import { getAccountContext } from '@/lib/accountContext'
 import { currencyPromptInstruction } from '@/lib/accountCurrency'
 import { checkAiRateLimit, extractClientIp, rateLimitIdentifier } from '@/lib/ratelimit'
 import { resolveBrandKit, brandContextBlock } from '@/lib/brand-extraction/prompt'
+import { logError } from '@/lib/logging'
 
 export const maxDuration = 60
 
@@ -69,7 +70,7 @@ ${instruction.trim()}`
 
     return new Response(JSON.stringify(object), { status: 200 })
   } catch (err: any) {
-    console.error('Failed to revise proposal:', err)
+    logError('Failed to revise proposal:', err, { proposalId: id, accountId: account.accountId })
     return new Response(JSON.stringify({ error: "Couldn't process that request — try rephrasing it." }), { status: 500 })
   }
 }

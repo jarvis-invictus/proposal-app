@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { logError, logAction } from '@/lib/logging'
 
 function slugify(title: string) {
   const base = (title || '')
@@ -39,7 +40,10 @@ export async function duplicateProposalAsDraft(proposalId: string) {
     })
     .select('id, content')
     .single()
-  if (error) throw new Error(error.message)
+  if (error) {
+    logError('Failed to duplicate proposal', error, { accountId: source.account_id, sourceProposalId: proposalId })
+    throw new Error('Failed to duplicate the proposal — please try again.')
+  }
 
   revalidatePath('/dashboard')
   return { id: copy.id, title: copy.content?.title as string }
@@ -51,7 +55,11 @@ export async function deleteProposal(proposalId: string) {
   if (!user) throw new Error('Unauthorized')
 
   const { error } = await supabase.from('proposals').delete().eq('id', proposalId)
-  if (error) throw new Error(error.message)
+  if (error) {
+    logError('Failed to delete proposal', error, { proposalId })
+    throw new Error('Failed to delete the proposal — please try again.')
+  }
 
+  logAction('delete_proposal', user.id, { proposalId })
   revalidatePath('/dashboard')
 }

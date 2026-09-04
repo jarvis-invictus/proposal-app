@@ -1,4 +1,5 @@
 import { env } from '@/env'
+import { logError } from '@/lib/logging'
 
 type FirecrawlBrandingColors = {
   primary?: string
@@ -72,7 +73,7 @@ export async function extractBrandKitFromUrl(url: string) {
 
   if (!response.ok) {
     const body = await response.text().catch(() => '')
-    console.error('Firecrawl scrape failed:', response.status, body)
+    logError('Firecrawl scrape failed:', new Error(`Firecrawl responded ${response.status}`), { url: target, status: response.status, body })
     throw new Error('Failed to extract brand kit from URL')
   }
 
@@ -80,7 +81,7 @@ export async function extractBrandKitFromUrl(url: string) {
   const branding = json.data?.branding
 
   if (!branding) {
-    console.error('Firecrawl response missing branding data:', JSON.stringify(json))
+    logError('Firecrawl response missing branding data:', new Error('Firecrawl response missing branding data'), { url: target, response: json })
     throw new Error('Failed to extract brand kit from URL')
   }
 

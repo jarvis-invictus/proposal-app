@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/env'
+import { logError } from '@/lib/logging'
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params
@@ -68,7 +69,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .eq('id', proposal.id)
 
   if (updateError) {
-    console.error('Failed to update view tracking', updateError)
+    logError('Failed to update view tracking', updateError, { proposalId: proposal.id })
     return NextResponse.json({ error: 'Failed to update' }, { status: 500 })
   }
 
@@ -83,7 +84,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     })
 
   if (notifError) {
-    console.error('Failed to insert notification', notifError)
+    logError('Failed to insert notification', notifError, { proposalId: proposal.id })
     // We don't fail the request if the notification insert fails
   }
 
