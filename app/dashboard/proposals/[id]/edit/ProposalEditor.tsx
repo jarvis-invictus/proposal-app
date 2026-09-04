@@ -19,6 +19,7 @@ import { PdfExportModal, type PdfExportOptions } from '@/components/app/PdfExpor
 import { PDF_SECTIONS } from '@/app/p/[slug]/PublicProposalView'
 import { Icon } from '@/components/ui/Icon'
 import { getPublicProposalUrl } from '@/lib/publicUrl'
+import { logError } from '@/lib/logging'
 
 const AUTOSAVE_DEBOUNCE_MS = 2500
 
@@ -82,7 +83,7 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
       setSaveStatus('saved')
       return true
     } catch (err) {
-      console.error(err)
+      logError('Failed to autosave proposal', err, { proposalId: proposal.id })
       setSaveStatus('error')
       return false
     }

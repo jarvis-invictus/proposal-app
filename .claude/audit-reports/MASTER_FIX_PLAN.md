@@ -148,11 +148,12 @@ Do not skip ahead into Phase 6+ before Phase 1-3 are done — those three are th
 
 ---
 
-### Phase 13 — Observability
+### Phase 13 — Observability ✅ [PR #70](https://github.com/jarvis-invictus/proposal-app/pull/70)
 **Why here:** once the above phases are shipping fixes, you need to actually see if something breaks in production.
-- [ ] `Sentry.captureException` called from exactly one place in the whole codebase — wire it into the 18 files currently only `console.error`-ing
-- [ ] Raw Postgres/Supabase `error.message` returned directly in JSON responses from public endpoints, including the unauthenticated accept endpoint — map to generic user-facing messages, log real errors server-side only
-- [ ] `deleteProposal` and `deleteBrandKit` have zero logging on success — log actor + target on every destructive action
+- [x] `Sentry.captureException` called from exactly one place in the whole codebase — added `lib/logging.ts` (`logError`/`logAction`) and wired it into all ~33 `console.error` call sites across 19 files
+- [x] Raw Postgres/Supabase `error.message` returned directly in JSON responses from public endpoints, including the unauthenticated accept endpoint — now generic user-facing messages, real errors logged server-side via `logError`
+- [x] `deleteProposal` and `deleteBrandKit` had zero logging on success — added `logAction(actorId, target)` to both, verified live
+- [x] Bug found in passing: `app/api/proposals/[id]/route.ts`'s catch block referenced an out-of-scope `id` (declared `const` inside the try block) — would have thrown on any real failure instead of returning the intended 500; fixed
 
 **Verify:** trigger a real error in each fixed path locally, confirm it shows up in Sentry; confirm no raw error text reaches the client response body.
 
@@ -220,7 +221,7 @@ Do not skip ahead into Phase 6+ before Phase 1-3 are done — those three are th
 | 10 — Accessibility: medium/low | Done — [PR #67](https://github.com/jarvis-invictus/proposal-app/pull/67), awaiting merge |
 | 11 — Database & query performance | Done — [PR #68](https://github.com/jarvis-invictus/proposal-app/pull/68), awaiting merge |
 | 12 — Frontend performance | Done — [PR #69](https://github.com/jarvis-invictus/proposal-app/pull/69), awaiting merge |
-| 13 — Observability | Not started |
+| 13 — Observability | Done — [PR #70](https://github.com/jarvis-invictus/proposal-app/pull/70), awaiting merge |
 | 14 — Storage & data hygiene | Not started |
 | 15 — Copy & microcopy polish | Not started |
 | 16 — Testing & CI foundation | Not started |

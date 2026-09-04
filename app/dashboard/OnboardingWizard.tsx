@@ -13,6 +13,7 @@ import { BrandFontLink } from '@/components/app/BrandFontLink'
 import { firstFontFamily } from '@/lib/webfonts'
 import { BrandExtract } from './brand-kit/BrandExtract'
 import { finishOnboarding, saveOnboardingBusiness } from './onboarding-actions'
+import { logError } from '@/lib/logging'
 
 const STEPS = [
   { id: 'business', n: '1', label: 'Your business' },
@@ -395,7 +396,7 @@ export function OnboardingWizard({ firstName, accountId, existingBrandKits = [],
     try {
       await saveOnboardingBusiness({ business, category })
     } catch (err) {
-      console.error('Failed to persist onboarding business step', err)
+      logError('Failed to persist onboarding business step', err, { accountId })
     }
   }
 

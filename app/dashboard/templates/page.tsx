@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getAccountShellInfo } from '@/lib/accountShellInfo'
+import { logError } from '@/lib/logging'
 import { TemplatesClient, type TemplateRow } from './TemplatesClient'
 
 export default async function TemplatesPage() {
@@ -21,7 +22,7 @@ export default async function TemplatesPage() {
     .order('name')
 
   if (error) {
-    console.error('Error fetching templates', error)
+    logError('Error fetching templates', error, { userId: userData.user.id })
   }
 
   const templates: TemplateRow[] = (rows ?? []).map((t) => {

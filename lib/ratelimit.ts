@@ -1,5 +1,6 @@
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
+import { logError } from '@/lib/logging'
 
 // Every call in this file must be safe with zero Upstash env vars set — that's the state of
 // every local dev machine until Sahil creates the account. Never throw here; degrade to "allow
@@ -56,7 +57,7 @@ export async function checkAiRateLimit(identifier: string, bucket: Bucket): Prom
   } catch (err) {
     // Upstash reachability issue, not a rate-limit decision — fail open rather than blocking
     // every AI request because Redis had one bad moment.
-    console.error(`[ratelimit] Upstash request failed for bucket "${bucket}", allowing request through:`, err)
+    logError(`[ratelimit] Upstash request failed for bucket "${bucket}", allowing request through:`, err, { bucket, identifier })
     return { success: true }
   }
 }

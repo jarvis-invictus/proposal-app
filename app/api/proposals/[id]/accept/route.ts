@@ -4,6 +4,7 @@ import { env } from '@/env'
 import { ESIGN_CONSENT_STATEMENT, type Signature } from '@/lib/signature'
 import { sendEmail } from '@/lib/email'
 import { ProposalSignedEmail } from '@/emails/ProposalSignedEmail'
+import { logError } from '@/lib/logging'
 
 // x-forwarded-for can carry a client-supplied chain ("client, proxy1, proxy2") — the first
 // entry is the original client. NextRequest has no reliable .ip in the App Router, so headers
@@ -62,7 +63,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .maybeSingle()
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    logError('Failed to record proposal acceptance', error, { slug, proposalId: existing.id })
+    return NextResponse.json({ error: 'Failed to accept the proposal — please try again.' }, { status: 500 })
   }
   if (!proposal) {
     return NextResponse.json({ error: 'Already accepted' }, { status: 409 })
@@ -76,7 +78,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     message: `${name.trim()} accepted ${title}.`,
   })
   if (notifError) {
-    console.error('Failed to insert acceptance notification', notifError)
+    logError('Failed to insert acceptance notification', notifError, { slug, proposalId: existing.id })
     // Don't fail the request over this — the acceptance itself already succeeded.
   }
 
@@ -109,7 +111,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
     }
   } catch (emailErr) {
-    console.error('Failed to send signature notification email', emailErr)
+    logError('Failed to send signature notification email', emailErr, { slug, proposalId: existing.id })
   }
 
   return NextResponse.json(proposal)

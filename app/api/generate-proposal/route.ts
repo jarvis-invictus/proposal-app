@@ -8,6 +8,7 @@ import { checkAiRateLimit, extractClientIp, rateLimitIdentifier } from '@/lib/ra
 import { resolveBrandKit, brandContextBlock } from '@/lib/brand-extraction/prompt';
 import { styleReferenceBlock, briefBlock } from '@/lib/generation/promptBlocks';
 import { correctPricing } from '@/lib/generation/pricing';
+import { logError } from '@/lib/logging';
 
 export const maxDuration = 60;
 
@@ -130,7 +131,7 @@ ${contextBlock}`;
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Failed to generate proposal:', error);
+    logError('Failed to generate proposal:', error, { accountId: account?.accountId ?? null });
     return new Response(JSON.stringify({ error: 'Generation failed' }), { status: 500 });
   }
 }

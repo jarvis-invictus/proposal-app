@@ -5,6 +5,7 @@ import { extractBrandKitFromImage } from '@/lib/brand-extraction/vision'
 import { extractBrandKitFromText } from '@/lib/brand-extraction/text'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { logError, logAction } from '@/lib/logging'
 import { headers } from 'next/headers'
 import { getAccountContext } from '@/lib/accountContext'
 import { checkAiRateLimit, extractIpFromHeaders, rateLimitIdentifier } from '@/lib/ratelimit'
@@ -88,7 +89,7 @@ export async function saveBrandKit(data: any) {
     .single()
 
   if (error) {
-    console.error("Failed to save brand kit", error)
+    logError("Failed to save brand kit", error, { accountId: userRecord.account_id })
     throw new Error("Failed to save brand kit")
   }
 
@@ -128,9 +129,10 @@ export async function deleteBrandKit(id: string) {
     .eq('account_id', userRecord.account_id)
 
   if (error) {
-    console.error("Failed to delete brand kit", error)
+    logError("Failed to delete brand kit", error, { accountId: userRecord.account_id, brandKitId: id })
     throw new Error("Failed to delete brand kit")
   }
 
+  logAction('delete_brand_kit', userData.user.id, { accountId: userRecord.account_id, brandKitId: id })
   revalidatePath('/dashboard')
 }

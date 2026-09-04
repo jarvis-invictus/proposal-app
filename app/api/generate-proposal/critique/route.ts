@@ -5,6 +5,7 @@ import { getAccountContext } from '@/lib/accountContext';
 import { checkAiRateLimit, extractClientIp, rateLimitIdentifier } from '@/lib/ratelimit';
 import { CritiqueSchema, type CritiqueIssue } from '@/lib/generation/critique';
 import { findCrutchPhrases } from '@/lib/generation/specificity';
+import { logError } from '@/lib/logging';
 
 export const maxDuration = 30;
 
@@ -54,7 +55,7 @@ ${JSON.stringify(proposal)}`,
     });
     issues = [...issues, ...critique.issues];
   } catch (err) {
-    console.error('Critique pass failed, continuing without it:', err);
+    logError('Critique pass failed, continuing without it:', err, { accountId: account?.accountId ?? null });
   }
   return new Response(JSON.stringify({ issues }), { status: 200 });
 }

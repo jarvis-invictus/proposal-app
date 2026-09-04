@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { logError } from '@/lib/logging'
 import { ProposalSchemaV1 } from '@/lib/schema/proposal'
 
 export async function PATCH(
@@ -88,13 +89,13 @@ export async function PATCH(
       .single()
 
     if (error) {
-      console.error('Error updating proposal:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      logError('Error updating proposal:', error, { proposalId: id })
+      return NextResponse.json({ error: 'Failed to save your changes — please try again.' }, { status: 500 })
     }
 
     return NextResponse.json(proposal)
   } catch (err) {
-    console.error('Unexpected error updating proposal:', err)
+    logError('Unexpected error updating proposal:', err)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
