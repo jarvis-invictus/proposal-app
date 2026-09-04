@@ -1,0 +1,20 @@
+-- Fixes a real regression from 20260903000000_harden_definer_functions.sql, surfaced by
+-- properly fixing the broken assertion in __tests__/rls.test.ts's "public cannot read private
+-- proposals" case (Phase 2 of the 2026-09-04 audit's master fix plan).
+--
+-- That migration revoked EXECUTE on get_account_id() from PUBLIC, intending only to stop an
+-- unauthenticated client from calling it directly — but PUBLIC is also where `anon`'s own
+-- privilege came from (there was never a separate GRANT to `anon`), so this silently took it
+-- away from `anon` too. Postgres evaluates every permissive RLS policy on a table and ORs their
+-- results together, even ones irrelevant to the calling role — so "Users can manage own
+-- proposals" (which calls get_account_id()) still gets evaluated for an anon SELECT, and a
+-- permission-denied error while evaluating ANY policy aborts the whole query, not just that
+-- policy's contribution. Net effect: anon could no longer read a proposal at all, even one the
+-- separate "Public can read published proposals" policy explicitly allows — a real regression
+-- that happened to be dormant only because the app itself always reads public proposals through
+-- the service-role client, never a plain anon client.
+--
+-- get_account_id() is safe to let `anon` call: auth.uid() is NULL in that context, so it always
+-- returns NULL, and `account_id = NULL` is never true — anon still can't read anyone's private
+-- data through it. It just needs to not throw.
+GRANT EXECUTE ON FUNCTION public.get_account_id() TO anon;

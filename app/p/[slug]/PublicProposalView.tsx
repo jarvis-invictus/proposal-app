@@ -10,7 +10,7 @@ import { Icon } from '@/components/ui/Icon'
 import { Modal } from '@/components/app/Modal'
 import { SignaturePad } from '@/components/app/SignaturePad'
 import { DealWon } from '@/components/app/DealWon'
-import { PdfExportModal, type PdfExportOptions } from '@/components/app/PdfExportModal'
+import { PdfExportModal, type PdfExportOptions, formatDate } from '@/components/app/PdfExportModal'
 import { DeckView } from '@/components/presentation/DeckView'
 import { BrandFontLink } from '@/components/app/BrandFontLink'
 import { formatCurrency } from '@/lib/formatCurrency'
@@ -29,9 +29,6 @@ const CORNER_MAP: Record<PdfExportOptions['pageNumbers'], string> = {
 }
 const DATES_MAP: Record<PdfExportOptions['dates'], string> = {
   both: 'both', issued: 'issued', valid: 'validUntil', none: 'none',
-}
-const FORMAT_MAP: Record<PdfExportOptions['dateFormat'], string> = {
-  long: 'standard', us: 'slashes', iso: 'iso', custom: 'standard',
 }
 
 /** The only sections this proposal's print view actually toggles — must match the ids
@@ -117,7 +114,8 @@ export default function PublicProposalView({
     pageNumbers: 'none', // 'none', 'top-left', 'top-right', 'bottom-left', 'bottom-right'
     headerText: '',
     datesMode: 'both', // 'both', 'issued', 'validUntil', 'none'
-    datesFormat: 'standard', // 'standard', 'slashes', 'iso'
+    dateFormat: 'long' as PdfExportOptions['dateFormat'],
+    customDateFormat: '',
     visibleSections: {
       addOns: true,
       timeline: true,
@@ -133,7 +131,8 @@ export default function PublicProposalView({
       pageNumbers: CORNER_MAP[opts.pageNumbers] ?? 'none',
       headerText: opts.headerIsDefault ? '' : opts.header,
       datesMode: DATES_MAP[opts.dates] ?? 'both',
-      datesFormat: FORMAT_MAP[opts.dateFormat] ?? 'standard',
+      dateFormat: opts.dateFormat,
+      customDateFormat: opts.customDateFormat,
       visibleSections: {
         addOns: !opts.hiddenSections.includes('addOns'),
         timeline: !opts.hiddenSections.includes('timeline'),
@@ -166,20 +165,6 @@ export default function PublicProposalView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
-
-  const formatDate = (dateStr: string, format: string) => {
-    if (!dateStr) return ''
-    try {
-      const d = new Date(dateStr)
-      if (isNaN(d.getTime())) return dateStr // fallback if not parseable
-
-      if (format === 'slashes') return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`
-      if (format === 'iso') return d.toISOString().split('T')[0]
-      return dateStr // standard original
-    } catch {
-      return dateStr
-    }
-  }
 
   const effectiveThemeColor = pdfConfig.inkSavingMode ? '#000000' : themeColor
   const headerTextToRender = pdfConfig.headerText || content.title
@@ -241,24 +226,24 @@ export default function PublicProposalView({
       `}</style>
 
       {/* Top action bar - Hidden in Print */}
-      <div className="print:hidden" style={{
-        position: 'sticky', top: 0, zIndex: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '16px 32px', background: 'var(--glass-quiet)', backdropFilter: 'var(--blur-glass)', WebkitBackdropFilter: 'var(--blur-glass)',
+      <div className="print:hidden px-4 sm:px-8" style={{
+        position: 'sticky', top: 0, zIndex: 40, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center',
+        rowGap: 10, columnGap: 16, padding: '16px 0', background: 'var(--glass-quiet)', backdropFilter: 'var(--blur-glass)', WebkitBackdropFilter: 'var(--blur-glass)',
         borderBottom: '1px solid var(--border-hairline)', fontFamily: 'var(--font-sans)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flexWrap: 'wrap', rowGap: 6 }}>
           <h2 style={{ margin: 0, fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)', color: 'var(--text-primary)' }}>{content.clientName} Proposal</h2>
           {isOwner && proposal.status === 'DRAFT' && (
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 9px', borderRadius: 'var(--radius-pill)',
               background: 'var(--status-caution-surface)', border: '1px solid var(--status-caution-border)', color: 'var(--status-caution-text)',
-              fontSize: 'var(--text-micro)', fontWeight: 'var(--weight-medium)',
+              fontSize: 'var(--text-micro)', fontWeight: 'var(--weight-medium)', flex: 'none',
             }}>
               Preview Mode (DRAFT)
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <Button variant="ghost" size="sm" icon="sparkles" onClick={() => setViewMode('deck')}>View as deck</Button>
           <Button variant="ink" size="sm" icon="settings" onClick={() => setShowConfigModal(true)}>Configure &amp; Print PDF</Button>
         </div>
@@ -317,13 +302,13 @@ export default function PublicProposalView({
                 {(pdfConfig.datesMode === 'both' || pdfConfig.datesMode === 'issued') && (
                   <div>
                     <p className="uppercase tracking-wider text-xs mb-1 opacity-70 print:text-gray-500">Date Issued</p>
-                    <p>{formatDate(content.dateIssued, pdfConfig.datesFormat)}</p>
+                    <p>{formatDate(content.dateIssued, pdfConfig.dateFormat, pdfConfig.customDateFormat)}</p>
                   </div>
                 )}
                 {(pdfConfig.datesMode === 'both' || pdfConfig.datesMode === 'validUntil') && (
                   <div>
                     <p className="uppercase tracking-wider text-xs mb-1 opacity-70 print:text-gray-500">Valid Until</p>
-                    <p>{formatDate(content.validUntil, pdfConfig.datesFormat)}</p>
+                    <p>{formatDate(content.validUntil, pdfConfig.dateFormat, pdfConfig.customDateFormat)}</p>
                   </div>
                 )}
               </>
@@ -336,7 +321,7 @@ export default function PublicProposalView({
         {content.packages && content.packages.length > 0 && (
           <div className="p-12 print:break-inside-avoid" style={{ borderBottom: '1px solid var(--border-hairline)' }}>
             <h2 className="text-ink" style={{ fontSize: 'var(--text-h3)', fontWeight: 700, marginBottom: 32, fontFamily: headingFontFamily }}>Investment Options</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid print:grid-cols-2">
+            <div className={content.packages.length === 1 ? 'grid grid-cols-1 gap-6 print:grid print:grid-cols-1 max-w-md' : 'grid grid-cols-1 md:grid-cols-2 gap-6 print:grid print:grid-cols-2'}>
               {content.packages.map((pkg: any, idx: number) => (
                 <div
                   key={idx}

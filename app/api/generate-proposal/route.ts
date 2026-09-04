@@ -8,6 +8,7 @@ import { resolveBrandKit, brandContextBlock } from '@/lib/brand-extraction/promp
 import { styleReferenceBlock, briefBlock } from '@/lib/generation/promptBlocks';
 import { correctPricing } from '@/lib/generation/pricing';
 import { CritiqueSchema, type CritiqueIssue } from '@/lib/generation/critique';
+import { findCrutchPhrases } from '@/lib/generation/specificity';
 
 export const maxDuration = 60;
 
@@ -48,6 +49,8 @@ export async function POST(req: Request) {
 CURRENCY (critical): ${currencyPromptInstruction(currency)}
 
 SPECIFICITY (critical): every sentence must earn its place by referencing something real from the deal facts below — a deliverable, a number, a named phase, the client's actual situation. Do not write filler that could apply to any project ("we look forward to partnering with you," "our team is excited to bring your vision to life," "a solution tailored to your needs"). If a brand voice is given below, that voice should be audible in the word choice, not just mentioned — write the way that business would actually talk to this client, not a generic proposal template with their name inserted.
+
+SENTENCE STRUCTURE (critical): don't write a fill-in-the-blank template with the client's name dropped in — the real tell isn't just banned words, it's identical sentence shapes across different clients ("Our [X] Package offers a comprehensive [Y] tailored [specifically] for/to [client]..."). Vary how each section opens and how ideas connect; let the actual deliverables and numbers drive the sentence, not a fixed scaffold this client's details get poured into.
 
 ${instructions}
 
@@ -94,8 +97,15 @@ ${contextBlock}`;
     const corrected = correctPricing(draft);
 
     // Critique is advisory only — flag, never block, and never let a failed critique call take
-    // down an otherwise-successful generation.
-    let critiqueIssues: CritiqueIssue[] = [];
+    // down an otherwise-successful generation. Crutch-phrase findings are mechanical (a grep,
+    // not another LLM judgment call that could fail the same way it's meant to catch), so they're
+    // unconditional — they populate critiqueIssues before the LLM pass even runs, and survive if
+    // that pass errors out.
+    let critiqueIssues: CritiqueIssue[] = findCrutchPhrases(corrected).map(({ field, phrase }) => ({
+      field,
+      severity: 'medium' as const,
+      note: `Reads as generic AI phrasing ("${phrase}") — worth rewriting with something specific to this deal.`,
+    }));
     try {
       const { object: critique } = await generateObject({
         model: openai('gpt-4o'),
@@ -110,7 +120,7 @@ ${summary}
 Drafted Proposal:
 ${JSON.stringify(corrected)}`,
       });
-      critiqueIssues = critique.issues;
+      critiqueIssues = [...critiqueIssues, ...critique.issues];
     } catch (err) {
       console.error('Critique pass failed, continuing without it:', err);
     }
