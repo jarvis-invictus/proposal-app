@@ -24,7 +24,7 @@ export default function MarketingHero() {
           loop
           muted
           playsInline
-          preload="auto"
+          preload="metadata"
           disableRemotePlayback
           // @ts-ignore
           webkit-playsinline="true"

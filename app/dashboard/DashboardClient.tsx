@@ -14,10 +14,10 @@ import { FilterChip } from '@/components/ui/FilterChip'
 import { SelectMenu } from '@/components/ui/SelectMenu'
 import { Icon } from '@/components/ui/Icon'
 import { PromptInput } from '@/components/ui/PromptInput'
-import { SkeletonCard } from '@/components/ui/Skeleton'
 import { Toast, ToastHost, useToasts } from '@/components/ui/Toast'
 import { relativeTime } from '@/lib/relativeTime'
 import { getPublicProposalUrl } from '@/lib/publicUrl'
+import { prefersReducedMotion } from '@/lib/reducedMotion'
 import { duplicateProposalAsDraft, deleteProposal } from './actions'
 
 /** Mirrors the starter ids NewProposal.jsx will branch on once it's rebuilt (Correction 6, item 4) —
@@ -66,8 +66,6 @@ export function DashboardClient({
   accountSubdomain?: string | null
 }) {
   const router = useRouter()
-  const [loading, setLoading] = React.useState(true)
-  React.useEffect(() => { const t = setTimeout(() => setLoading(false), 900); return () => clearTimeout(t) }, [])
 
   const [filter, setFilter] = React.useState<typeof STATUS_FILTERS[number]>('All')
   const [client, setClient] = React.useState('All clients')
@@ -179,10 +177,6 @@ export function DashboardClient({
 
       {proposals.length === 0 ? (
         <FirstRunEmpty />
-      ) : loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 22 }}>
-          {[0, 1, 2, 3, 4, 5].map((i) => <SkeletonCard key={i} lines={2} />)}
-        </div>
       ) : list.length === 0 ? (
         <EmptyState title="Nothing matches that filter" description="Clear the filters, or describe a new deal and we'll draft the whole proposal for you."
           action={<Button icon="sparkles" onClick={() => goNew()}>Create with AI</Button>} />
@@ -191,7 +185,11 @@ export function DashboardClient({
           {list.map((p) => (
             <ProposalCard key={p.id} title={p.title} client={p.client} updated={`Updated ${relativeTime(p.updatedAt)}`}
               status={p.displayStatus} statusLabel={p.statusLabel} value={p.value}
-              onOpen={() => { setOpening(p.id); setTimeout(() => router.push(`/dashboard/proposals/${p.id}/edit`), 320) }}
+              onOpen={() => {
+                setOpening(p.id)
+                if (prefersReducedMotion()) router.push(`/dashboard/proposals/${p.id}/edit`)
+                else setTimeout(() => router.push(`/dashboard/proposals/${p.id}/edit`), 320)
+              }}
               style={opening && opening !== p.id ? { opacity: 0.35, transform: 'scale(0.985)', transition: 'all 300ms var(--ease-standard)' } :
                 opening === p.id ? { transform: 'scale(1.02)', transition: 'transform 300ms var(--ease-out-soft)', zIndex: 2 } : undefined}
               onMenu={() => setMenu(menu === p.id ? null : p.id)}
