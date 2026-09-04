@@ -46,7 +46,11 @@ export async function signup(formData: FormData) {
   const { error } = await supabase.auth.signUp(data)
 
   if (error) {
-    redirect(`/signup?error=Could not sign up${inviteId ? `&invite=${inviteId}` : ''}`)
+    // Unlike login (kept deliberately vague — no "wrong password" vs. "no such user" hint),
+    // signup errors are Supabase Auth's own crafted, safe-to-show messages ("User already
+    // registered", "Password should be at least 6 characters") — a user needs to know which one
+    // to actually fix it, so pass the real message through instead of a flat generic string.
+    redirect(`/signup?error=${encodeURIComponent(error.message)}${inviteId ? `&invite=${inviteId}` : ''}`)
   }
 
   revalidatePath('/dashboard')

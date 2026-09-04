@@ -2,7 +2,6 @@ import { MarketingNavbar } from '@/components/MarketingNavbar';
 import { HeroContent } from '@/components/HeroContent';
 import { HowItWorks } from '@/components/HowItWorks';
 import { Features } from '@/components/Features';
-import { Testimonials } from '@/components/Testimonials';
 import { Pricing } from '@/components/Pricing';
 import { Footer } from '@/components/Footer';
 
@@ -24,7 +23,7 @@ export default function MarketingHero() {
           loop
           muted
           playsInline
-          preload="auto"
+          preload="metadata"
           disableRemotePlayback
           // @ts-ignore
           webkit-playsinline="true"
@@ -40,7 +39,9 @@ export default function MarketingHero() {
         {/* Foreground Content */}
         <div className="relative z-10 w-full h-full overflow-y-auto pb-12">
           <MarketingNavbar />
-          <HeroContent />
+          <div id="main-content">
+            <HeroContent />
+          </div>
         </div>
       </div>
 
@@ -53,7 +54,6 @@ export default function MarketingHero() {
       >
         <HowItWorks />
         <Features />
-        <Testimonials />
         <Pricing />
         <Footer />
       </div>

@@ -96,34 +96,40 @@ describe.skipIf(!isConfigured)('Row Level Security (RLS) Policies', () => {
   })
 
   it('verifies public cannot read private proposals', async () => {
-    const { data: aAccounts } = await clientA.from('accounts').select('id').single()
-    
+    const { data: aAccounts, error: accountError } = await clientA.from('accounts').select('id').single()
+    expect(accountError).toBeNull()
+
     // Check for a system template, or insert a temporary one if none exists
     const { data: systemTemplate } = await clientA.from('templates').select('id').eq('is_system_default', true).limit(1).maybeSingle()
     let templateId = systemTemplate?.id
     if (!templateId) {
-      const { data: newTemplate } = await clientA.from('templates').insert({
+      const { data: newTemplate, error: templateError } = await clientA.from('templates').insert({
         name: 'Test Template',
         category: 'Test',
         structure: {},
         account_id: aAccounts?.id
       }).select().single()
+      expect(templateError).toBeNull()
       templateId = newTemplate?.id
     }
+    expect(templateId).toBeDefined()
 
-    const { data: proposal } = await clientA.from('proposals').insert({
+    const { data: proposal, error: proposalError } = await clientA.from('proposals').insert({
       account_id: aAccounts?.id,
       template_id: templateId,
       status: 'DRAFT',
       content: {},
       slug: `draft-prop-${Date.now()}`
     }).select().single()
+    expect(proposalError).toBeNull()
+    expect(proposal?.id).toBeDefined()
 
     const { data: publicReads, error } = await publicClient
       .from('proposals')
       .select('*')
-      .eq('id', proposal?.id)
+      .eq('id', proposal!.id)
 
+    expect(error).toBeNull()
     expect(publicReads).toHaveLength(0)
   })
 })
