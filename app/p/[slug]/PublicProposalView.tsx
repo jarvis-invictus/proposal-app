@@ -506,6 +506,9 @@ export default function PublicProposalView({
               <Icon name="lock" size={15} color="var(--text-muted)" className="hidden print:inline" />
               <h2 className="text-ink" style={{ fontSize: 'var(--text-body-lg)', fontWeight: 700, margin: 0 }}>Signature Certificate</h2>
             </div>
+            <p className="text-slate" style={{ fontSize: 'var(--text-sm)', marginBottom: 14, maxWidth: 560 }}>
+              Recorded automatically at the moment of signing to support this signature&apos;s audit trail — standard practice for e-signatures.
+            </p>
             <div style={{
               border: '1px solid var(--border-hairline)', borderRadius: 'var(--radius-sm)', padding: '20px 24px',
               background: 'var(--surface-sunken)',
@@ -557,7 +560,7 @@ export default function PublicProposalView({
           <div className="w-full max-w-4xl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
             {!acceptedAt ? (
               <>
-                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Questions? Reply to the email this link came from.</span>
+                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Questions? Reach out to whoever sent you this link.</span>
                 <Button variant="primary" icon="signature" onClick={() => setShowSignModal(true)}>Accept proposal</Button>
               </>
             ) : (

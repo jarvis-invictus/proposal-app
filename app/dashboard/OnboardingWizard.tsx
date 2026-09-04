@@ -316,12 +316,12 @@ function PreviewStep({ business, brandKit, onNext }: { business: string; brandKi
       <div style={{ marginBottom: 22 }}>
         <Badge tone="new" style={{ marginBottom: 10 }}>Nothing to do here — just look</Badge>
         <h1 style={{ fontSize: 30, letterSpacing: 'var(--tracking-tight)', lineHeight: 1.15 }}>
-          Here&apos;s what a proposal looks like in <em style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400, letterSpacing: 0 }}>{brandKit ? 'your' : 'Marg’s default'}</em> brand
+          Here&apos;s what a proposal looks like in <em style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400, letterSpacing: 0 }}>{brandKit ? 'your' : "Marg's default"}</em> brand
         </h1>
         <p style={{ marginTop: 9, fontSize: 'var(--text-body-lg)', color: 'var(--text-muted)', maxWidth: 460 }}>
           {brandKit
             ? 'Your colours and logo, already applied. Scroll it — this is a real page, not a picture.'
-            : 'You skipped the brand kit, so this uses Marg’s default styling. Set one up any time and every proposal picks it up.'}
+            : "You skipped the brand kit, so this uses Marg's default styling. Set one up any time and every proposal picks it up."}
         </p>
       </div>
       <SampleFrame business={name} brandKit={brandKit} />

@@ -112,11 +112,6 @@ export function DashboardClient({
     router.push(`/dashboard/proposals/${p.id}/edit?export=pdf`)
   }
 
-  const handleSaveAsTemplate = () => {
-    setMenu(null)
-    pushToast('Saving a proposal as a template is coming soon')
-  }
-
   const handleDelete = async (p: DashboardProposal) => {
     setMenu(null)
     if (!window.confirm(`Delete "${p.title}"? This can't be undone.`)) return
@@ -200,7 +195,6 @@ export function DashboardClient({
                   onDuplicate={() => handleDuplicate(p)}
                   onCopyLink={() => handleCopyLink(p)}
                   onExportPdf={() => handleExportPdf(p)}
-                  onSaveAsTemplate={handleSaveAsTemplate}
                   onDelete={() => handleDelete(p)} />
               ) : null} />
           ))}
@@ -365,15 +359,15 @@ function RecommendedRow({ category, onBrowse }: { category: string; onBrowse: ()
   )
 }
 
-function RowMenu({ onClose, onDuplicate, onCopyLink, onExportPdf, onSaveAsTemplate, onDelete }: {
-  onClose: () => void; onDuplicate: () => void; onCopyLink: () => void; onExportPdf: () => void; onSaveAsTemplate: () => void; onDelete: () => void
+function RowMenu({ onClose, onDuplicate, onCopyLink, onExportPdf, onDelete }: {
+  onClose: () => void; onDuplicate: () => void; onCopyLink: () => void; onExportPdf: () => void; onDelete: () => void
 }) {
   return (
     <Menu onClose={onClose}>
       <MenuRow icon="copy" onClick={(e) => { e.stopPropagation(); onDuplicate() }}>Duplicate as draft</MenuRow>
       <MenuRow icon="link" onClick={(e) => { e.stopPropagation(); onCopyLink() }}>Copy share link</MenuRow>
       <MenuRow icon="file-down" onClick={(e) => { e.stopPropagation(); onExportPdf() }}>Export PDF</MenuRow>
-      <MenuRow icon="layout-template" onClick={(e) => { e.stopPropagation(); onSaveAsTemplate() }}>Save as template</MenuRow>
+      <MenuRow icon="layout-template" disabled>Save as template (coming soon)</MenuRow>
       <MenuDivider />
       <MenuRow icon="trash-2" destructive onClick={(e) => { e.stopPropagation(); onDelete() }}>Delete</MenuRow>
     </Menu>
