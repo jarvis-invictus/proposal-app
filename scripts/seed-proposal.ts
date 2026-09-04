@@ -27,7 +27,7 @@ async function seed() {
   console.log("Found account:", accountId);
 
   // 2. Get or create a system template
-  let { data: templates, error: tplErr } = await supabase.from('templates').select('id').limit(1);
+  const { data: templates, error: tplErr } = await supabase.from('templates').select('id').limit(1);
   let templateId;
   if (!templates || templates.length === 0) {
     const { data: newTpl, error: newTplErr } = await supabase.from('templates').insert({
