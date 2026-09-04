@@ -1,11 +1,13 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { sendEmail } from '@/lib/email'
 import { TeamInviteEmail } from '@/emails/TeamInviteEmail'
 import { validateSubdomain } from '@/lib/publicUrl'
+import { env } from '@/env'
 
 async function requireAccount() {
   const supabase = await createClient()
@@ -55,7 +57,8 @@ export async function updateAvatarUrl(avatarUrl: string) {
 
 export async function inviteMember({ email, role }: { email: string; role: string }) {
   if (!email || !email.trim()) throw new Error('Email is required')
-  const { supabase, user, accountId } = await requireAccount()
+  const { supabase, user, accountId, role: myRole } = await requireAccount()
+  if (myRole !== 'owner') throw new Error('Only an owner can invite a team member')
 
   const { data: invitation, error } = await supabase
     .from('invitations')
@@ -170,10 +173,16 @@ export async function buyDomainSlot() {
   revalidatePath('/dashboard/settings')
 }
 
+// Paid tiers are only ever granted by the Stripe webhook (verified payment, service-role
+// client) — this action can only ever move an account down to 'free', never up. The DB itself
+// also now rejects a direct write to plan_tier from an authenticated session (see the
+// 2026-09-04 RLS-lockdown migration), so this is defense in depth, not the only guard.
 export async function switchPlan(planTier: string) {
-  const { supabase, role, accountId } = await requireAccount()
+  if (planTier !== 'free') throw new Error('Paid plans are only granted after a completed payment')
+  const { role, accountId } = await requireAccount()
   if (role !== 'owner') throw new Error('Only an owner can change the plan')
-  const { error } = await supabase.from('accounts').update({ plan_tier: planTier }).eq('id', accountId)
+  const adminSupabase = createAdminClient(env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  const { error } = await adminSupabase.from('accounts').update({ plan_tier: 'free' }).eq('id', accountId)
   if (error) throw new Error(error.message)
   revalidatePath('/dashboard/settings')
 }

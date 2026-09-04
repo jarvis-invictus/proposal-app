@@ -71,6 +71,16 @@ body {
   top: 8px;
 }
 
+/* Many editable fields set outline:none inline (their own focus styling only fires via React
+   state on hover-managed components like Input/Textarea, not on plain elements). An inline
+   style always beats an external stylesheet on the same property, so this can't use `outline`
+   itself — box-shadow isn't set inline anywhere these fields live, so it applies cleanly as a
+   real fallback ring for every focusable element that doesn't already draw its own. */
+:focus-visible {
+  box-shadow: var(--ring-focus);
+  border-radius: var(--radius-sm, 4px);
+}
+
 /* Base Motion */
 @keyframes screenIn {
   from { opacity: 0; transform: translateY(12px); }
@@ -212,6 +222,21 @@ body {
 }
 @media (prefers-reduced-motion:reduce){
   :root{--duration-fast:0ms;--duration-base:0ms;--duration-slow:0ms;--duration-entrance:0ms;--hover-lift:none;--hover-scale:1;--press-scale:1}
+  /* The --duration-* zeroing above only reaches transition/animation declarations that
+     reference those tokens — most do, but several (Button's ripple/spin, MicButton's
+     ring-pulse/pulse-bar, Skeleton's shimmer, AppShell's sky-drift/ripple/pop-in) hardcode a
+     literal duration instead. This is the actual universal catch-all: !important beats inline
+     style specificity regardless of selector, so it silences every animation/transition in the
+     app, hardcoded duration or not, rather than requiring every component author to remember
+     the token convention. 0.01ms (not 0s) so animation-fill-mode/animationend-driven logic
+     elsewhere still resolves instead of some browsers treating a 0-duration animation as never
+     having run.
+     iteration-count:1 stops infinite loops (spinners, pulses, ambient drift) outright — the
+     whole point of this preference is no perpetual motion, not just faster motion. */
+  *,*::before,*::after{
+    animation-duration:0.01ms!important;animation-iteration-count:1!important;
+    transition-duration:0.01ms!important;scroll-behavior:auto!important;
+  }
 }
 
 @theme inline {

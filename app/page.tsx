@@ -2,7 +2,6 @@ import { MarketingNavbar } from '@/components/MarketingNavbar';
 import { HeroContent } from '@/components/HeroContent';
 import { HowItWorks } from '@/components/HowItWorks';
 import { Features } from '@/components/Features';
-import { Testimonials } from '@/components/Testimonials';
 import { Pricing } from '@/components/Pricing';
 import { Footer } from '@/components/Footer';
 
@@ -55,7 +54,6 @@ export default function MarketingHero() {
       >
         <HowItWorks />
         <Features />
-        <Testimonials />
         <Pricing />
         <Footer />
       </div>

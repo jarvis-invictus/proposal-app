@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import { BrandExtract } from './BrandExtract'
 import { deleteBrandKit } from './actions'
+import { ConfirmDialog } from '@/components/app/ConfirmDialog'
 
 export type BrandKitRow = {
   id: string
@@ -57,10 +58,11 @@ export function BrandKitPageClient({ accountId, accountName, kits }: { accountId
 
 function BrandKitCard({ kit, onDeleted }: { kit: BrandKitRow; onDeleted: () => void }) {
   const [deleting, setDeleting] = React.useState(false)
+  const [confirming, setConfirming] = React.useState(false)
   const swatches = [kit.colors?.primary, kit.colors?.secondary, kit.colors?.accent].filter(Boolean) as string[]
 
   const handleDelete = async () => {
-    if (!window.confirm(`Delete "${kit.name}"? This can't be undone.`)) return
+    setConfirming(false)
     setDeleting(true)
     try {
       await deleteBrandKit(kit.id)
@@ -72,10 +74,17 @@ function BrandKitCard({ kit, onDeleted }: { kit: BrandKitRow; onDeleted: () => v
 
   return (
     <div style={{ position: 'relative', padding: '18px 18px 16px', borderRadius: 'var(--radius-card)', background: 'var(--surface-card)', border: '1px solid var(--border-hairline)', opacity: deleting ? 0.5 : 1 }}>
-      <button type="button" onClick={handleDelete} disabled={deleting} aria-label={`Delete ${kit.name}`}
+      <button type="button" onClick={() => setConfirming(true)} disabled={deleting} aria-label={`Delete ${kit.name}`}
         style={{ position: 'absolute', top: 10, right: 10, border: 'none', background: 'none', padding: 4, color: 'var(--text-muted)', cursor: deleting ? 'default' : 'pointer', display: 'flex' }}>
         <Icon name="trash-2" size={14} />
       </button>
+      <ConfirmDialog
+        open={confirming}
+        title={`Delete "${kit.name}"?`}
+        body="This can't be undone."
+        onConfirm={handleDelete}
+        onCancel={() => setConfirming(false)}
+      />
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
         {kit.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

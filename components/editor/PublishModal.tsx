@@ -17,6 +17,11 @@ export interface PublishModalProps {
   userRole: string
   /** The account's branded subdomain, if set — see Settings → Custom domain → "Your Marg link". */
   accountSubdomain?: string | null
+  /** Cancels any pending autosave and saves the current in-memory content immediately, awaited
+   * before publish/submit actually fires — without this, publishing right after an edit (or
+   * while the last autosave is still mid-flight or has already failed) can lock in whatever
+   * content last reached the DB, not what's on screen. Returns whether the save succeeded. */
+  onBeforePublish: () => Promise<boolean>
   onPublished: (result: { status: 'PUBLISHED' | 'PENDING_APPROVAL'; slug: string }) => void
 }
 
@@ -32,7 +37,7 @@ function filledSectionsSummary(content: any): string {
   return `${filled} of ${checks.length}, filled in`
 }
 
-export function PublishModal({ open, onClose, proposalId, slug, content, brandKitName, userRole, accountSubdomain, onPublished }: PublishModalProps) {
+export function PublishModal({ open, onClose, proposalId, slug, content, brandKitName, userRole, accountSubdomain, onBeforePublish, onPublished }: PublishModalProps) {
   const [stage, setStage] = React.useState<'review' | 'result'>('review')
   const [publishing, setPublishing] = React.useState(false)
   const [error, setError] = React.useState('')
@@ -57,6 +62,8 @@ export function PublishModal({ open, onClose, proposalId, slug, content, brandKi
     setPublishing(true)
     setError('')
     try {
+      const saved = await onBeforePublish()
+      if (!saved) throw new Error("Couldn't save your latest changes — try again before publishing")
       const res = await fetch(`/api/proposals/${proposalId}/publish`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to publish')
@@ -119,7 +126,7 @@ export function PublishModal({ open, onClose, proposalId, slug, content, brandKi
   }
 
   return (
-    <Modal open={open} eyebrow="Publish" title={`Ready to ${isDrafter ? 'submit to' : 'send to'}${content?.clientName ? ` ${content.clientName}` : ''}?`} onClose={onClose} width={540}
+    <Modal open={open} eyebrow="Publish" title={`Ready to ${isDrafter ? 'submit to' : 'send to'}${content?.clientName ? ` ${content.clientName}` : ' your client'}?`} onClose={onClose} width={540}
       footer={
         <>
           <span style={{ flex: 1 }} />
