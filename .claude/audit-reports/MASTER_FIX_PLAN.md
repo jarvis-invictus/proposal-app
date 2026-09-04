@@ -159,9 +159,9 @@ Do not skip ahead into Phase 6+ before Phase 1-3 are done — those three are th
 
 ---
 
-### Phase 14 — Storage & data hygiene
-- [ ] Uploaded attachments/brand-kit logos never cleaned up if the referencing save fails or the row is deleted — storage grows with orphans forever
-- [ ] File size/type limits enforced only in client JS — add server-side or storage-policy enforcement (`lib/attachments.ts:9-27`)
+### Phase 14 — Storage & data hygiene ✅ [PR #71](https://github.com/jarvis-invictus/proposal-app/pull/71)
+- [x] Uploaded attachments/brand-kit logos never cleaned up on delete — `AttachmentsBlock` removal, `deleteProposal`, and `deleteBrandKit` now clean up storage (logo cleanup checks no other kit still references the shared file first)
+- [x] File size/type limits enforced only in client JS — added bucket-level `file_size_limit`/`allowed_mime_types` on `public-assets`, plus its missing storage DELETE policy; confirmed a direct oversized/wrong-type upload now gets a real 413/415
 
 **Verify:** delete a proposal with attachments, confirm the storage objects are actually gone; attempt a direct oversized upload via the storage API and confirm it's rejected.
 
@@ -222,7 +222,7 @@ Do not skip ahead into Phase 6+ before Phase 1-3 are done — those three are th
 | 11 — Database & query performance | Done — [PR #68](https://github.com/jarvis-invictus/proposal-app/pull/68), awaiting merge |
 | 12 — Frontend performance | Done — [PR #69](https://github.com/jarvis-invictus/proposal-app/pull/69), awaiting merge |
 | 13 — Observability | Done — [PR #70](https://github.com/jarvis-invictus/proposal-app/pull/70), awaiting merge |
-| 14 — Storage & data hygiene | Not started |
+| 14 — Storage & data hygiene | Done — [PR #71](https://github.com/jarvis-invictus/proposal-app/pull/71), awaiting merge |
 | 15 — Copy & microcopy polish | Not started |
 | 16 — Testing & CI foundation | Not started |
 | 17 — Repo housekeeping | Not started |

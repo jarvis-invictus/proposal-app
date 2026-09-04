@@ -5,7 +5,7 @@ import { IconButton } from '@/components/ui/IconButton'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import { ConfirmDialog } from '@/components/app/ConfirmDialog'
-import { uploadAttachment, type Attachment } from '@/lib/attachments'
+import { uploadAttachment, deleteAttachment, type Attachment } from '@/lib/attachments'
 
 export interface AttachmentsBlockProps {
   attachments: Attachment[]
@@ -26,8 +26,12 @@ export function AttachmentsBlock({ attachments, onChange, accountId, proposalId 
 
   const confirmRemoveAttachment = () => {
     if (pendingDelete === null) return
+    const removed = attachments[pendingDelete]
     onChange(attachments.filter((_, i) => i !== pendingDelete))
     setPendingDelete(null)
+    // Best-effort — the attachment is already gone from the document either way; a failed
+    // storage delete just leaves an orphaned file rather than blocking the removal.
+    if (removed) deleteAttachment(removed.url).catch(() => {})
   }
   const pendingLabel = pendingDelete !== null
     ? (attachments[pendingDelete]?.caption || `this ${attachments[pendingDelete]?.type || 'attachment'}`)

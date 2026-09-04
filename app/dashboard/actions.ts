@@ -54,10 +54,28 @@ export async function deleteProposal(proposalId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
 
+  // Fetched before the delete — account_id is how uploaded attachments are located in storage,
+  // and it's only available through this row.
+  const { data: proposalRow } = await supabase.from('proposals').select('account_id').eq('id', proposalId).maybeSingle()
+
   const { error } = await supabase.from('proposals').delete().eq('id', proposalId)
   if (error) {
     logError('Failed to delete proposal', error, { proposalId })
     throw new Error('Failed to delete the proposal — please try again.')
+  }
+
+  // Best-effort: the proposal is considered deleted the moment its row is gone — a storage
+  // cleanup failure shouldn't resurrect it or block the user, just leave an orphaned file.
+  if (proposalRow?.account_id) {
+    try {
+      const prefix = `${proposalRow.account_id}/attachments/${proposalId}`
+      const { data: files } = await supabase.storage.from('public-assets').list(prefix)
+      if (files && files.length > 0) {
+        await supabase.storage.from('public-assets').remove(files.map((f) => `${prefix}/${f.name}`))
+      }
+    } catch (storageErr) {
+      logError('Failed to clean up proposal attachments from storage', storageErr, { proposalId })
+    }
   }
 
   logAction('delete_proposal', user.id, { proposalId })
