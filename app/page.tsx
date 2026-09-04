@@ -40,7 +40,9 @@ export default function MarketingHero() {
         {/* Foreground Content */}
         <div className="relative z-10 w-full h-full overflow-y-auto pb-12">
           <MarketingNavbar />
-          <HeroContent />
+          <div id="main-content">
+            <HeroContent />
+          </div>
         </div>
       </div>
 
