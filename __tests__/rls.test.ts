@@ -9,16 +9,26 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 const getAnonClient = () => createClient(supabaseUrl, supabaseAnonKey)
 const getAdminClient = () => createClient(supabaseUrl, supabaseServiceKey)
 
-describe.skipIf(!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey)('Row Level Security (RLS) Policies', () => {
+const isConfigured = !!supabaseUrl && !!supabaseAnonKey && !!supabaseServiceKey
+
+describe.skipIf(!isConfigured)('Row Level Security (RLS) Policies', () => {
   let userA: any
   let userB: any
-  
-  const clientA = getAnonClient()
-  const clientB = getAnonClient()
-  const publicClient = getAnonClient()
-  const adminClient = getAdminClient()
+
+  // createClient() throws synchronously on an empty key ("supabaseKey is required") — that
+  // happens here, at describe-body evaluation time, which runs regardless of skipIf. A CI run
+  // with no real Supabase project (no .env.local, as in this repo's own CI) would otherwise crash
+  // the whole file before skipIf ever gets a chance to skip anything.
+  const clientA = isConfigured ? getAnonClient() : null!
+  const clientB = isConfigured ? getAnonClient() : null!
+  const publicClient = isConfigured ? getAnonClient() : null!
+  const adminClient = isConfigured ? getAdminClient() : null!
 
   beforeAll(async () => {
+    // describe.skipIf only skips the it() blocks below, not beforeAll/afterAll themselves —
+    // without this, a CI run with no real Supabase project configured still tries a real
+    // network call here and fails the whole file instead of skipping cleanly.
+    if (!isConfigured) return
     const emailA = `user_a_${Date.now()}@example.com`
     const emailB = `user_b_${Date.now()}@example.com`
     const password = 'testpassword123'
@@ -60,6 +70,7 @@ describe.skipIf(!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey)('Row Le
   })
 
   afterAll(async () => {
+    if (!isConfigured) return
     // Clean up created test users
     if (userA?.id) await adminClient.auth.admin.deleteUser(userA.id)
     if (userB?.id) await adminClient.auth.admin.deleteUser(userB.id)

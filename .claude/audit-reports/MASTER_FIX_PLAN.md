@@ -182,11 +182,11 @@ Do not skip ahead into Phase 6+ before Phase 1-3 are done — those three are th
 
 ---
 
-### Phase 16 — Testing & CI foundation
+### Phase 16 — Testing & CI foundation ✅ [PR #73](https://github.com/jarvis-invictus/proposal-app/pull/73)
 **Why late, not first:** by this point there's a real backlog of fixes to protect with a real gate — standing up CI before that existed would have had little to protect.
-- [ ] No `test` script wired (only `test:e2e`) — add one
-- [ ] 146 ESLint errors/40 warnings never block the build or any CI — wire lint into the build or a CI check
-- [ ] No CI configuration anywhere in the repo — add one (build + typecheck + lint + test on every PR)
+- [x] No `test` script wired (only `test:e2e`) — added `"test": "vitest run"`
+- [x] 146 ESLint errors/40 warnings never block the build or any CI — lint now runs as its own CI job (visible on every PR); left `continue-on-error` for now since hard-blocking on day one would redden every future PR over debt it didn't create — flip that once the backlog is paid down
+- [x] No CI configuration anywhere in the repo — added `.github/workflows/ci.yml`: typecheck + build + test + lint on every PR and push to main. Verified for real: pushed a deliberately-broken commit to the PR branch and confirmed via `gh run view` that typecheck/build correctly failed while test/lint stayed green, then reverted it and confirmed green again — that pass also caught a second, real, unrelated bug (a fresh-checkout-only `tsc` failure on Next.js's generated `LayoutProps` type), fixed with `next typegen`
 
 **Verify:** open a PR with a deliberately broken build/test and confirm CI actually fails it.
 
@@ -224,5 +224,5 @@ Do not skip ahead into Phase 6+ before Phase 1-3 are done — those three are th
 | 13 — Observability | Done — [PR #70](https://github.com/jarvis-invictus/proposal-app/pull/70), awaiting merge |
 | 14 — Storage & data hygiene | Done — [PR #71](https://github.com/jarvis-invictus/proposal-app/pull/71), awaiting merge |
 | 15 — Copy & microcopy polish | Done — [PR #72](https://github.com/jarvis-invictus/proposal-app/pull/72), awaiting merge |
-| 16 — Testing & CI foundation | Not started |
+| 16 — Testing & CI foundation | Done — [PR #73](https://github.com/jarvis-invictus/proposal-app/pull/73), awaiting merge |
 | 17 — Repo housekeeping | Not started |
