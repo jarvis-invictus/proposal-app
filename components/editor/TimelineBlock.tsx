@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { IconButton } from '@/components/ui/IconButton'
 import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/app/ConfirmDialog'
 
 export type TimelinePhase = {
   phase: string
@@ -18,13 +19,14 @@ export interface TimelineBlockProps {
 const BLANK_PHASE: TimelinePhase = { phase: 'New phase', duration: '', description: '' }
 
 export function TimelineBlock({ timeline, onChange }: TimelineBlockProps) {
+  const [pendingDelete, setPendingDelete] = React.useState<number | null>(null)
   const updatePhase = (index: number, patch: Partial<TimelinePhase>) => {
     onChange(timeline.map((p, i) => (i === index ? { ...p, ...patch } : p)))
   }
-  const removePhase = (index: number) => {
-    const name = timeline[index]?.phase || 'this phase'
-    if (!window.confirm(`Delete "${name}"? This can't be undone.`)) return
-    onChange(timeline.filter((_, i) => i !== index))
+  const confirmRemovePhase = () => {
+    if (pendingDelete === null) return
+    onChange(timeline.filter((_, i) => i !== pendingDelete))
+    setPendingDelete(null)
   }
   const addPhase = () => onChange([...timeline, { ...BLANK_PHASE }])
 
@@ -43,12 +45,19 @@ export function TimelineBlock({ timeline, onChange }: TimelineBlockProps) {
             <div style={{ flex: 1, minWidth: 0, paddingBottom: 18, borderBottom: '1px solid var(--border-hairline)', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
               <textarea value={phase.description} onChange={(e) => updatePhase(idx, { description: e.target.value })} placeholder="What happens during this phase" rows={2}
                 style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', lineHeight: 'var(--leading-snug)', color: 'var(--text-secondary)' }} />
-              <IconButton icon="trash-2" size="sm" variant="ghost" label="Delete phase" onClick={() => removePhase(idx)} />
+              <IconButton icon="trash-2" size="sm" variant="ghost" label="Delete phase" onClick={() => setPendingDelete(idx)} />
             </div>
           </div>
         ))}
       </div>
       <Button variant="secondary" size="sm" icon="plus" onClick={addPhase} style={{ marginTop: 16 }}>Add phase</Button>
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={`Delete "${(pendingDelete !== null && timeline[pendingDelete]?.phase) || 'this phase'}"?`}
+        body="This can't be undone."
+        onConfirm={confirmRemovePhase}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }
