@@ -2,15 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-
-function slugify(title: string) {
-  const base = (title || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-    .slice(0, 60) || 'proposal'
-  return `${base}-${Math.random().toString(36).slice(2, 8)}`
-}
+import { slugify } from '@/lib/slugify'
 
 export async function duplicateProposalAsDraft(proposalId: string) {
   const supabase = await createClient()

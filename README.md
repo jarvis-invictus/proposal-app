@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Marg
 
-## Getting Started
+AI-guided brand kits and proposals. Describe a deal in plain language, and Marg drafts a
+full, on-brand proposal — packages, timeline, terms — ready to send as a single shareable link.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- [Next.js 16](https://nextjs.org) (App Router, Turbopack) + React 19 + TypeScript
+- [Supabase](https://supabase.com) — Postgres, Auth, Row Level Security, Storage
+- [AI SDK](https://sdk.vercel.ai) + OpenAI (`gpt-4o`) for proposal generation and the intake chat
+- [Firecrawl](https://www.firecrawl.dev) — scrapes a client's site to read their brand (colors, fonts, logo)
+- [Resend](https://resend.com) — transactional email; [Upstash Redis](https://upstash.com) — AI-endpoint rate limiting
+- [Stripe](https://stripe.com) — billing (paused — see `docs/DECISION_LOG.md`)
+- [Sentry](https://sentry.io) — error tracking
+- Deployed on [Vercel](https://vercel.com)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Getting started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
+2. **Configure environment variables** — copy `.env.example` to `.env.local` and fill in the
+   required values (Supabase, OpenAI, Firecrawl). Everything else in that file is optional for
+   local dev and degrades gracefully when unset (see the comments in `.env.example`).
+3. **Start a local Supabase stack** (requires the [Supabase CLI](https://supabase.com/docs/guides/cli) and Docker):
+   ```bash
+   npx supabase start
+   ```
+   This applies every migration in `supabase/migrations/` and seeds local data from
+   `supabase/seed.sql`. Point `.env.local`'s Supabase variables at the local URL/keys it prints.
+4. **Run the dev server**
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+| Command | What it does |
+|---|---|
+| `npm run dev` | Start the Next.js dev server (Turbopack) |
+| `npm run build` | Production build — also runs Next.js's own TypeScript check |
+| `npm start` | Serve a production build |
+| `npm run lint` | ESLint |
+| `npm test` | Unit/integration tests ([Vitest](https://vitest.dev)) |
+| `npm run test:e2e` | End-to-end tests ([Playwright](https://playwright.dev)) |
 
-To learn more about Next.js, take a look at the following resources:
+CI (`.github/workflows/ci.yml`) runs typecheck, build, test, and lint on every pull request.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project docs
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`docs/` has the deeper reference material: `PRD.md` (product spec), `SCHEMA.md` (database
+schema), `ROADMAP.md`, `DECISION_LOG.md` (why things are the way they are, including paused or
+reversed decisions), and `TEST_PLAN.md`.
