@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -11,11 +12,14 @@ import { Modal } from '@/components/app/Modal'
 import { SignaturePad } from '@/components/app/SignaturePad'
 import { DealWon } from '@/components/app/DealWon'
 import { PdfExportModal, type PdfExportOptions, formatDate } from '@/components/app/PdfExportModal'
-import { DeckView } from '@/components/presentation/DeckView'
 import { BrandFontLink } from '@/components/app/BrandFontLink'
 import { firstFontFamily } from '@/lib/webfonts'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { ESIGN_CONSENT_STATEMENT, type Signature } from '@/lib/signature'
+
+// Pulls in framer-motion, and most visitors never click "View as deck" — code-split it into
+// its own chunk instead of shipping it in the initial bundle of every public proposal page.
+const DeckView = dynamic(() => import('@/components/presentation/DeckView').then((m) => m.DeckView), { ssr: false })
 
 function formatUtc(dateStr: string): string {
   const d = new Date(dateStr)
