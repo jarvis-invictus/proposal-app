@@ -21,6 +21,21 @@ export async function POST(req: Request) {
   }
 
   const { messages, styleReference, brandKitId } = await req.json();
+
+  // A conversation with no cap on turn count or paste size inside a turn has unbounded cost —
+  // the array grows every round trip, and any one message (e.g. a pasted transcript) could be
+  // arbitrarily large.
+  if (Array.isArray(messages)) {
+    if (messages.length > 60) {
+      return new Response(JSON.stringify({ error: 'This conversation has gotten too long — start a new one.' }), { status: 400 });
+    }
+    for (const m of messages) {
+      if (typeof m?.content === 'string' && m.content.length > 10_000) {
+        return new Response(JSON.stringify({ error: 'That message is too long — keep it under 10,000 characters.' }), { status: 400 });
+      }
+    }
+  }
+
   const currency = account?.currency || 'USD';
   const symbol = currencySymbol(currency);
   const brandKit = await resolveBrandKit(account?.accountId ?? null, brandKitId);
@@ -75,6 +90,10 @@ When you call finalize_proposal_details, fill in the \`preview\` and \`facts\` o
         },
       }),
     },
+    maxTokens: 2000,
+    // Under the 30s maxDuration above, so a hung provider response fails cleanly on its own
+    // rather than riding the platform's hard kill.
+    abortSignal: AbortSignal.timeout(25_000),
   });
 
   return result.toAIStreamResponse();

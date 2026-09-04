@@ -32,6 +32,18 @@ export async function POST(req: Request) {
   if (!summary) {
     return new Response(JSON.stringify({ error: 'Missing summary' }), { status: 400 });
   }
+  // Deal-facts summaries (often a pasted call transcript) legitimately run long, so this cap is
+  // generous — it exists to put a ceiling on cost from an unbounded paste, not to constrain a
+  // normal one. styleReference/brief are always short by design, so a much tighter cap there.
+  if (summary.length > 20_000) {
+    return new Response(JSON.stringify({ error: 'That summary is too long — keep it under 20,000 characters.' }), { status: 400 });
+  }
+  if (typeof styleReference === 'string' && styleReference.length > 5_000) {
+    return new Response(JSON.stringify({ error: 'That style reference is too long — keep it under 5,000 characters.' }), { status: 400 });
+  }
+  if (typeof brief === 'string' && brief.length > 5_000) {
+    return new Response(JSON.stringify({ error: 'That brief is too long — keep it under 5,000 characters.' }), { status: 400 });
+  }
 
   try {
     const today = new Date();
@@ -49,17 +61,25 @@ CURRENCY (critical): ${currencyPromptInstruction(currency)}
 
 SPECIFICITY (critical): every sentence must earn its place by referencing something real from the deal facts below — a deliverable, a number, a named phase, the client's actual situation. Do not write filler that could apply to any project ("we look forward to partnering with you," "our team is excited to bring your vision to life," "a solution tailored to your needs"). If a brand voice is given below, that voice should be audible in the word choice, not just mentioned — write the way that business would actually talk to this client, not a generic proposal template with their name inserted.
 
+SENTENCE STRUCTURE (critical): don't write a fill-in-the-blank template with the client's name dropped in — the real tell isn't just banned words, it's identical sentence shapes across different clients ("Our [X] Package offers a comprehensive [Y] tailored [specifically] for/to [client]..."). Vary how each section opens and how ideas connect; let the actual deliverables and numbers drive the sentence, not a fixed scaffold this client's details get poured into.
+
 ${instructions}
 
 Deal Facts Summary:
 ${summary}
 ${contextBlock}`;
 
+    // Each call gets its own bounded timeout, well under the 60s function budget — with four
+    // running in parallel, one hung call previously risked pinning the whole request until
+    // Vercel's hard kill, surfacing a raw platform timeout instead of a handled error.
+    const SECTION_TIMEOUT_MS = 40_000;
     const [headerResult, packagesResult, timelineResult, termsResult] = await Promise.all([
       generateObject({
         model: openai(AI_MODEL),
         schema: HeaderSchema,
         prompt: buildPrompt('header', 'Write a compelling title, and correctly identify the client, the specific person/team the proposal is prepared for, and who is preparing it.'),
+        maxTokens: 1000,
+        abortSignal: AbortSignal.timeout(SECTION_TIMEOUT_MS),
       }),
       generateObject({
         model: openai(AI_MODEL),
@@ -67,16 +87,22 @@ ${contextBlock}`;
         prompt: buildPrompt('packages and add-ons', `- Typically 2-3 packages, unless the summary clearly calls for a different count.
 - Make sure originalPrice is higher than discountedPrice if both exist.
 - Ensure description text sounds professional and persuasive.`),
+        maxTokens: 3000,
+        abortSignal: AbortSignal.timeout(SECTION_TIMEOUT_MS),
       }),
       generateObject({
         model: openai(AI_MODEL),
         schema: TimelineSchema,
         prompt: buildPrompt('timeline', 'Break the project into clear phases with realistic durations based on the summary.'),
+        maxTokens: 2000,
+        abortSignal: AbortSignal.timeout(SECTION_TIMEOUT_MS),
       }),
       generateObject({
         model: openai(AI_MODEL),
         schema: TermsSchema,
         prompt: buildPrompt('terms and payment', 'Keep terms standard and concise unless specified otherwise in the summary. Do not include payment methods like UPI/Stripe in paymentSection — schedule and text terms only.'),
+        maxTokens: 1500,
+        abortSignal: AbortSignal.timeout(SECTION_TIMEOUT_MS),
       }),
     ]);
 
@@ -93,11 +119,12 @@ ${contextBlock}`;
 
     const corrected = correctPricing(draft);
 
-    // Critique (advisory-only review pass) used to run right here, sequentially, adding a full
-    // extra GPT-4o round trip to every generation despite its own comment calling it
-    // "never block." It's now a separate endpoint (/api/generate-proposal/critique) the client
-    // calls concurrently with saving the draft — so it no longer delays the response containing
-    // the actual proposal, which is what the user is waiting on.
+    // Critique (advisory-only review pass, both the mechanical crutch-phrase scan and the LLM
+    // pass) used to run right here, sequentially, adding a full extra GPT-4o round trip to every
+    // generation despite its own comment calling it "never block." It's now entirely inside a
+    // separate endpoint (/api/generate-proposal/critique) the client calls concurrently with
+    // saving the draft — so neither critique step delays the response containing the actual
+    // proposal, which is what the user is waiting on.
     return new Response(JSON.stringify(corrected), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

@@ -3,7 +3,8 @@ import { generateObject } from 'ai';
 import { AI_MODEL } from '@/lib/generation/model';
 import { getAccountContext } from '@/lib/accountContext';
 import { checkAiRateLimit, extractClientIp, rateLimitIdentifier } from '@/lib/ratelimit';
-import { CritiqueSchema } from '@/lib/generation/critique';
+import { CritiqueSchema, type CritiqueIssue } from '@/lib/generation/critique';
+import { findCrutchPhrases } from '@/lib/generation/specificity';
 
 export const maxDuration = 30;
 
@@ -24,8 +25,17 @@ export async function POST(req: Request) {
     return new Response(JSON.stringify({ error: 'Missing summary or proposal' }), { status: 400 });
   }
 
+  // Crutch-phrase findings are mechanical (a grep, not another LLM judgment call that could fail
+  // the same way it's meant to catch), so they're unconditional — populated before the LLM pass
+  // even runs, and they survive if that pass errors out below.
+  let issues: CritiqueIssue[] = findCrutchPhrases(proposal).map(({ field, phrase }) => ({
+    field,
+    severity: 'medium' as const,
+    note: `Reads as generic AI phrasing ("${phrase}") — worth rewriting with something specific to this deal.`,
+  }));
+
   // Advisory only — a failed or rate-limited critique call must never surface as an error the
-  // user has to deal with; it just means no review banner shows.
+  // user has to deal with; it just means no additional LLM findings show, the mechanical ones above still do.
   try {
     const { object: critique } = await generateObject({
       model: openai(AI_MODEL),
@@ -42,9 +52,9 @@ ${JSON.stringify(proposal)}`,
       maxTokens: 1000,
       abortSignal: AbortSignal.timeout(20_000),
     });
-    return new Response(JSON.stringify({ issues: critique.issues }), { status: 200 });
+    issues = [...issues, ...critique.issues];
   } catch (err) {
     console.error('Critique pass failed, continuing without it:', err);
-    return new Response(JSON.stringify({ issues: [] }), { status: 200 });
   }
+  return new Response(JSON.stringify({ issues }), { status: 200 });
 }
