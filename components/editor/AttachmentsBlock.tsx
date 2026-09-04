@@ -4,7 +4,7 @@ import * as React from 'react'
 import { IconButton } from '@/components/ui/IconButton'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
-import { uploadAttachment, type Attachment } from '@/lib/attachments'
+import { uploadAttachment, deleteAttachment, type Attachment } from '@/lib/attachments'
 
 export interface AttachmentsBlockProps {
   attachments: Attachment[]
@@ -23,9 +23,13 @@ export function AttachmentsBlock({ attachments, onChange, accountId, proposalId 
   }
 
   const removeAttachment = (index: number) => {
-    const label = attachments[index]?.caption || `this ${attachments[index]?.type || 'attachment'}`
+    const removed = attachments[index]
+    const label = removed?.caption || `this ${removed?.type || 'attachment'}`
     if (!window.confirm(`Remove ${label}? This can't be undone.`)) return
     onChange(attachments.filter((_, i) => i !== index))
+    // Best-effort — the attachment is already gone from the document either way; a failed
+    // storage delete just leaves an orphaned file rather than blocking the removal.
+    if (removed) deleteAttachment(removed.url).catch(() => {})
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

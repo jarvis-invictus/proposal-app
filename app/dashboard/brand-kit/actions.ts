@@ -5,6 +5,7 @@ import { extractBrandKitFromImage } from '@/lib/brand-extraction/vision'
 import { extractBrandKitFromText } from '@/lib/brand-extraction/text'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { publicAssetPath } from '@/lib/attachments'
 
 export async function extractFromUrl(url: string) {
   if (!url) throw new Error("URL is required")
@@ -88,6 +89,10 @@ export async function deleteBrandKit(id: string) {
 
   if (!userRecord?.account_id) throw new Error("Account not found")
 
+  // Fetched before the delete — needed to decide (after) whether the underlying logo file is
+  // now safe to remove.
+  const { data: kitRow } = await supabase.from('brand_kits').select('logo_url').eq('id', id).eq('account_id', userRecord.account_id).maybeSingle()
+
   // Scoped to the caller's own account, not just the row id — RLS enforces the same boundary,
   // but filtering here too means a foreign id fails the query outright instead of relying on a
   // single layer of defense.
@@ -100,6 +105,26 @@ export async function deleteBrandKit(id: string) {
   if (error) {
     console.error("Failed to delete brand kit", error)
     throw new Error("Failed to delete brand kit")
+  }
+
+  // Logos upload to a fixed, upsertable `${accountId}/logo.*` path (BrandExtract.tsx), so more
+  // than one brand kit row in this account can legitimately point at the exact same file —
+  // only remove it once nothing else still references that URL. Best-effort: a failure here
+  // just leaves an orphaned file, the row is already gone either way.
+  if (kitRow?.logo_url) {
+    try {
+      const { count } = await supabase
+        .from('brand_kits')
+        .select('id', { count: 'exact', head: true })
+        .eq('account_id', userRecord.account_id)
+        .eq('logo_url', kitRow.logo_url)
+      if (!count) {
+        const path = publicAssetPath(kitRow.logo_url)
+        if (path) await supabase.storage.from('public-assets').remove([path])
+      }
+    } catch (storageErr) {
+      console.error('Failed to clean up brand kit logo from storage', storageErr)
+    }
   }
 
   revalidatePath('/dashboard')
