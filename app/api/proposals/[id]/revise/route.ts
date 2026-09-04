@@ -36,6 +36,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!content || typeof instruction !== 'string' || !instruction.trim()) {
     return new Response(JSON.stringify({ error: 'Missing content or instruction' }), { status: 400 })
   }
+  if (instruction.length > 2_000) {
+    return new Response(JSON.stringify({ error: 'That request is too long — keep it under 2,000 characters.' }), { status: 400 })
+  }
 
   // RLS already scopes this to the caller's own account (same "Users can manage own proposals"
   // policy every other proposal route relies on) — a foreign id simply returns no row.
@@ -70,6 +73,11 @@ ${instruction.trim()}`
       model: openai('gpt-4o'),
       schema: ReviseSchema,
       prompt,
+      maxTokens: 4000,
+      // Under the 60s maxDuration above — the full current proposal is echoed back in the
+      // prompt, so this can legitimately take longer than a short chat turn, but still needs a
+      // bound of its own rather than none.
+      abortSignal: AbortSignal.timeout(45_000),
     })
 
     // Same objective, deterministic fix generation already applies — a revise call can touch

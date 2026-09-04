@@ -33,6 +33,18 @@ export async function POST(req: Request) {
   if (!summary) {
     return new Response(JSON.stringify({ error: 'Missing summary' }), { status: 400 });
   }
+  // Deal-facts summaries (often a pasted call transcript) legitimately run long, so this cap is
+  // generous — it exists to put a ceiling on cost from an unbounded paste, not to constrain a
+  // normal one. styleReference/brief are always short by design, so a much tighter cap there.
+  if (summary.length > 20_000) {
+    return new Response(JSON.stringify({ error: 'That summary is too long — keep it under 20,000 characters.' }), { status: 400 });
+  }
+  if (typeof styleReference === 'string' && styleReference.length > 5_000) {
+    return new Response(JSON.stringify({ error: 'That style reference is too long — keep it under 5,000 characters.' }), { status: 400 });
+  }
+  if (typeof brief === 'string' && brief.length > 5_000) {
+    return new Response(JSON.stringify({ error: 'That brief is too long — keep it under 5,000 characters.' }), { status: 400 });
+  }
 
   try {
     const today = new Date();
@@ -58,11 +70,17 @@ Deal Facts Summary:
 ${summary}
 ${contextBlock}`;
 
+    // Each call gets its own bounded timeout, well under the 60s function budget — with four
+    // running in parallel, one hung call previously risked pinning the whole request until
+    // Vercel's hard kill, surfacing a raw platform timeout instead of a handled error.
+    const SECTION_TIMEOUT_MS = 40_000;
     const [headerResult, packagesResult, timelineResult, termsResult] = await Promise.all([
       generateObject({
         model: openai('gpt-4o'),
         schema: HeaderSchema,
         prompt: buildPrompt('header', 'Write a compelling title, and correctly identify the client, the specific person/team the proposal is prepared for, and who is preparing it.'),
+        maxTokens: 1000,
+        abortSignal: AbortSignal.timeout(SECTION_TIMEOUT_MS),
       }),
       generateObject({
         model: openai('gpt-4o'),
@@ -70,16 +88,22 @@ ${contextBlock}`;
         prompt: buildPrompt('packages and add-ons', `- Typically 2-3 packages, unless the summary clearly calls for a different count.
 - Make sure originalPrice is higher than discountedPrice if both exist.
 - Ensure description text sounds professional and persuasive.`),
+        maxTokens: 3000,
+        abortSignal: AbortSignal.timeout(SECTION_TIMEOUT_MS),
       }),
       generateObject({
         model: openai('gpt-4o'),
         schema: TimelineSchema,
         prompt: buildPrompt('timeline', 'Break the project into clear phases with realistic durations based on the summary.'),
+        maxTokens: 2000,
+        abortSignal: AbortSignal.timeout(SECTION_TIMEOUT_MS),
       }),
       generateObject({
         model: openai('gpt-4o'),
         schema: TermsSchema,
         prompt: buildPrompt('terms and payment', 'Keep terms standard and concise unless specified otherwise in the summary. Do not include payment methods like UPI/Stripe in paymentSection — schedule and text terms only.'),
+        maxTokens: 1500,
+        abortSignal: AbortSignal.timeout(SECTION_TIMEOUT_MS),
       }),
     ]);
 
@@ -119,6 +143,8 @@ ${summary}
 
 Drafted Proposal:
 ${JSON.stringify(corrected)}`,
+        maxTokens: 1000,
+        abortSignal: AbortSignal.timeout(15_000),
       });
       critiqueIssues = [...critiqueIssues, ...critique.issues];
     } catch (err) {
