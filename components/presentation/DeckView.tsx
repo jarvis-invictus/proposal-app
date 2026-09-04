@@ -9,6 +9,7 @@ import { prefersReducedMotion } from '@/lib/reducedMotion'
 import { buildDeckSlides, type DeckSlide, type DeckBrand } from '@/lib/presentation/buildDeck'
 import { DURATION_BASE, DURATION_SLOW, EASE_OUT_SOFT, EASE_SPRING } from '@/lib/presentation/motionTokens'
 import { BrandFontLink } from '@/components/app/BrandFontLink'
+import { firstFontFamily } from '@/lib/webfonts'
 
 const SLIDE_VARIANTS = {
   enter: (direction: number) => ({ opacity: 0, x: direction * 48 }),
@@ -28,8 +29,8 @@ export function DeckView({
   const [[index, direction], setIndexState] = React.useState<[number, number]>([0, 0])
   const reduced = React.useMemo(() => prefersReducedMotion(), [])
   const accent = brand?.primary || '#4F46E5'
-  const bodyFamily = brand?.bodyFont ? `"${brand.bodyFont}", var(--font-sans)` : 'var(--font-sans)'
-  const headingFamily = brand?.headingFont ? `"${brand.headingFont}", var(--font-sans)` : 'inherit'
+  const bodyFamily = firstFontFamily(brand?.bodyFont) ? `"${firstFontFamily(brand?.bodyFont)}", var(--font-sans)` : 'var(--font-sans)'
+  const headingFamily = firstFontFamily(brand?.headingFont) ? `"${firstFontFamily(brand?.headingFont)}", var(--font-sans)` : 'inherit'
 
   const go = React.useCallback((next: number) => {
     setIndexState(([current]) => {

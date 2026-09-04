@@ -12,10 +12,14 @@ export async function getAccountContext(): Promise<AccountContext | null> {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
 
-    const { data: userRecord } = await supabase.from('users').select('account_id').eq('id', user.id).single()
+    const { data: userRecord } = await supabase
+      .from('users')
+      .select('account_id, accounts(currency)')
+      .eq('id', user.id)
+      .single()
     if (!userRecord) return null
 
-    const { data: account } = await supabase.from('accounts').select('currency').eq('id', userRecord.account_id).single()
+    const account = Array.isArray(userRecord.accounts) ? userRecord.accounts[0] : userRecord.accounts
     return { accountId: userRecord.account_id, currency: (account?.currency as SupportedCurrency) || 'USD' }
   } catch {
     return null

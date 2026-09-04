@@ -34,7 +34,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       {/* No manual Google Fonts <link> here — next/font above already self-hosts Inter Tight,
           Instrument Serif, and JetBrains Mono at build time. A separate stylesheet link for the
           same families would just be a second, render-blocking fetch of fonts already inlined. */}
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        {/* Visually hidden until focused — a keyboard user's first Tab press lets them jump past
+            the marketing nav / dashboard sidebar straight to the actual page content instead of
+            tabbing through every nav item first. #main-content is set on the primary content
+            wrapper of every page shell (AppShell's <main>, the editor, the public proposal page,
+            the marketing homepage). Pure CSS (:focus in globals.css) rather than onFocus/onBlur —
+            this file is a Server Component and can't take event-handler props; the classic
+            skip-link pattern has never needed JS anyway. */}
+        <a href="#main-content" className="skip-link">Skip to content</a>
+        {children}
+      </body>
     </html>
   );
 }

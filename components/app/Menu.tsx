@@ -16,21 +16,36 @@ export interface MenuProps extends React.HTMLAttributes<HTMLDivElement> {
   top?: number;
 }
 
+const MENUITEM_SELECTOR = '[role="menuitem"]:not([disabled])';
+
 export function Menu({
   open=true,onClose,align='right',width=210,top=36,children,style,...rest
 }:MenuProps){
   const ref=React.useRef<HTMLDivElement>(null);
   React.useEffect(()=>{
     if(!open)return;
+    // Lands keyboard focus inside the menu on open — without this, arrow-key navigation below
+    // has nothing to move focus relative to, since opening a menu doesn't move focus anywhere
+    // by itself.
+    ref.current?.querySelector<HTMLElement>(MENUITEM_SELECTOR)?.focus();
     const away=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))onClose&&onClose();};
     const esc=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose&&onClose();};
     document.addEventListener('mousedown',away);document.addEventListener('keydown',esc);
     return()=>{document.removeEventListener('mousedown',away);document.removeEventListener('keydown',esc);};
   },[open,onClose]);
   if(!open)return null;
+  const handleKeyDown=(e:React.KeyboardEvent)=>{
+    if(e.key!=='ArrowDown'&&e.key!=='ArrowUp')return;
+    e.preventDefault();
+    const items=Array.from(ref.current?.querySelectorAll<HTMLElement>(MENUITEM_SELECTOR)??[]);
+    if(items.length===0)return;
+    const current=items.indexOf(document.activeElement as HTMLElement);
+    const next=e.key==='ArrowDown'?(current+1)%items.length:(current-1+items.length)%items.length;
+    items[next]?.focus();
+  };
   return (
     <div ref={ref} role="menu" {...rest}
-      onClick={e=>e.stopPropagation()}
+      onClick={e=>e.stopPropagation()} onKeyDown={handleKeyDown}
       style={{position:'absolute',top,[align==='left'?'left':'right']:0,width,padding:6,zIndex:30,
         background:'var(--glass-panel)',backdropFilter:'var(--blur-glass)',WebkitBackdropFilter:'var(--blur-glass)',
         border:'1px solid var(--border-hairline)',borderRadius:'var(--radius-card)',boxShadow:'var(--shadow-raised)',
