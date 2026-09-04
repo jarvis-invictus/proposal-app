@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useRouter } from 'next/navigation'
 import { EditorHeader, type SaveStatus } from '@/components/editor/EditorHeader'
 import { DocStats } from '@/components/editor/DocStats'
 import { StructuredDocument } from '@/components/editor/StructuredDocument'
@@ -10,6 +11,7 @@ import { TimelineBlock, type TimelinePhase } from '@/components/editor/TimelineB
 import { AttachmentsBlock } from '@/components/editor/AttachmentsBlock'
 import { TermsPaymentBlock, type PaymentSection } from '@/components/editor/TermsPaymentBlock'
 import { RevisionChat } from '@/components/editor/RevisionChat'
+import { ResizablePanel } from '@/components/editor/ResizablePanel'
 import type { Attachment } from '@/lib/attachments'
 import { PublishModal } from '@/components/editor/PublishModal'
 import { type ThemeRoles } from '@/components/app/ThemeColorPicker'
@@ -20,19 +22,27 @@ import { getPublicProposalUrl } from '@/lib/publicUrl'
 
 const AUTOSAVE_DEBOUNCE_MS = 2500
 
+/** Returns [debounced, cancelPending] — cancelPending clears a scheduled-but-not-yet-fired
+ * call without running it, so a caller that's about to do its own immediate/awaited invocation
+ * (see flushBeforePublish below) doesn't race a redundant debounced one right behind it. */
 function useDebouncedCallback<T extends (...args: any[]) => void>(callback: T, delay: number) {
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   React.useEffect(() => () => { if (timeoutRef.current) clearTimeout(timeoutRef.current) }, [])
-  return React.useCallback(
+  const debounced = React.useCallback(
     (...args: Parameters<T>) => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
-      timeoutRef.current = setTimeout(() => callback(...args), delay)
+      timeoutRef.current = setTimeout(() => { timeoutRef.current = null; callback(...args) }, delay)
     },
     [callback, delay]
   )
+  const cancelPending = React.useCallback(() => {
+    if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null }
+  }, [])
+  return [debounced, cancelPending] as const
 }
 
 export default function ProposalEditor({ initialProposal, userRole = 'owner', accountCurrency = 'USD', accountSubdomain = null }: { initialProposal: any; userRole?: string; accountCurrency?: string; accountSubdomain?: string | null }) {
+  const router = useRouter()
   const [proposal, setProposal] = React.useState(initialProposal)
   const [content, setContent] = React.useState<any>(initialProposal.content)
   const [saveStatus, setSaveStatus] = React.useState<SaveStatus>('saved')
@@ -60,7 +70,7 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
   const brandColor = initialProposal.brand_kits?.colors?.primary || '#4F46E5'
   const themeColor = content.themeColor || brandColor
 
-  const saveContent = React.useCallback(async (nextContent: any) => {
+  const saveContent = React.useCallback(async (nextContent: any): Promise<boolean> => {
     setSaveStatus('saving')
     try {
       const res = await fetch(`/api/proposals/${proposal.id}`, {
@@ -70,13 +80,24 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
       })
       if (!res.ok) throw new Error('Failed to save')
       setSaveStatus('saved')
+      return true
     } catch (err) {
       console.error(err)
       setSaveStatus('error')
+      return false
     }
   }, [proposal.id])
 
-  const debouncedSave = useDebouncedCallback(saveContent, AUTOSAVE_DEBOUNCE_MS)
+  const [debouncedSave, cancelPendingSave] = useDebouncedCallback(saveContent, AUTOSAVE_DEBOUNCE_MS)
+
+  // Publishing/submitting must never lock in stale content — cancel whatever autosave is
+  // scheduled (it would otherwise still fire moments later against a now-published/locked
+  // proposal) and save the current in-memory content directly, awaited, so publish only
+  // proceeds once the DB actually matches what's on screen.
+  const flushBeforePublish = React.useCallback(async () => {
+    cancelPendingSave()
+    return saveContent(content)
+  }, [cancelPendingSave, saveContent, content])
 
   const updateField = (field: string, value: any) => {
     setContent((prev: any) => {
@@ -125,6 +146,7 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
   return (
     <div style={{ position: 'relative', height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gradient-app)' }}>
       <EditorHeader
+        onBack={() => router.push('/dashboard')}
         title={content.title || 'Untitled proposal'}
         proposalStatus={proposal.status}
         saveStatus={saveStatus}
@@ -171,8 +193,8 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
         </div>
       )}
       <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-      <DocStats />
+      <div id="main-content" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      <DocStats content={content} />
       <StructuredDocument>
         <fieldset disabled={isLocked} style={{ border: 'none', margin: 0, padding: 0 }}>
           <div style={{ padding: '32px 40px', borderBottom: '1px solid var(--border-hairline)' }}>
@@ -219,7 +241,7 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
         </fieldset>
       </StructuredDocument>
       </div>
-      <div style={{ width: 340, flex: 'none' }}>
+      <ResizablePanel storageKey="marg-revise-panel-width" defaultWidth={340} min={280} max={640}>
         <RevisionChat
           proposalId={proposal.id}
           content={content}
@@ -227,7 +249,7 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
           disabled={isLocked}
           onApply={applyChanges}
         />
-      </div>
+      </ResizablePanel>
       </div>
       {showPdfModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
@@ -250,6 +272,7 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
         brandKitName={initialProposal.brand_kits?.name || null}
         userRole={userRole}
         accountSubdomain={accountSubdomain}
+        onBeforePublish={flushBeforePublish}
         onPublished={handlePublished}
       />
     </div>
