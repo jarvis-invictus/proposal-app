@@ -77,7 +77,7 @@ export async function extractBrandKitFromUrl(url: string) {
       signal: AbortSignal.timeout(30_000),
     })
   } catch (err) {
-    console.error('Firecrawl scrape request failed:', err)
+    logError('Firecrawl scrape request failed:', err, { url: target })
     throw new Error("Couldn't reach that site — check the URL and try again")
   }
 
