@@ -10,8 +10,10 @@ import { Badge } from '@/components/ui/Badge'
 import { Pill } from '@/components/ui/Pill'
 import { SkyBackdrop } from '@/components/app/AppShell'
 import { BrandFontLink } from '@/components/app/BrandFontLink'
+import { firstFontFamily } from '@/lib/webfonts'
 import { BrandExtract } from './brand-kit/BrandExtract'
 import { finishOnboarding, saveOnboardingBusiness } from './onboarding-actions'
+import { logError } from '@/lib/logging'
 
 const STEPS = [
   { id: 'business', n: '1', label: 'Your business' },
@@ -58,7 +60,8 @@ function StepTrack({ step, onPick }: { step: number; onPick: (i: number) => void
         return (
           <React.Fragment key={s.id}>
             {i > 0 && <span aria-hidden="true" style={{ width: 44, height: 2, background: done || on ? 'var(--brand)' : 'var(--brand-12)', transition: 'background var(--duration-slow) var(--ease-standard)' }} />}
-            <button type="button" onClick={() => onPick(i)} aria-current={on ? 'step' : undefined} style={{
+            <button type="button" onClick={() => onPick(i)} aria-current={on ? 'step' : undefined}
+              aria-label={`Step ${s.n}: ${s.label}${done ? ' — completed' : on ? ' — current step' : ''}`} style={{
               display: 'flex', alignItems: 'center', gap: 9, padding: '4px 4px', border: 'none', background: 'transparent',
               cursor: i <= step ? 'pointer' : 'default', fontFamily: 'var(--font-sans)',
             }}>
@@ -103,7 +106,7 @@ function Welcome({ firstName, onStart }: { firstName: string; onStart: () => voi
 function CategoryChip({ cat, active, onClick }: { cat: typeof CATEGORIES[number]; active: boolean; onClick: () => void }) {
   const [hover, setHover] = React.useState(false)
   return (
-    <button type="button" onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} style={{
+    <button type="button" onClick={onClick} aria-pressed={active} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} style={{
       display: 'inline-flex', alignItems: 'center', gap: 9, padding: '10px 16px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
       fontFamily: 'var(--font-sans)', fontSize: 'var(--text-body)',
       border: '1px solid ' + (active ? 'var(--brand)' : hover ? 'var(--brand-38)' : 'var(--border-hairline)'),
@@ -226,8 +229,8 @@ function SampleFrame({ business, brandKit }: { business: string; brandKit: Exist
   const ink = brandKit?.colors?.text || '#171717'
   const paper = brandKit?.colors?.background || '#ffffff'
   const logoUrl = brandKit?.logoUrl || null
-  const headingFont = brandKit?.fonts?.heading ? `"${brandKit.fonts.heading}", var(--font-sans)` : undefined
-  const bodyFont = brandKit?.fonts?.body ? `"${brandKit.fonts.body}", var(--font-sans)` : undefined
+  const headingFont = firstFontFamily(brandKit?.fonts?.heading) ? `"${firstFontFamily(brandKit?.fonts?.heading)}", var(--font-sans)` : undefined
+  const bodyFont = firstFontFamily(brandKit?.fonts?.body) ? `"${firstFontFamily(brandKit?.fonts?.body)}", var(--font-sans)` : undefined
   const accentFamily = headingFont || 'var(--font-serif)'
 
   const hairline = withAlpha(ink, 0.1, 'rgba(23,23,23,0.10)')
@@ -393,7 +396,7 @@ export function OnboardingWizard({ firstName, accountId, existingBrandKits = [],
     try {
       await saveOnboardingBusiness({ business, category })
     } catch (err) {
-      console.error('Failed to persist onboarding business step', err)
+      logError('Failed to persist onboarding business step', err, { accountId })
     }
   }
 

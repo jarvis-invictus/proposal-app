@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import type { ReactElement } from 'react'
+import { logError } from '@/lib/logging'
 
 // Testing sender that works without a verified domain — swap for a real "from" once Sahil
 // verifies a domain in Resend.
@@ -32,11 +33,11 @@ export async function sendEmail({ to, subject, react, mockLink }: SendEmailOptio
 
   try {
     const { error } = await resend.emails.send({ from: FROM_ADDRESS, to, subject, react })
-    if (error) console.error('[email] Resend rejected the send:', error)
+    if (error) logError('[email] Resend rejected the send:', error, { to, subject })
   } catch (err) {
     // A failed email must never take down the action that triggered it (inviting a teammate,
     // recording a signature) — log and move on.
-    console.error('[email] Failed to send email via Resend:', err)
+    logError('[email] Failed to send email via Resend:', err, { to, subject })
   }
   return { mocked: false }
 }

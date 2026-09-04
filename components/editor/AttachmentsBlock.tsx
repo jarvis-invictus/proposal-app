@@ -4,6 +4,7 @@ import * as React from 'react'
 import { IconButton } from '@/components/ui/IconButton'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
+import { ConfirmDialog } from '@/components/app/ConfirmDialog'
 import { uploadAttachment, deleteAttachment, type Attachment } from '@/lib/attachments'
 
 export interface AttachmentsBlockProps {
@@ -17,20 +18,24 @@ export function AttachmentsBlock({ attachments, onChange, accountId, proposalId 
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = React.useState(false)
   const [error, setError] = React.useState('')
+  const [pendingDelete, setPendingDelete] = React.useState<number | null>(null)
 
   const updateCaption = (index: number, caption: string) => {
     onChange(attachments.map((a, i) => (i === index ? { ...a, caption } : a)))
   }
 
-  const removeAttachment = (index: number) => {
-    const removed = attachments[index]
-    const label = removed?.caption || `this ${removed?.type || 'attachment'}`
-    if (!window.confirm(`Remove ${label}? This can't be undone.`)) return
-    onChange(attachments.filter((_, i) => i !== index))
+  const confirmRemoveAttachment = () => {
+    if (pendingDelete === null) return
+    const removed = attachments[pendingDelete]
+    onChange(attachments.filter((_, i) => i !== pendingDelete))
+    setPendingDelete(null)
     // Best-effort — the attachment is already gone from the document either way; a failed
     // storage delete just leaves an orphaned file rather than blocking the removal.
     if (removed) deleteAttachment(removed.url).catch(() => {})
   }
+  const pendingLabel = pendingDelete !== null
+    ? (attachments[pendingDelete]?.caption || `this ${attachments[pendingDelete]?.type || 'attachment'}`)
+    : 'this attachment'
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -66,7 +71,7 @@ export function AttachmentsBlock({ attachments, onChange, accountId, proposalId 
                   <Icon name={a.type === 'video' ? 'video' : 'image'} size={11} color="#fff" />{a.type}
                 </span>
                 <span style={{ position: 'absolute', top: 4, right: 4 }}>
-                  <IconButton icon="x" size="sm" variant="solid" label="Remove attachment" onClick={() => removeAttachment(idx)} />
+                  <IconButton icon="x" size="sm" variant="solid" label="Remove attachment" onClick={() => setPendingDelete(idx)} />
                 </span>
               </div>
               <input value={a.caption || ''} onChange={(e) => updateCaption(idx, e.target.value)} placeholder="Add a caption (optional)"
@@ -80,6 +85,13 @@ export function AttachmentsBlock({ attachments, onChange, accountId, proposalId 
         Add photo or video
       </Button>
       {error && <p style={{ marginTop: 8, fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>{error}</p>}
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={`Remove ${pendingLabel}?`}
+        body="This can't be undone."
+        onConfirm={confirmRemoveAttachment}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }

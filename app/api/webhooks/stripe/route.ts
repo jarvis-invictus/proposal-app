@@ -3,6 +3,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
 import { env } from '@/env'
 import { getStripeClient } from '@/lib/stripe'
+import { logError } from '@/lib/logging'
 
 // Webhooks carry real billing state — unlike the AI rate limiter or Sentry, there's no safe
 // "bypass and proceed" here. Without a configured secret we can't verify the signature, so we
@@ -27,7 +28,7 @@ async function verifiedEvent(request: NextRequest): Promise<{ event: Stripe.Even
     const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret)
     return { event }
   } catch (err: any) {
-    console.error('Stripe webhook signature verification failed:', err.message)
+    logError('Stripe webhook signature verification failed:', err)
     return { error: NextResponse.json({ error: `Webhook signature verification failed: ${err.message}` }, { status: 400 }) }
   }
 }
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
       const accountId = session.client_reference_id || (await findAccountIdByEmail(adminSupabase, session.customer_details?.email))
 
       if (!accountId) {
-        console.error('checkout.session.completed had no resolvable account (no client_reference_id, no matching email)', session.id)
+        logError('checkout.session.completed had no resolvable account (no client_reference_id, no matching email)', new Error('Unresolvable account on checkout.session.completed'), { sessionId: session.id })
         break
       }
 
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', accountId)
 
-      if (error) console.error('Failed to update account after checkout.session.completed:', error)
+      if (error) logError('Failed to update account after checkout.session.completed:', error, { accountId })
       break
     }
 
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
       const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id
 
       if (!customerId) {
-        console.error('customer.subscription.deleted had no resolvable customer id', subscription.id)
+        logError('customer.subscription.deleted had no resolvable customer id', new Error('Unresolvable customer id on customer.subscription.deleted'), { subscriptionId: subscription.id })
         break
       }
 
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
         .update({ billing_status: 'canceled' })
         .eq('stripe_customer_id', customerId)
 
-      if (error) console.error('Failed to update account after customer.subscription.deleted:', error)
+      if (error) logError('Failed to update account after customer.subscription.deleted:', error, { customerId })
       break
     }
 

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { logError, logAction } from '@/lib/logging'
 
 function slugify(title: string) {
   const base = (title || '')
@@ -39,7 +40,10 @@ export async function duplicateProposalAsDraft(proposalId: string) {
     })
     .select('id, content')
     .single()
-  if (error) throw new Error(error.message)
+  if (error) {
+    logError('Failed to duplicate proposal', error, { accountId: source.account_id, sourceProposalId: proposalId })
+    throw new Error('Failed to duplicate the proposal — please try again.')
+  }
 
   revalidatePath('/dashboard')
   return { id: copy.id, title: copy.content?.title as string }
@@ -55,7 +59,10 @@ export async function deleteProposal(proposalId: string) {
   const { data: proposalRow } = await supabase.from('proposals').select('account_id').eq('id', proposalId).maybeSingle()
 
   const { error } = await supabase.from('proposals').delete().eq('id', proposalId)
-  if (error) throw new Error(error.message)
+  if (error) {
+    logError('Failed to delete proposal', error, { proposalId })
+    throw new Error('Failed to delete the proposal — please try again.')
+  }
 
   // Best-effort: the proposal is considered deleted the moment its row is gone — a storage
   // cleanup failure shouldn't resurrect it or block the user, just leave an orphaned file.
@@ -67,9 +74,10 @@ export async function deleteProposal(proposalId: string) {
         await supabase.storage.from('public-assets').remove(files.map((f) => `${prefix}/${f.name}`))
       }
     } catch (storageErr) {
-      console.error('Failed to clean up proposal attachments from storage', storageErr)
+      logError('Failed to clean up proposal attachments from storage', storageErr, { proposalId })
     }
   }
 
+  logAction('delete_proposal', user.id, { proposalId })
   revalidatePath('/dashboard')
 }
