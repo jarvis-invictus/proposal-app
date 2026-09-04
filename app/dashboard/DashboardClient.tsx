@@ -16,6 +16,7 @@ import { Icon } from '@/components/ui/Icon'
 import { PromptInput } from '@/components/ui/PromptInput'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { Toast, ToastHost, useToasts } from '@/components/ui/Toast'
+import { ConfirmDialog } from '@/components/app/ConfirmDialog'
 import { relativeTime } from '@/lib/relativeTime'
 import { getPublicProposalUrl } from '@/lib/publicUrl'
 import { duplicateProposalAsDraft, deleteProposal } from './actions'
@@ -78,6 +79,7 @@ export function DashboardClient({
   const [nudge, setNudge] = React.useState(true)
   const [aiValue, setAiValue] = React.useState('')
   const [listening, setListening] = React.useState(false)
+  const [pendingDelete, setPendingDelete] = React.useState<DashboardProposal | null>(null)
 
   const list = proposals.filter((p) =>
     (filter === 'All' || p.displayStatus === filter.toLowerCase()) &&
@@ -117,9 +119,15 @@ export function DashboardClient({
     pushToast('Saving a proposal as a template is coming soon')
   }
 
-  const handleDelete = async (p: DashboardProposal) => {
+  const handleDelete = (p: DashboardProposal) => {
     setMenu(null)
-    if (!window.confirm(`Delete "${p.title}"? This can't be undone.`)) return
+    setPendingDelete(p)
+  }
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return
+    const p = pendingDelete
+    setPendingDelete(null)
     try {
       await deleteProposal(p.id)
       pushToast('Proposal deleted')
@@ -216,6 +224,13 @@ export function DashboardClient({
           ))}
         </ToastHost>
       )}
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title={`Delete "${pendingDelete?.title || 'this proposal'}"?`}
+        body="This can't be undone."
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </AppShell>
   )
 }

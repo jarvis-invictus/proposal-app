@@ -4,6 +4,7 @@ import * as React from 'react'
 import { IconButton } from '@/components/ui/IconButton'
 import { Icon } from '@/components/ui/Icon'
 import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/app/ConfirmDialog'
 import { currencySymbol } from '@/lib/formatCurrency'
 
 export type PackageItem = {
@@ -27,13 +28,14 @@ const BLANK_PACKAGE: PackageItem = {
 
 /** Editable pricing tiers, bound directly to ProposalSchemaV1's packages array. */
 export function PackagesBlock({ packages, onChange, currency = 'USD' }: PackagesBlockProps) {
+  const [pendingDelete, setPendingDelete] = React.useState<number | null>(null)
   const updatePackage = (index: number, patch: Partial<PackageItem>) => {
     onChange(packages.map((p, i) => (i === index ? { ...p, ...patch } : p)))
   }
-  const removePackage = (index: number) => {
-    const name = packages[index]?.name || 'this package'
-    if (!window.confirm(`Delete "${name}"? This can't be undone.`)) return
-    onChange(packages.filter((_, i) => i !== index))
+  const confirmRemovePackage = () => {
+    if (pendingDelete === null) return
+    onChange(packages.filter((_, i) => i !== pendingDelete))
+    setPendingDelete(null)
   }
   const addPackage = () => {
     onChange([...packages, { ...BLANK_PACKAGE, deliverables: [] }])
@@ -70,7 +72,7 @@ export function PackagesBlock({ packages, onChange, currency = 'USD' }: Packages
               <IconButton icon="star" size="sm" variant="ghost" active={pkg.popular}
                 label={pkg.popular ? 'Unmark as popular' : 'Mark as popular'}
                 onClick={() => updatePackage(idx, { popular: !pkg.popular })} />
-              <IconButton icon="trash-2" size="sm" variant="ghost" label="Delete package" onClick={() => removePackage(idx)} />
+              <IconButton icon="trash-2" size="sm" variant="ghost" label="Delete package" onClick={() => setPendingDelete(idx)} />
             </div>
 
             <input value={pkg.name} onChange={(e) => updatePackage(idx, { name: e.target.value })} placeholder="Package name"
@@ -113,6 +115,13 @@ export function PackagesBlock({ packages, onChange, currency = 'USD' }: Packages
         ))}
       </div>
       <Button variant="secondary" size="sm" icon="plus" onClick={addPackage} style={{ marginTop: 16 }}>Add package</Button>
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={`Delete "${(pendingDelete !== null && packages[pendingDelete]?.name) || 'this package'}"?`}
+        body="This can't be undone."
+        onConfirm={confirmRemovePackage}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }
