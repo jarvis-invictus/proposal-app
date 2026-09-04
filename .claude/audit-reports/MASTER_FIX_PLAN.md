@@ -192,14 +192,14 @@ Do not skip ahead into Phase 6+ before Phase 1-3 are done — those three are th
 
 ---
 
-### Phase 17 — Repo housekeeping
-- [ ] A dozen throwaway debug/verification scripts committed at the repo root and in `scripts/`
-- [ ] Default Next.js/Vercel scaffold SVGs still shipping in `public/`, unreferenced
-- [ ] `README.md` claims the wrong font and is otherwise unmodified boilerplate
-- [ ] Stale comment claims invite-redemption doesn't exist (already resolved by whatever Phase 5 decides)
-- [ ] A generated PDF artifact committed to the repo root
-- [ ] Core AI SDK packages are all pre-1.0 — evaluate upgrading
-- [ ] Public proposal slugs use non-cryptographic `Math.random()` instead of `crypto.randomUUID()`
+### Phase 17 — Repo housekeeping ✅ [PR #74](https://github.com/jarvis-invictus/proposal-app/pull/74)
+- [x] A dozen throwaway debug/verification scripts committed at the repo root and in `scripts/` — removed 16 of them (confirmed unreferenced first)
+- [x] Default Next.js/Vercel scaffold SVGs still shipping in `public/`, unreferenced — removed
+- [x] `README.md` claims the wrong font and is otherwise unmodified boilerplate — rewritten to describe the real product/stack/setup
+- [x] Stale comment claims invite-redemption doesn't exist — it does (`on_auth_user_created` + the invite-redemption migration); comment corrected
+- [x] A generated PDF artifact committed to the repo root — removed
+- [x] Core AI SDK packages are all pre-1.0 — evaluated, deliberately deferred as its own dedicated project (recorded in `docs/DECISION_LOG.md`), not bundled into this cleanup
+- [x] Public proposal slugs use non-cryptographic `Math.random()` instead of `crypto.randomUUID()` — fixed and deduplicated into `lib/slugify.ts`, verified live on both call sites
 
 **Verify:** confirm `npm run build` and `npm run lint` still pass clean after cleanup; confirm no removed script was actually referenced anywhere (`package.json` scripts, CI, docs).
 
@@ -225,4 +225,4 @@ Do not skip ahead into Phase 6+ before Phase 1-3 are done — those three are th
 | 14 — Storage & data hygiene | Done — [PR #71](https://github.com/jarvis-invictus/proposal-app/pull/71), awaiting merge |
 | 15 — Copy & microcopy polish | Done — [PR #72](https://github.com/jarvis-invictus/proposal-app/pull/72), awaiting merge |
 | 16 — Testing & CI foundation | Done — [PR #73](https://github.com/jarvis-invictus/proposal-app/pull/73), awaiting merge |
-| 17 — Repo housekeeping | Not started |
+| 17 — Repo housekeeping | Done — [PR #74](https://github.com/jarvis-invictus/proposal-app/pull/74), awaiting merge |

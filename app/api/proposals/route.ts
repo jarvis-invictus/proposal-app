@@ -2,16 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
+import { slugify } from '@/lib/slugify'
 import { logError } from '@/lib/logging'
-
-function slugify(title: string) {
-  const base = (title || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-    .slice(0, 60) || 'proposal'
-  return `${base}-${Math.random().toString(36).slice(2, 8)}`
-}
 
 export async function POST(request: NextRequest) {
   try {

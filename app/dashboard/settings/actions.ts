@@ -74,10 +74,9 @@ export async function inviteMember({ email, role }: { email: string; role: strin
   const headersList = await headers()
   const host = headersList.get('host') || 'localhost:3000'
   const origin = `${host.startsWith('localhost') ? 'http' : 'https'}://${host}`
-  // There's no invite-redemption flow yet (a new signup always creates its own standalone
-  // account — see on_auth_user_created — it doesn't join the inviting account at any role).
-  // This link is a placeholder destination carrying the invitation id forward for whenever that
-  // flow gets built, not a working accept-invite mechanism today.
+  // A signup that arrives via this link (?invite=<id>) actually joins this account at the
+  // invited role — see on_auth_user_created and
+  // supabase/migrations/20260901160000_invite_redemption_on_signup.sql.
   const inviteLink = `${origin}/signup?invite=${invitation.id}`
 
   await sendEmail({
