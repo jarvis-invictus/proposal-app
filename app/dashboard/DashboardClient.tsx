@@ -273,17 +273,17 @@ function AILauncher({ value, setValue, listening, setListening, onSubmit, onQuic
           placeholder="Dashboard redesign for Acme Corp, around $50k, three months…"
           style={{ maxWidth: 660 }} />
         <div style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-          {QUICK.map((x) => <QuickChip key={x.id} onClick={() => onQuick(x.id)}>{x.label}</QuickChip>)}
+          {QUICK.map((x) => <QuickChip key={x.id} label={`Start a new proposal: ${x.label}`} onClick={() => onQuick(x.id)}>{x.label}</QuickChip>)}
         </div>
       </div>
     </section>
   )
 }
 
-function QuickChip({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+function QuickChip({ children, label, onClick }: { children: React.ReactNode; label?: string; onClick: () => void }) {
   const [hover, setHover] = React.useState(false)
   return (
-    <button type="button" onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+    <button type="button" onClick={onClick} aria-label={label} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       style={{
         padding: '7px 15px', borderRadius: 'var(--radius-pill)', cursor: 'pointer', fontFamily: 'var(--font-sans)',
         fontSize: 'var(--text-sm)', border: '1px solid ' + (hover ? 'var(--brand)' : 'var(--brand-38)'),
@@ -367,7 +367,7 @@ function RecommendedRow({ category, onBrowse }: { category: string; onBrowse: ()
       </div>
       <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
         {list.map(([name, icon]) => (
-          <button key={name} type="button" onClick={onBrowse} className="liquid liquid-hover"
+          <button key={name} type="button" onClick={onBrowse} aria-label={`Use ${name} template`} className="liquid liquid-hover"
             style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '13px 15px', textAlign: 'left', cursor: 'pointer', borderRadius: 'var(--radius-card)', fontFamily: 'var(--font-sans)' }}>
             <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, flex: 'none', borderRadius: 'var(--radius-pill)', background: 'var(--brand-12)', color: 'var(--brand-deep)' }}>
               <Icon name={icon} size={15} />

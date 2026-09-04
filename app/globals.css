@@ -14,7 +14,11 @@
   --ink-16: rgba(23, 23, 23, 0.16);
 
   --slate: #3d4451;
-  --mist: #6b7280;
+  /* Was #6b7280 — measured 4.39:1 against --brand-wash (#eef5fa), just under WCAG AA's 4.5:1
+     for normal text (it passed against white/glass surfaces, just not the page's own wash
+     background). This is barely darker — same cool-gray hue, ~4.86:1 on brand-wash and better
+     everywhere else it's used, not a redesign. */
+  --mist: #656b78;
   
   --glass-card: rgba(255, 255, 255, 0.68);
   
@@ -44,6 +48,27 @@ body {
   background: var(--brand-wash);
   color: var(--ink);
   font-family: var(--font-sans);
+}
+
+/* Input's pill-shaped wrapper shows the ring when its inner input is keyboard-focused — replaces
+   a JS onFocus/onBlur state that fired on every focus, mouse click included. */
+.input-shell:has(input:focus-visible) {
+  background: var(--pure-white, #fff);
+  border-color: var(--brand, #7cbcdc);
+  box-shadow: var(--ring-focus, 0 0 0 3px rgba(124,188,220,0.38));
+}
+
+/* Skip-to-content link — off-screen until keyboard-focused. app/layout.tsx is a Server
+   Component (no onFocus/onBlur props allowed there), and the classic skip-link pattern has
+   never needed JS anyway. */
+.skip-link {
+  position: absolute; left: 8px; top: -48px; z-index: 100; padding: 10px 16px;
+  background: var(--ink, #171717); color: var(--text-inverse, #fff); border-radius: var(--radius-sm, 8px);
+  font-family: var(--font-sans); font-size: 14px; font-weight: 500; text-decoration: none;
+  transition: top 150ms ease;
+}
+.skip-link:focus {
+  top: 8px;
 }
 
 /* Many editable fields set outline:none inline (their own focus styling only fires via React

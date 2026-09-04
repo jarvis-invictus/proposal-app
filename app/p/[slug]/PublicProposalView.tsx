@@ -200,7 +200,7 @@ export default function PublicProposalView({
   }
 
   return (
-    <div className={`relative min-h-screen print:min-h-0 ${pdfConfig.inkSavingMode ? 'print:text-black' : ''}`} style={{ background: 'var(--surface-page)' }}>
+    <div id="main-content" className={`relative min-h-screen print:min-h-0 ${pdfConfig.inkSavingMode ? 'print:text-black' : ''}`} style={{ background: 'var(--surface-page)' }}>
       <BrandFontLink heading={headingFontName} body={bodyFontName} />
 
       {/* Anchored to the viewport, not this potentially long-scrolling document — same fix as
@@ -583,7 +583,7 @@ export default function PublicProposalView({
               <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
                 Your name, IP address and browser will be recorded alongside this consent to form the signature's audit trail.
               </p>
-              {signError && <p style={{ fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>{signError}</p>}
+              {signError && <p role="alert" style={{ fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>{signError}</p>}
             </div>
           </Modal>
         </div>
