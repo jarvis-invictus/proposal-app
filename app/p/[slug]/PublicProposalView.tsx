@@ -10,7 +10,7 @@ import { Icon } from '@/components/ui/Icon'
 import { Modal } from '@/components/app/Modal'
 import { SignaturePad } from '@/components/app/SignaturePad'
 import { DealWon } from '@/components/app/DealWon'
-import { PdfExportModal, type PdfExportOptions } from '@/components/app/PdfExportModal'
+import { PdfExportModal, type PdfExportOptions, formatDate } from '@/components/app/PdfExportModal'
 import { DeckView } from '@/components/presentation/DeckView'
 import { BrandFontLink } from '@/components/app/BrandFontLink'
 import { formatCurrency } from '@/lib/formatCurrency'
@@ -29,9 +29,6 @@ const CORNER_MAP: Record<PdfExportOptions['pageNumbers'], string> = {
 }
 const DATES_MAP: Record<PdfExportOptions['dates'], string> = {
   both: 'both', issued: 'issued', valid: 'validUntil', none: 'none',
-}
-const FORMAT_MAP: Record<PdfExportOptions['dateFormat'], string> = {
-  long: 'standard', us: 'slashes', iso: 'iso', custom: 'standard',
 }
 
 /** The only sections this proposal's print view actually toggles — must match the ids
@@ -117,7 +114,8 @@ export default function PublicProposalView({
     pageNumbers: 'none', // 'none', 'top-left', 'top-right', 'bottom-left', 'bottom-right'
     headerText: '',
     datesMode: 'both', // 'both', 'issued', 'validUntil', 'none'
-    datesFormat: 'standard', // 'standard', 'slashes', 'iso'
+    dateFormat: 'long' as PdfExportOptions['dateFormat'],
+    customDateFormat: '',
     visibleSections: {
       addOns: true,
       timeline: true,
@@ -133,7 +131,8 @@ export default function PublicProposalView({
       pageNumbers: CORNER_MAP[opts.pageNumbers] ?? 'none',
       headerText: opts.headerIsDefault ? '' : opts.header,
       datesMode: DATES_MAP[opts.dates] ?? 'both',
-      datesFormat: FORMAT_MAP[opts.dateFormat] ?? 'standard',
+      dateFormat: opts.dateFormat,
+      customDateFormat: opts.customDateFormat,
       visibleSections: {
         addOns: !opts.hiddenSections.includes('addOns'),
         timeline: !opts.hiddenSections.includes('timeline'),
@@ -166,20 +165,6 @@ export default function PublicProposalView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
-
-  const formatDate = (dateStr: string, format: string) => {
-    if (!dateStr) return ''
-    try {
-      const d = new Date(dateStr)
-      if (isNaN(d.getTime())) return dateStr // fallback if not parseable
-
-      if (format === 'slashes') return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`
-      if (format === 'iso') return d.toISOString().split('T')[0]
-      return dateStr // standard original
-    } catch {
-      return dateStr
-    }
-  }
 
   const effectiveThemeColor = pdfConfig.inkSavingMode ? '#000000' : themeColor
   const headerTextToRender = pdfConfig.headerText || content.title
@@ -317,13 +302,13 @@ export default function PublicProposalView({
                 {(pdfConfig.datesMode === 'both' || pdfConfig.datesMode === 'issued') && (
                   <div>
                     <p className="uppercase tracking-wider text-xs mb-1 opacity-70 print:text-gray-500">Date Issued</p>
-                    <p>{formatDate(content.dateIssued, pdfConfig.datesFormat)}</p>
+                    <p>{formatDate(content.dateIssued, pdfConfig.dateFormat, pdfConfig.customDateFormat)}</p>
                   </div>
                 )}
                 {(pdfConfig.datesMode === 'both' || pdfConfig.datesMode === 'validUntil') && (
                   <div>
                     <p className="uppercase tracking-wider text-xs mb-1 opacity-70 print:text-gray-500">Valid Until</p>
-                    <p>{formatDate(content.validUntil, pdfConfig.datesFormat)}</p>
+                    <p>{formatDate(content.validUntil, pdfConfig.dateFormat, pdfConfig.customDateFormat)}</p>
                   </div>
                 )}
               </>

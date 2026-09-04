@@ -194,7 +194,7 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
       )}
       <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-      <DocStats />
+      <DocStats content={content} />
       <StructuredDocument>
         <fieldset disabled={isLocked} style={{ border: 'none', margin: 0, padding: 0 }}>
           <div style={{ padding: '32px 40px', borderBottom: '1px solid var(--border-hairline)' }}>
