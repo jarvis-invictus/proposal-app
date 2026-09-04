@@ -3,6 +3,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 import { slugify } from '@/lib/slugify'
+import { logError } from '@/lib/logging'
 
 export async function POST(request: NextRequest) {
   try {
@@ -104,15 +105,15 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating proposal:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      logError('Error creating proposal:', error, { accountId: userRow.account_id })
+      return NextResponse.json({ error: 'Failed to create the proposal — please try again.' }, { status: 500 })
     }
 
     revalidatePath('/dashboard')
 
     return NextResponse.json({ id: proposal.id })
   } catch (err) {
-    console.error('Unexpected error creating proposal:', err)
+    logError('Unexpected error creating proposal:', err)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { logError } from '@/lib/logging'
+import { ProposalSchemaV1 } from '@/lib/schema/proposal'
 
 export async function PATCH(
   request: NextRequest,
@@ -62,7 +64,22 @@ export async function PATCH(
     const updateData: any = {
       updated_at: new Date().toISOString()
     }
-    if (body.content) updateData.content = body.content
+    if (body.content) {
+      // .partial() (same pattern the revise endpoint already uses) so this never rejects an
+      // older/legacy proposal missing a field the schema didn't have yet — the point isn't to
+      // demand a complete shape, it's to catch outright corruption (e.g. packages sent as a
+      // string) before it reaches the public page's unconditional content.packages.map().
+      // .passthrough() so editor-only fields the AI schema doesn't know about (themeColor, the
+      // view route's metadata.lastViewedAt) survive untouched instead of being silently dropped.
+      const parsed = ProposalSchemaV1.partial().passthrough().safeParse(body.content)
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: 'Invalid proposal content', details: parsed.error.flatten() },
+          { status: 400 }
+        )
+      }
+      updateData.content = parsed.data
+    }
 
     const { data: proposal, error } = await supabase
       .from('proposals')
@@ -72,13 +89,13 @@ export async function PATCH(
       .single()
 
     if (error) {
-      console.error('Error updating proposal:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      logError('Error updating proposal:', error, { proposalId: id })
+      return NextResponse.json({ error: 'Failed to save your changes — please try again.' }, { status: 500 })
     }
 
     return NextResponse.json(proposal)
   } catch (err) {
-    console.error('Unexpected error updating proposal:', err)
+    logError('Unexpected error updating proposal:', err)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

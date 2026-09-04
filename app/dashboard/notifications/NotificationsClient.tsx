@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/app/EmptyState'
 import { relativeTime } from '@/lib/relativeTime'
 import { classifyNotification } from '@/lib/classifyNotification'
+import { logError } from '@/lib/logging'
 import { approveProposal } from '../settings/actions'
 
 export type NotificationRow = {
@@ -39,12 +40,14 @@ export function NotificationsClient({
 
   const markRead = (id: string) => {
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
-    fetch('/api/notifications', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(console.error)
+    fetch('/api/notifications', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+      .catch((err) => logError('Failed to mark notification read', err, { notificationId: id }))
   }
 
   const markAllRead = () => {
     setItems((prev) => prev.map((n) => ({ ...n, read: true })))
-    fetch('/api/notifications', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }).catch(console.error)
+    fetch('/api/notifications', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+      .catch((err) => logError('Failed to mark all notifications read', err))
   }
 
   const handleApprove = async (n: NotificationRow) => {
@@ -54,7 +57,7 @@ export function NotificationsClient({
       await approveProposal(n.proposalId)
       setItems((prev) => prev.map((item) => (item.proposalId === n.proposalId ? { ...item, proposalStatus: 'PUBLISHED' } : item)))
     } catch (err) {
-      console.error(err)
+      logError('Failed to approve proposal', err, { proposalId: n.proposalId })
     } finally {
       setApprovingId(null)
     }

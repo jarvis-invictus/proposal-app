@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# env.ts validates these at import time (several route files import it), so `next build` and
+# `tsc` both need something present — a placeholder is enough since nothing here actually talks
+# to a real backend. Never put real secrets in this file; these are intentionally fake.
+env:
+  NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+  FIRECRAWL_API_KEY: placeholder-firecrawl-key
+  OPENAI_API_KEY: placeholder-openai-key
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # `LayoutProps`/`PageProps` etc. are Next.js-generated globals that only exist once it has
+      # written .next/types — on a normal machine that's already there from a prior `next dev`/
+      # `next build`, which is why this wasn't caught locally. A fresh CI checkout has neither, so
+      # a bare `tsc --noEmit` fails on "Cannot find name 'LayoutProps'" — `next typegen` generates
+      # just those types (no full build) and is what actually fixes it.
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Reports, doesn't block: there are ~140 pre-existing errors/warnings across the app
+      # (tracked in the Phase 16 PR and the master fix plan) — hard-blocking on day one would
+      # make every future PR red for debt it didn't create. This still makes lint visible in the
+      # PR checks for the first time ever; flip continue-on-error off once the backlog is paid down.
+      - run: npm run lint
+        continue-on-error: true

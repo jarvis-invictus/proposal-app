@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { IconButton } from '@/components/ui/IconButton'
 import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/app/ConfirmDialog'
 
 export type PaymentSection = { schedule: string; terms: string }
 
@@ -14,15 +15,20 @@ export interface TermsPaymentBlockProps {
 }
 
 export function TermsPaymentBlock({ paymentSection, onPaymentSectionChange, terms, onTermsChange }: TermsPaymentBlockProps) {
+  const [pendingDelete, setPendingDelete] = React.useState<number | null>(null)
   const updateTerm = (index: number, value: string) => {
     onTermsChange(terms.map((t, i) => (i === index ? value : t)))
   }
-  const removeTerm = (index: number) => {
-    const text = (terms[index] || '').trim()
-    const label = text ? `"${text.length > 60 ? text.slice(0, 60) + '…' : text}"` : 'this term'
-    if (!window.confirm(`Delete ${label}? This can't be undone.`)) return
-    onTermsChange(terms.filter((_, i) => i !== index))
+  const confirmRemoveTerm = () => {
+    if (pendingDelete === null) return
+    onTermsChange(terms.filter((_, i) => i !== pendingDelete))
+    setPendingDelete(null)
   }
+  const pendingLabel = (() => {
+    if (pendingDelete === null) return 'this term'
+    const text = (terms[pendingDelete] || '').trim()
+    return text ? `"${text.length > 60 ? text.slice(0, 60) + '…' : text}"` : 'this term'
+  })()
   const addTerm = () => onTermsChange([...terms, ''])
 
   return (
@@ -50,12 +56,19 @@ export function TermsPaymentBlock({ paymentSection, onPaymentSectionChange, term
               <span style={{ flex: 'none', color: 'var(--text-muted)' }}>&bull;</span>
               <input value={term} onChange={(e) => updateTerm(idx, e.target.value)} placeholder="Term"
                 style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }} />
-              <IconButton icon="x" size="sm" variant="ghost" label="Remove term" onClick={() => removeTerm(idx)} />
+              <IconButton icon="x" size="sm" variant="ghost" label="Remove term" onClick={() => setPendingDelete(idx)} />
             </div>
           ))}
         </div>
         <Button variant="secondary" size="sm" icon="plus" onClick={addTerm} style={{ marginTop: 12 }}>Add term</Button>
       </div>
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={`Delete ${pendingLabel}?`}
+        body="This can't be undone."
+        onConfirm={confirmRemoveTerm}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }
