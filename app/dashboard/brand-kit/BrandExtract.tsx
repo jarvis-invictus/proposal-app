@@ -235,7 +235,7 @@ function SourceInput({ source, url, setUrl, assetFile, setAssetFile, description
   error: string | null; onBack: () => void; onRun: () => void
 }) {
   const meta: Record<SourceId, { title: string; cta: string; icon: string }> = {
-    url: { title: 'What’s your website?', cta: 'Visit and scan it', icon: 'globe' },
+    url: { title: "What's your website?", cta: 'Visit and scan it', icon: 'globe' },
     file: { title: 'Upload your brand guide', cta: 'Read the file', icon: 'file-text' },
     code: { title: 'Point us at your codebase', cta: 'Read the tokens', icon: 'code' },
     assets: { title: 'Upload a few assets', cta: 'Read the assets', icon: 'image' },
@@ -555,7 +555,7 @@ function BrandReview({ source, extracted, kitNameDefault, accountId, onRedo, onC
           </div>
         </ReviewBlock>
 
-        <ReviewBlock title="Logo" note={scrapedLogo && !rejectedScrapedLogo && !logoUrl ? 'We found this on your site — confirm it looks right' : 'Upload your own if the automatic grab isn’t good enough'}>
+        <ReviewBlock title="Logo" note={scrapedLogo && !rejectedScrapedLogo && !logoUrl ? 'We found this on your site — confirm it looks right' : "Upload your own if the automatic grab isn't good enough"}>
           {scrapedLogo && !rejectedScrapedLogo && !logoUrl ? (
             <ScrapedLogoChoice logoUrl={scrapedLogo} onAccept={() => setLogoUrl(scrapedLogo)} onReject={() => setRejectedScrapedLogo(true)} />
           ) : (
@@ -691,7 +691,7 @@ function ScrapedLogoChoice({ logoUrl, onAccept, onReject }: { logoUrl: string; o
         )}
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', fontSize: 'var(--text-body)', fontWeight: 500 }}>{broken ? 'Couldn’t load the logo we found' : 'Is this your logo?'}</span>
+        <span style={{ display: 'block', fontSize: 'var(--text-body)', fontWeight: 500 }}>{broken ? "Couldn't load the logo we found" : 'Is this your logo?'}</span>
         <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{broken ? 'Upload your own instead' : 'Pulled from your site — use it, or upload your own'}</span>
       </span>
       {broken ? (

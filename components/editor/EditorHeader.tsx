@@ -11,7 +11,11 @@ export type EditorProposalStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'PENDING
 const SAVE_LABEL: Record<SaveStatus, string> = {
   saving: 'Saving…',
   saved: 'Saved just now',
-  error: "Couldn't save — edit again to retry",
+  // There's no background retry timer — the only thing that actually re-triggers a save is the
+  // debounced autosave firing again off the user's next edit, so say that, not "edit again to
+  // retry" (which reads as a deliberate step to take, when it's really just what already
+  // happens the moment they keep working).
+  error: "Couldn't save — retries on your next edit",
 }
 
 export interface EditorHeaderProps {

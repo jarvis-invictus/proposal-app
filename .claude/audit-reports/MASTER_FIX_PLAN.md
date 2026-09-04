@@ -167,16 +167,16 @@ Do not skip ahead into Phase 6+ before Phase 1-3 are done — those three are th
 
 ---
 
-### Phase 15 — Copy & microcopy polish
-- [ ] Supabase signup errors discarded, replaced with generic "Could not sign up" (`app/(auth)/actions.ts:46-50`)
-- [ ] "5 of 5, filled in" — awkward phrasing (`PublishModal.tsx:32`)
-- [ ] Apostrophe glyph inconsistency in `OnboardingWizard.tsx`, `BrandExtract.tsx`
-- [ ] "Save as template" menu item looks live but is a dead click — disable with "(coming soon)" like the pattern already used elsewhere (`DashboardClient.tsx:115,376`)
-- [ ] Save-error microcopy describes an instruction rather than the real auto-retry mechanism (`EditorHeader.tsx:14`)
-- [ ] Public-page footer CTA assumes email-only sharing (`PublicProposalView.tsx:560`)
-- [ ] Signature Certificate shows raw IP/UA with no explanation
-- [ ] No `openGraph`/`twitter` metadata on the public proposal page — the core "share one link" feature previews as bare in Slack/iMessage/WhatsApp
-- [ ] "Export PDF" dashboard menu item navigates to a query param the editor never reads — silently does nothing
+### Phase 15 — Copy & microcopy polish ✅ [PR #72](https://github.com/jarvis-invictus/proposal-app/pull/72)
+- [x] Supabase signup errors discarded, replaced with generic "Could not sign up" — now surfaces the real message (login kept deliberately vague, that's intentional)
+- [x] "5 of 5, filled in" → "5 of 5 complete"
+- [x] Apostrophe glyph inconsistency in `OnboardingWizard.tsx`, `BrandExtract.tsx` — standardized to straight quotes
+- [x] "Save as template" menu item looks live but is a dead click — now disabled with "(coming soon)"
+- [x] Save-error microcopy describes an instruction rather than the real auto-retry mechanism — reworded to "retries on your next edit"
+- [x] Public-page footer CTA assumes email-only sharing — reworded to "whoever sent you this link"
+- [x] Signature Certificate shows raw IP/UA with no explanation — added an audit-trail explainer line
+- [x] No `openGraph`/`twitter` metadata on the public proposal page — added, verified via rendered `<meta>` tags
+- [x] "Export PDF" dashboard menu item navigated to a query param the editor never read — editor now reads it and opens the PDF export modal directly
 
 **Verify:** share a real proposal link into Slack/iMessage and confirm a real preview renders; click every dashboard menu item and confirm none are silently dead.
 
@@ -223,6 +223,6 @@ Do not skip ahead into Phase 6+ before Phase 1-3 are done — those three are th
 | 12 — Frontend performance | Done — [PR #69](https://github.com/jarvis-invictus/proposal-app/pull/69), awaiting merge |
 | 13 — Observability | Done — [PR #70](https://github.com/jarvis-invictus/proposal-app/pull/70), awaiting merge |
 | 14 — Storage & data hygiene | Done — [PR #71](https://github.com/jarvis-invictus/proposal-app/pull/71), awaiting merge |
-| 15 — Copy & microcopy polish | Not started |
+| 15 — Copy & microcopy polish | Done — [PR #72](https://github.com/jarvis-invictus/proposal-app/pull/72), awaiting merge |
 | 16 — Testing & CI foundation | Not started |
 | 17 — Repo housekeeping | Not started |

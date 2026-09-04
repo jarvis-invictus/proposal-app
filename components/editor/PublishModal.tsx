@@ -34,7 +34,7 @@ function filledSectionsSummary(content: any): string {
     !!content?.paymentSection?.schedule,
   ]
   const filled = checks.filter(Boolean).length
-  return `${filled} of ${checks.length}, filled in`
+  return `${filled} of ${checks.length} complete`
 }
 
 export function PublishModal({ open, onClose, proposalId, slug, content, brandKitName, userRole, accountSubdomain, onBeforePublish, onPublished }: PublishModalProps) {

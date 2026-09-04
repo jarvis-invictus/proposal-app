@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { EditorHeader, type SaveStatus } from '@/components/editor/EditorHeader'
 import { DocStats } from '@/components/editor/DocStats'
 import { StructuredDocument } from '@/components/editor/StructuredDocument'
@@ -50,6 +50,16 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
   const [showPublishModal, setShowPublishModal] = React.useState(false)
   const [showPdfModal, setShowPdfModal] = React.useState(false)
   const [critiqueIssues, setCritiqueIssues] = React.useState<Array<{ field: string; severity: string; note: string }>>([])
+
+  // The dashboard's "Export PDF" row-menu item links here with ?export=pdf, expecting to land
+  // straight in the export flow — there's no way to auto-run a full export without the options
+  // PdfExportModal collects (page numbers, header text, sections), so this is the real
+  // equivalent: open that modal immediately instead of silently ignoring the param.
+  const searchParams = useSearchParams()
+  React.useEffect(() => {
+    if (searchParams.get('export') === 'pdf') setShowPdfModal(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Transient, shown once: the AI review pass (if it flagged anything) stashes its findings
   // here right before navigating from generation to this page. Read once, then cleared, so a

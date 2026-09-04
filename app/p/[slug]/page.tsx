@@ -2,6 +2,7 @@ import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
+import { headers } from 'next/headers'
 import { env } from '@/env'
 import PublicProposalView from './PublicProposalView'
 
@@ -18,12 +19,37 @@ const getProposalBySlug = cache(async (slug: string) => {
     .single()
 })
 
+// The core "share one link" feature previewed as bare title-only (or nothing at all) in
+// Slack/iMessage/WhatsApp with no openGraph/twitter metadata — this is the fix. No per-request
+// object is passed to generateMetadata, so the host is read via next/headers to build an
+// absolute image URL (there's no metadataBase configured anywhere in this app). Reuses the same
+// cached getProposalBySlug() the page component calls below instead of its own separate query.
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const resolvedParams = await params
   const { data: proposal } = await getProposalBySlug(resolvedParams.slug)
 
+  const title = proposal?.content?.title || 'Proposal'
+  const clientName = proposal?.content?.clientName as string | undefined
+  const description = clientName ? `A proposal prepared for ${clientName}.` : 'A proposal made with Marg.'
+
+  const host = (await headers()).get('host')
+  const logoUrl = host ? `${host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https'}://${host}/logo.png` : undefined
+
   return {
-    title: proposal?.content?.title || 'Proposal'
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      ...(logoUrl ? { images: [{ url: logoUrl, width: 542, height: 462, alt: 'Marg' }] } : {}),
+    },
+    twitter: {
+      card: 'summary',
+      title,
+      description,
+      ...(logoUrl ? { images: [logoUrl] } : {}),
+    },
   }
 }
 
