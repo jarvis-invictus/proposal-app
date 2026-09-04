@@ -6,8 +6,7 @@ import { formatCurrency } from '@/lib/formatCurrency'
 
 const PLAN_LABEL: Record<string, string> = { free: 'Free plan', pay_per_proposal: 'Pay-per-proposal plan', agency: 'Agency plan' }
 
-function dealValue(content: any, currencyCode: string): string {
-  const packages = content?.packages
+function dealValue(packages: any, currencyCode: string): string {
   if (!Array.isArray(packages) || packages.length === 0) return ''
   const highest = Math.max(...packages.map((p: any) => Number(p.discountedPrice) || 0))
   return highest > 0 ? formatCurrency(highest, currencyCode) : ''
@@ -68,8 +67,9 @@ export default async function DashboardPage() {
   const [{ data: proposalRows }, { count: brandKitCount }] = await Promise.all([
     supabase
       .from('proposals')
-      .select('id, slug, content, updated_at, status, accepted_at, last_viewed_at')
-      .order('updated_at', { ascending: false }),
+      .select("id, slug, updated_at, status, accepted_at, last_viewed_at, title:content->>title, client:content->>clientName, packages:content->packages")
+      .order('updated_at', { ascending: false })
+      .limit(500),
     supabase.from('brand_kits').select('id', { count: 'exact', head: true }),
   ])
 
@@ -86,10 +86,10 @@ export default async function DashboardPage() {
     return {
       id: p.id,
       slug: p.slug,
-      title: p.content?.title || 'Untitled proposal',
-      client: p.content?.clientName || 'Unknown client',
+      title: p.title || 'Untitled proposal',
+      client: p.client || 'Unknown client',
       updatedAt: p.updated_at,
-      value: dealValue(p.content, accountData?.currency || 'USD'),
+      value: dealValue(p.packages, accountData?.currency || 'USD'),
       displayStatus,
       statusLabel,
       pendingApproval: p.status === 'PENDING_APPROVAL',

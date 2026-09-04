@@ -122,14 +122,14 @@ Do not skip ahead into Phase 6+ before Phase 1-3 are done — those three are th
 
 ---
 
-### Phase 11 — Database & query performance
+### Phase 11 — Database & query performance ✅ [PR #68](https://github.com/jarvis-invictus/proposal-app/pull/68)
 **Why here:** invisible today at low volume, compounding as the product grows — worth doing before real usage makes it painful to fix live.
-- [ ] No `CREATE INDEX` anywhere despite every RLS policy filtering on `account_id` — add indexes on `proposals`, `notifications`, `brand_kits`, `users`
-- [ ] Settings page runs 8+ independent queries sequentially — `Promise.all` them
-- [ ] Every public-proposal view rewrites the entire `content` JSONB just to stamp a timestamp already tracked in its own column (`app/api/proposals/[id]/view/route.ts:54-68`)
-- [ ] Dashboard, notifications, and pending-proposals queries have no `.limit()`
-- [ ] `getAccountContext()`'s 2-query chain (users → accounts) — replace with one joined select
-- [ ] Notifications query pulls entire proposal `content` JSONB just to read `slug`/`status`
+- [x] No `CREATE INDEX` anywhere despite every RLS policy filtering on `account_id` — added indexes on `proposals`, `notifications`, `brand_kits`, `users`, plus `invitations`/`domains`/`templates` (same shape, same fix)
+- [x] Settings page's 8+ independent queries now run via `Promise.all`
+- [x] Public-proposal view no longer rewrites the entire `content` JSONB just to stamp a timestamp — `last_viewed_at` (its own column) is the only thing touched now
+- [x] Added safety-cap `.limit()`s to the dashboard's main proposal list and settings' pending-approvals list
+- [x] `getAccountContext()`'s 2-query chain (users → accounts) replaced with one joined select
+- [x] Notifications, dashboard, and settings queries no longer pull entire proposal `content` JSONB just to read `slug`/`status`/`title`/`clientName` — selected via `->>` path operators instead
 
 **Verify:** `EXPLAIN ANALYZE` the account-scoped queries before/after the index migration; time the settings page load before/after parallelizing.
 
@@ -218,7 +218,7 @@ Do not skip ahead into Phase 6+ before Phase 1-3 are done — those three are th
 | 8 — AI correctness | Done — [PR #65](https://github.com/jarvis-invictus/proposal-app/pull/65), awaiting merge |
 | 9 — Accessibility: critical/high | Done — [PR #66](https://github.com/jarvis-invictus/proposal-app/pull/66), awaiting merge |
 | 10 — Accessibility: medium/low | Done — [PR #67](https://github.com/jarvis-invictus/proposal-app/pull/67), awaiting merge |
-| 11 — Database & query performance | Not started |
+| 11 — Database & query performance | Done — [PR #68](https://github.com/jarvis-invictus/proposal-app/pull/68), awaiting merge |
 | 12 — Frontend performance | Not started |
 | 13 — Observability | Not started |
 | 14 — Storage & data hygiene | Not started |
