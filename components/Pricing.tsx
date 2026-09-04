@@ -34,13 +34,6 @@ const plans = [
 export function Pricing() {
   return (
     <section className="py-24 px-4 w-full max-w-6xl mx-auto relative z-10 screen-in delay-300" id="pricing">
-      
-      {/* Dev Warning Badge */}
-      <div className="flex justify-center mb-6">
-        <div className="bg-yellow-100 text-yellow-800 text-[11px] font-bold tracking-widest uppercase px-3 py-1 rounded-[999px] border border-yellow-200">
-          Placeholder Pricing
-        </div>
-      </div>
 
       <div className="text-center mb-16">
         <h2 className="text-[clamp(32px,5vw,48px)] font-medium text-ink tracking-tight">
@@ -71,8 +64,12 @@ export function Pricing() {
               {plan.desc}
             </p>
             
-            <Link 
-              href={plan.name === 'Free' ? '/signup' : '#'}
+            {/* No live checkout exists yet for any paid plan (billing provider is being
+                switched off Stripe — see docs/DECISION_LOG.md's Sep 4 entry) — every plan
+                routes to signup rather than a dead "#" so there's at least a real destination;
+                point the paid plans at real checkout once that provider is chosen. */}
+            <Link
+              href="/signup"
               className={`text-center w-full rounded-[999px] px-5 py-3 text-[15px] font-medium transition-all flex items-center justify-center ${
                 plan.highlight 
                   ? 'bg-brand-tint border border-brand text-brand-ink hover:bg-[#dcecf7] hover:-translate-y-[2px] shadow-[0_4px_14px_rgba(47,127,191,0.16)]' 
