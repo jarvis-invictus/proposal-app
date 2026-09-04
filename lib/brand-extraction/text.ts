@@ -22,6 +22,8 @@ export async function extractBrandKitFromText(description: string) {
 
 Brand description:
 ${description}`,
+    maxTokens: 500,
+    abortSignal: AbortSignal.timeout(20_000),
   })
 
   return object

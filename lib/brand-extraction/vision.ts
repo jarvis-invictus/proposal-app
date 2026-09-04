@@ -41,6 +41,8 @@ export async function extractBrandKitFromImage(imageUrl: string | Uint8Array) {
         ],
       },
     ],
+    maxTokens: 500,
+    abortSignal: AbortSignal.timeout(30_000),
   })
 
   return object
