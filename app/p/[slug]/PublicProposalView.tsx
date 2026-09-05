@@ -575,12 +575,14 @@ export default function PublicProposalView({
         </div>
       )}
 
-      {showSignModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
-          <Modal
-            eyebrow="Optional e-signature"
-            title="Accept this proposal"
-            onClose={() => setShowSignModal(false)}
+      {/* Modal is always rendered, never gated behind `{showSignModal && ...}` — it manages its
+          own mount/unmount internally (see components/app/Modal.tsx) so the signing dialog can
+          fade out instead of vanishing instantly the moment it closes. */}
+      <Modal
+        open={showSignModal}
+        eyebrow="Optional e-signature"
+        title="Accept this proposal"
+        onClose={() => setShowSignModal(false)}
             footer={
               <>
                 <span style={{ flex: 1 }} />
@@ -605,9 +607,7 @@ export default function PublicProposalView({
               </p>
               {signError && <p role="alert" style={{ fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>{signError}</p>}
             </div>
-          </Modal>
-        </div>
-      )}
+      </Modal>
     </div>
   )
 }

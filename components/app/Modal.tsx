@@ -18,10 +18,39 @@ export interface ModalProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+// Reads the live --duration-base token rather than hardcoding a number, so a reduced-motion
+// visitor (globals.css zeroes every --duration-* token to 0ms) doesn't sit through an invisible
+// delay before the modal actually unmounts once it's no longer visible.
+function durationBaseMs(): number {
+  if (typeof window === 'undefined') return 200;
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--duration-base').trim();
+  const ms = raw.endsWith('ms') ? parseFloat(raw) : raw.endsWith('s') ? parseFloat(raw) * 1000 : parseFloat(raw);
+  return Number.isFinite(ms) ? ms : 200;
+}
+
 export function Modal({open=true,title,eyebrow,children,footer,onClose,width=520,style,...rest}:ModalProps){
   const titleId = React.useId();
   const dialogRef = React.useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = React.useRef<HTMLElement | null>(null);
+
+  // `if (!open) return null` used to be the entire close behavior — the modal vanished on the
+  // same frame `open` went false, with no exit animation, while the entrance played a 340ms
+  // fade-up. `visible` keeps the DOM (and the exit animation) around for one more tick after
+  // `open` flips false; `closing` swaps which animation is currently running.
+  const [visible, setVisible] = React.useState(open);
+  const [closing, setClosing] = React.useState(false);
+  React.useEffect(() => {
+    if (open) {
+      setVisible(true);
+      setClosing(false);
+    } else if (visible) {
+      setClosing(true);
+      const timer = setTimeout(() => setVisible(false), durationBaseMs());
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally reacting to `open`
+    // transitions only; re-running this on every `visible` change would cancel its own timer.
+  }, [open]);
 
   // Every call site passes an inline arrow (`onClose={() => setOpen(false)}`), so `onClose` gets a
   // new identity on every parent render. Kept in a ref and OUT of the effect's dep array below:
@@ -85,7 +114,7 @@ export function Modal({open=true,title,eyebrow,children,footer,onClose,width=520
     };
   }, [open]);
 
-  if(!open) return null;
+  if(!visible) return null;
   // `fixed`, not `absolute`: an absolutely-positioned scrim sizes itself to the nearest
   // positioned ancestor rather than the viewport, so callers had to wrap this in their own
   // `position:fixed` div to make it cover the screen — and the three that didn't (ConfirmDialog,
@@ -95,12 +124,12 @@ export function Modal({open=true,title,eyebrow,children,footer,onClose,width=520
     <div style={{position:'fixed',inset:0,zIndex:60,display:'flex',alignItems:'flex-start',justifyContent:'center',padding:24,
       overflowY:'auto',overscrollBehavior:'contain',
       background:'var(--scrim)',backdropFilter:'blur(6px)',WebkitBackdropFilter:'blur(6px)',
-      animation:'fade-in var(--duration-base) var(--ease-standard) both'}} onClick={onClose}>
+      animation:closing?'fade-out var(--duration-base) var(--ease-standard) both':'fade-in var(--duration-base) var(--ease-standard) both'}} onClick={onClose}>
       <div {...rest} ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined} tabIndex={-1}
         onClick={e=>e.stopPropagation()} className="liquid liquid-strong"
         style={{width,maxWidth:'100%',flex:'none',margin:'auto',padding:24,borderRadius:'var(--radius-modal)',
           boxShadow:'var(--shadow-modal)',fontFamily:'var(--font-sans)',
-          animation:'fade-up var(--duration-slow) var(--ease-out-soft) both',...style}}>
+          animation:closing?'fade-down var(--duration-base) var(--ease-standard) both':'fade-up var(--duration-slow) var(--ease-out-soft) both',...style}}>
         <div style={{display:'flex',alignItems:'flex-start',gap:16,marginBottom:16}}>
           <div style={{flex:1,display:'flex',flexDirection:'column',gap:4}}>
             {eyebrow&&<span style={{fontSize:'var(--text-micro)',letterSpacing:'var(--tracking-caps)',textTransform:'uppercase',color:'var(--text-muted)',fontWeight:'var(--weight-medium)'}}>{eyebrow}</span>}

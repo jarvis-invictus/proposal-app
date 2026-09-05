@@ -50,8 +50,10 @@ export function AddOnsBlock({ addOns, onChange, currency = 'USD' }: AddOnsBlockP
           }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <input value={addon.name} onChange={(e) => updateAddOn(idx, { name: e.target.value })} placeholder="Add-on name"
+                aria-label={`Add-on ${idx + 1} name`}
                 style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-body)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-primary)', marginBottom: 4 }} />
               <textarea value={addon.description} onChange={(e) => updateAddOn(idx, { description: e.target.value })} placeholder="Description" rows={1}
+                aria-label={`${addon.name || `Add-on ${idx + 1}`} description`}
                 style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }} />
             </div>
             <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 1, flex: 'none', paddingLeft: 16, marginLeft: 4, borderLeft: '1px solid var(--border-hairline)' }}>

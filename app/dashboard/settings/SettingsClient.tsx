@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
@@ -63,18 +64,55 @@ export function SettingsClient({ account, userEmail, myRole, members, invitation
   sharedItems: { kits: string[]; templates: string[] }
   domains: Domain[]
 }) {
-  const [tab, setTab] = React.useState<typeof TABS[number]['id']>('profile')
+  type TabId = typeof TABS[number]['id']
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  // The tab lives in the URL (?tab=...), not just component state — previously a refresh or a
+  // shared link always landed on "Profile & business" no matter which tab you were actually on,
+  // and Back left the whole page instead of the tab you came from. `replace` (not `push`) so five
+  // tab clicks don't turn into five stops on the back button — only the current tab is meant to
+  // be linkable/refreshable, not a full click-by-click history.
+  const tabFromUrl = TABS.find((t) => t.id === searchParams.get('tab'))?.id as TabId | undefined
+  const [tab, setTabState] = React.useState<TabId>(tabFromUrl ?? 'profile')
+  React.useEffect(() => {
+    if (tabFromUrl && tabFromUrl !== tab) setTabState(tabFromUrl)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to the URL changing (e.g. browser back/forward), not to our own setTab below
+  }, [tabFromUrl])
+
+  const setTab = (id: TabId) => {
+    setTabState(id)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', id)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
+
+  const tabRefs = React.useRef<Record<TabId, HTMLButtonElement | null>>({} as Record<TabId, HTMLButtonElement | null>)
+  const handleTabListKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    e.preventDefault()
+    const i = TABS.findIndex((t) => t.id === tab)
+    const next = TABS[(i + (e.key === 'ArrowDown' ? 1 : TABS.length - 1)) % TABS.length]
+    setTab(next.id)
+    tabRefs.current[next.id]?.focus()
+  }
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '232px minmax(0,1fr)', gap: 26, maxWidth: 1060, margin: '0 auto' }}>
       <div>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <nav role="tablist" aria-label="Settings sections" aria-orientation="vertical" onKeyDown={handleTabListKeyDown}
+          style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {TABS.map((t) => (
-            <TabRow key={t.id} label={t.label} icon={t.icon} active={tab === t.id} onClick={() => setTab(t.id)} />
+            <TabRow key={t.id} ref={(el) => { tabRefs.current[t.id] = el }} id={t.id} label={t.label} icon={t.icon}
+              active={tab === t.id} onClick={() => setTab(t.id)} />
           ))}
         </nav>
       </div>
-      <div>
+      {/* key={tab} remounts this wrapper on every switch so the fade-up animation actually
+          replays — previously a tab switch hard-cut between panels with no transition at all. */}
+      <div key={tab} role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} tabIndex={0}
+        style={{ animation: 'fade-up var(--duration-base) var(--ease-standard) both', outline: 'none' }}>
         {tab === 'profile' && <ProfileTab account={account} userEmail={userEmail} />}
         {tab === 'payment' && <PaymentTab account={account} />}
         {tab === 'team' && (
@@ -91,19 +129,22 @@ export function SettingsClient({ account, userEmail, myRole, members, invitation
   )
 }
 
-function TabRow({ label, icon, active, onClick }: { label: string; icon: string; active: boolean; onClick: () => void }) {
-  const [hover, setHover] = React.useState(false)
-  return (
-    <button type="button" onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} style={{
-      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: 'none', borderRadius: 'var(--radius-sm)',
-      background: active ? 'var(--ink-06)' : hover ? 'var(--ink-04)' : 'transparent', cursor: 'pointer', textAlign: 'left',
-      fontFamily: 'var(--font-sans)', fontSize: 'var(--text-body)', color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-      fontWeight: active ? 'var(--weight-medium)' : 'var(--weight-regular)',
-    }}>
-      <Icon name={icon} size={16} />{label}
-    </button>
-  )
-}
+const TabRow = React.forwardRef<HTMLButtonElement, { id: string; label: string; icon: string; active: boolean; onClick: () => void }>(
+  function TabRow({ id, label, icon, active, onClick }, ref) {
+    const [hover, setHover] = React.useState(false)
+    return (
+      <button ref={ref} type="button" role="tab" id={`tab-${id}`} aria-selected={active} aria-controls={`panel-${id}`}
+        tabIndex={active ? 0 : -1} onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: 'none', borderRadius: 'var(--radius-sm)',
+        background: active ? 'var(--ink-06)' : hover ? 'var(--ink-04)' : 'transparent', cursor: 'pointer', textAlign: 'left',
+        fontFamily: 'var(--font-sans)', fontSize: 'var(--text-body)', color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+        fontWeight: active ? 'var(--weight-medium)' : 'var(--weight-regular)',
+      }}>
+        <Icon name={icon} size={16} />{label}
+      </button>
+    )
+  }
+)
 
 function Section({ title, description, children, footer }: { title: string; description?: string; children: React.ReactNode; footer?: React.ReactNode }) {
   return (
@@ -457,25 +498,26 @@ function TeamTab({ members, invitations, pendingApprovals, recentApprovals, shar
         </Section>
       )}
 
-      {invite && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
-          <Modal open={invite} eyebrow="Team" title="Invite a member" onClose={() => setInvite(false)} width={470}
-            footer={<><span style={{ flex: 1 }} /><Button variant="ghost" onClick={() => setInvite(false)}>Cancel</Button><Button variant="primary" icon="send" onClick={handleSendInvite} loading={sending} disabled={!inviteEmail.trim()}>Send invitation</Button></>}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Input label="Email address" placeholder="name@studio.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
-              <div>
-                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, marginBottom: 8 }}>Role</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {['Drafter', 'Approver', 'Owner'].map((r) => (
-                    <FilterChip key={r} active={inviteRole === r.toLowerCase()} onClick={() => setInviteRole(r.toLowerCase())}>{r}</FilterChip>
-                  ))}
-                </div>
-                <p style={{ marginTop: 10, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Drafters write and submit for approval. They cannot publish or change billing.</p>
-              </div>
+      {/* Modal is always rendered, never gated behind `{invite && ...}` — it manages its own
+          mount/unmount internally now (see components/app/Modal.tsx) so it can play an exit
+          animation instead of vanishing the instant `invite` goes false. The old wrapper div was
+          only ever there to force the scrim to cover the viewport, which Modal's own `position:
+          fixed` scrim already does directly. */}
+      <Modal open={invite} eyebrow="Team" title="Invite a member" onClose={() => setInvite(false)} width={470}
+        footer={<><span style={{ flex: 1 }} /><Button variant="ghost" onClick={() => setInvite(false)}>Cancel</Button><Button variant="primary" icon="send" onClick={handleSendInvite} loading={sending} disabled={!inviteEmail.trim()}>Send invitation</Button></>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Input label="Email address" placeholder="name@studio.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
+          <div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, marginBottom: 8 }}>Role</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {['Drafter', 'Approver', 'Owner'].map((r) => (
+                <FilterChip key={r} active={inviteRole === r.toLowerCase()} onClick={() => setInviteRole(r.toLowerCase())}>{r}</FilterChip>
+              ))}
             </div>
-          </Modal>
+            <p style={{ marginTop: 10, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Drafters write and submit for approval. They cannot publish or change billing.</p>
+          </div>
         </div>
-      )}
+      </Modal>
     </>
   )
 }
@@ -616,23 +658,15 @@ function DomainTab({ account, domains, onSeePlan }: { account: Account; domains:
 
       {error && <p style={{ fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>{error}</p>}
 
-      {connect && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
-          <Modal open={connect} eyebrow="Custom domain" title="Connect a domain" onClose={() => setConnect(false)} width={440}
-            footer={<><span style={{ flex: 1 }} /><Button variant="ghost" onClick={() => setConnect(false)}>Cancel</Button><Button variant="primary" onClick={handleConnect} loading={busy} disabled={!domainName.trim()}>Connect</Button></>}>
-            <Input label="Domain" placeholder="proposals.yourstudio.com" value={domainName} onChange={(e) => setDomainName(e.target.value)} />
-            <p style={{ marginTop: 10, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>You&apos;ll need to point a CNAME at marg.app — verification isn&apos;t automated yet, so this records the domain as requested.</p>
-          </Modal>
-        </div>
-      )}
-      {buy && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
-          <Modal open={buy} eyebrow="Add-on" title="Buy an extra domain slot" onClose={() => setBuy(false)} width={440}
-            footer={<><span style={{ flex: 1 }} /><Button variant="ghost" onClick={() => setBuy(false)}>Cancel</Button><Button variant="primary" onClick={handleBuySlot} loading={busy}>Add for ₹299/mo</Button></>}>
-            <p style={{ fontSize: 'var(--text-body)', color: 'var(--text-secondary)' }}>Extra slots are billed monthly alongside your Agency plan and can be removed at any time.</p>
-          </Modal>
-        </div>
-      )}
+      <Modal open={connect} eyebrow="Custom domain" title="Connect a domain" onClose={() => setConnect(false)} width={440}
+        footer={<><span style={{ flex: 1 }} /><Button variant="ghost" onClick={() => setConnect(false)}>Cancel</Button><Button variant="primary" onClick={handleConnect} loading={busy} disabled={!domainName.trim()}>Connect</Button></>}>
+        <Input label="Domain" placeholder="proposals.yourstudio.com" value={domainName} onChange={(e) => setDomainName(e.target.value)} />
+        <p style={{ marginTop: 10, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>You&apos;ll need to point a CNAME at marg.app — verification isn&apos;t automated yet, so this records the domain as requested.</p>
+      </Modal>
+      <Modal open={buy} eyebrow="Add-on" title="Buy an extra domain slot" onClose={() => setBuy(false)} width={440}
+        footer={<><span style={{ flex: 1 }} /><Button variant="ghost" onClick={() => setBuy(false)}>Cancel</Button><Button variant="primary" onClick={handleBuySlot} loading={busy}>Add for ₹299/mo</Button></>}>
+        <p style={{ fontSize: 'var(--text-body)', color: 'var(--text-secondary)' }}>Extra slots are billed monthly alongside your Agency plan and can be removed at any time.</p>
+      </Modal>
     </>
   )
 }

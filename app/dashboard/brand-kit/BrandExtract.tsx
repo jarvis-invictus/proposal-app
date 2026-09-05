@@ -209,9 +209,14 @@ function ScanHero({ url, setUrl, onScan }: { url: string; setUrl: (v: string) =>
 }
 
 function SourceRow({ source, onClick }: { source: typeof SOURCES[number]; onClick: () => void }) {
+  // Previously clickable and visually identical to the three real sources: it opened a full
+  // screen with a drop zone that had no file input behind it at all, so dropping a file just
+  // navigated the browser away and lost onboarding progress. Genuinely disabled now, matching
+  // the "Save as template (coming soon)" convention already used elsewhere in the dashboard.
   return (
-    <button type="button" onClick={onClick} className="liquid liquid-hover" style={{
-      display: 'flex', alignItems: 'center', gap: 11, padding: '13px 15px', textAlign: 'left', cursor: 'pointer',
+    <button type="button" disabled={!source.live} onClick={onClick} className={source.live ? 'liquid liquid-hover' : 'liquid'} style={{
+      display: 'flex', alignItems: 'center', gap: 11, padding: '13px 15px', textAlign: 'left',
+      cursor: source.live ? 'pointer' : 'not-allowed', opacity: source.live ? 1 : 0.5,
       borderRadius: 'var(--radius-card)', fontFamily: 'var(--font-sans)', position: 'relative',
     }}>
       <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, flex: 'none', borderRadius: 'var(--radius-pill)', background: 'var(--brand-12)', color: 'var(--brand-deep)' }}>

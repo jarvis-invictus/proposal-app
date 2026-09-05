@@ -209,10 +209,14 @@ export default function ProposalEditor({ initialProposal, userRole = 'owner', ac
       <StructuredDocument>
         <fieldset disabled={isLocked} style={{ border: 'none', margin: 0, padding: 0 }}>
           <div style={{ padding: '32px 40px', borderBottom: '1px solid var(--border-hairline)' }}>
-            <label style={{ display: 'block', fontSize: 'var(--text-micro)', letterSpacing: 'var(--tracking-caps)', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 'var(--weight-medium)', marginBottom: 10 }}>
+            {/* htmlFor/id pairing — the label sat directly above the input already, visually
+                doing its job, but with nothing programmatically tying them together a screen
+                reader landing on the input announced only "edit text", not what it's for. */}
+            <label htmlFor="proposal-title" style={{ display: 'block', fontSize: 'var(--text-micro)', letterSpacing: 'var(--tracking-caps)', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 'var(--weight-medium)', marginBottom: 10 }}>
               Proposal title
             </label>
             <input
+              id="proposal-title"
               value={content.title || ''}
               onChange={(e) => updateField('title', e.target.value)}
               placeholder="Untitled proposal"

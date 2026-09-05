@@ -51,6 +51,16 @@ html {
   scroll-behavior: smooth;
 }
 
+/* The marketing navbar is `position: fixed` (app/page.tsx) so it stays visible across the whole
+   page instead of scrolling away with the hero — but that means an in-page jump to one of its
+   own links (#product, #solutions, #pricing) would otherwise land the section's heading directly
+   underneath the ~98px-tall fixed nav, hidden behind it. scroll-margin-top stops the jump that
+   much short. 108px, not 98px: a small buffer so the heading isn't flush against the nav's
+   bottom edge either. */
+#product, #solutions, #pricing {
+  scroll-margin-top: 108px;
+}
+
 body {
   background: var(--brand-wash);
   color: var(--ink);
@@ -72,7 +82,7 @@ body {
   position: absolute; left: 8px; top: -48px; z-index: 100; padding: 10px 16px;
   background: var(--ink, #171717); color: var(--text-inverse, #fff); border-radius: var(--radius-sm, 8px);
   font-family: var(--font-sans); font-size: 14px; font-weight: 500; text-decoration: none;
-  transition: top 150ms ease;
+  transition: top var(--duration-fast, 120ms) var(--ease-standard, ease);
 }
 .skip-link:focus {
   top: 8px;
@@ -122,7 +132,7 @@ body {
 
 /* Utilities */
 .hover-lift {
-  transition: transform 200ms var(--ease-spring), box-shadow 200ms var(--ease-spring), border-color 200ms var(--ease-spring);
+  transition: transform var(--duration-base, 200ms) var(--ease-spring), box-shadow var(--duration-base, 200ms) var(--ease-spring), border-color var(--duration-base, 200ms) var(--ease-spring);
 }
 .hover-lift:hover {
   transform: translateY(-2px);
@@ -298,7 +308,6 @@ body {
 @keyframes sky-drift{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(2%,-1.5%,0) scale(1.08)}}
 @keyframes scan-line{0%{top:-2px}100%{top:100%}}
 @keyframes scan-sweep{0%{top:-80px}100%{top:100%}}
-@keyframes detect-pop{0%{opacity:0;transform:scale(0.7) translateY(6px)}62%{transform:scale(1.06) translateY(0)}100%{opacity:1;transform:scale(1) translateY(0)}}
 @keyframes caret{0%,100%{opacity:1}50%{opacity:0}}
 .fade-up{animation:fade-up var(--duration-entrance) var(--ease-out-soft) both}
 .stagger>*{animation:fade-up var(--duration-slow) var(--ease-out-soft) both}
@@ -308,6 +317,10 @@ body {
 /* Pulled verbatim from ported-nextjs/app/tokens/base.css — needed by Modal, not included in the
    atoms-only globals.append.css.txt. */
 @keyframes fade-in{from{opacity:0}to{opacity:1}}
+/* Mirror of fade-in/fade-up for Modal's exit — it used to vanish with `if(!open)return null` and
+   no animation at all, the one asymmetry left after everything else about it got fixed. */
+@keyframes fade-out{from{opacity:1}to{opacity:0}}
+@keyframes fade-down{from{opacity:1;transform:none}to{opacity:0;transform:translateY(8px)}}
 
 /* Pulled verbatim from ported-nextjs/app/tokens/base.css — needed by PdfExportModal's page
    preview, which is always opaque/light regardless of the app theme. */

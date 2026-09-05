@@ -81,12 +81,13 @@ export function PackagesBlock({ packages, onChange, currency = 'USD' }: Packages
             </div>
 
             <input value={pkg.name} onChange={(e) => updatePackage(idx, { name: e.target.value })} placeholder="Package name"
+              aria-label={`Package ${idx + 1} name`}
               style={{
                 width: '100%', border: 'none', outline: 'none', background: 'transparent', fontFamily: 'var(--font-sans)',
                 fontSize: 'var(--text-h4)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-primary)', marginBottom: 6,
               }} />
             <textarea value={pkg.description} onChange={(e) => updatePackage(idx, { description: e.target.value })}
-              placeholder="Who this package is for" rows={2}
+              placeholder="Who this package is for" rows={2} aria-label={`${pkg.name || `Package ${idx + 1}`} description`}
               style={{
                 width: '100%', border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontFamily: 'var(--font-sans)',
                 fontSize: 'var(--text-sm)', lineHeight: 'var(--leading-snug)', color: 'var(--text-muted)', marginBottom: 14,
@@ -105,6 +106,7 @@ export function PackagesBlock({ packages, onChange, currency = 'USD' }: Packages
                 <div key={dIdx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Icon name="check" size={14} color="var(--brand-deep)" style={{ flex: 'none' }} />
                   <input value={d} onChange={(e) => updateDeliverable(idx, dIdx, e.target.value)} placeholder="Deliverable"
+                    aria-label={`${pkg.name || `Package ${idx + 1}`} deliverable ${dIdx + 1}`}
                     style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }} />
                   <IconButton icon="x" size="sm" variant="ghost" label="Remove deliverable" onClick={() => removeDeliverable(idx, dIdx)} />
                 </div>
