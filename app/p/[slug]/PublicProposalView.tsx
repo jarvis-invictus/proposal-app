@@ -234,7 +234,10 @@ export default function PublicProposalView({
       {/* Top action bar - Hidden in Print */}
       <div className="print:hidden px-4 sm:px-8" style={{
         position: 'sticky', top: 0, zIndex: 40, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center',
-        rowGap: 10, columnGap: 16, padding: '16px 0', background: 'var(--glass-quiet)', backdropFilter: 'var(--blur-glass)', WebkitBackdropFilter: 'var(--blur-glass)',
+        // paddingTop/Bottom only — the shorthand `padding: '16px 0'` used to sit here, and because
+        // inline styles beat classes it silently cancelled this element's own `px-4 sm:px-8`,
+        // leaving the proposal title flush against the left edge of the screen.
+        rowGap: 10, columnGap: 16, paddingTop: 16, paddingBottom: 16, background: 'var(--glass-quiet)', backdropFilter: 'var(--blur-glass)', WebkitBackdropFilter: 'var(--blur-glass)',
         borderBottom: '1px solid var(--border-hairline)', fontFamily: 'var(--font-sans)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flexWrap: 'wrap', rowGap: 6 }}>
@@ -293,25 +296,34 @@ export default function PublicProposalView({
             <span aria-hidden="true" className="print:hidden" style={{ display: 'block', width: 48, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.55)', margin: '14px 0 20px' }} />
           )}
           <div className="grid grid-cols-2 gap-8 mt-8 opacity-90 text-sm print:opacity-100">
-            <div>
-              <p className="uppercase tracking-wider text-xs mb-1 opacity-70 print:text-gray-500">Prepared For</p>
-              <p className="font-medium">{content.preparedFor}</p>
-              <p>{content.clientName}</p>
-            </div>
-            <div>
-              <p className="uppercase tracking-wider text-xs mb-1 opacity-70 print:text-gray-500">Prepared By</p>
-              <p className="font-medium">{content.preparedBy}</p>
-            </div>
+            {/* Each block is gated on actually having a value. Previously the labels rendered
+                unconditionally, so a proposal without these fields showed the client three
+                headings — PREPARED BY, DATE ISSUED, VALID UNTIL — with nothing underneath them,
+                which reads as a half-finished document. DeckView already gated these correctly;
+                the document view didn't. */}
+            {(content.preparedFor || content.clientName) && (
+              <div>
+                <p className="uppercase tracking-wider text-xs mb-1 opacity-70 print:text-gray-500">Prepared For</p>
+                {content.preparedFor && <p className="font-medium">{content.preparedFor}</p>}
+                {content.clientName && <p>{content.clientName}</p>}
+              </div>
+            )}
+            {content.preparedBy && (
+              <div>
+                <p className="uppercase tracking-wider text-xs mb-1 opacity-70 print:text-gray-500">Prepared By</p>
+                <p className="font-medium">{content.preparedBy}</p>
+              </div>
+            )}
 
             {pdfConfig.datesMode !== 'none' && (
               <>
-                {(pdfConfig.datesMode === 'both' || pdfConfig.datesMode === 'issued') && (
+                {content.dateIssued && (pdfConfig.datesMode === 'both' || pdfConfig.datesMode === 'issued') && (
                   <div>
                     <p className="uppercase tracking-wider text-xs mb-1 opacity-70 print:text-gray-500">Date Issued</p>
                     <p>{formatDate(content.dateIssued, pdfConfig.dateFormat, pdfConfig.customDateFormat)}</p>
                   </div>
                 )}
-                {(pdfConfig.datesMode === 'both' || pdfConfig.datesMode === 'validUntil') && (
+                {content.validUntil && (pdfConfig.datesMode === 'both' || pdfConfig.datesMode === 'validUntil') && (
                   <div>
                     <p className="uppercase tracking-wider text-xs mb-1 opacity-70 print:text-gray-500">Valid Until</p>
                     <p>{formatDate(content.validUntil, pdfConfig.dateFormat, pdfConfig.customDateFormat)}</p>

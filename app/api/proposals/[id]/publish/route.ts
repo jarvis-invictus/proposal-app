@@ -39,22 +39,31 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     updateData.submitted_at = new Date().toISOString()
   }
 
+  // .eq('status', 'DRAFT') is what actually prevents the race, not the earlier SELECT above
+  // (that's only a fast-path 400 for the common case — two concurrent publish clicks/retries can
+  // both pass it). Whichever request's UPDATE lands first wins the row here; the other matches
+  // zero rows and gets maybeSingle() -> null instead of silently double-publishing and inserting
+  // a duplicate approval notification — same pattern accept/route.ts uses for accepted_at.
   const { data: updated, error: updateError } = await supabase
     .from('proposals')
     .update(updateData)
     .eq('id', id)
+    .eq('status', 'DRAFT')
     .select('status, slug')
-    .single()
+    .maybeSingle()
 
   if (updateError) {
     logError('Failed to update proposal status', updateError, { proposalId: id, nextStatus })
     return NextResponse.json({ error: 'Failed to update the proposal — please try again.' }, { status: 500 })
   }
+  if (!updated) {
+    return NextResponse.json({ error: 'This proposal was already published or submitted.' }, { status: 409 })
+  }
 
   if (isDrafter) {
     // notifications has no INSERT policy for regular authenticated users (only SELECT/UPDATE),
     // same reason /api/proposals/[id]/view uses the service-role client for its own insert.
-    const adminSupabase = createAdminClient(env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+    const adminSupabase = createAdminClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
     const title = (proposal.content as any)?.title || 'A proposal'
     const { error: notifError } = await adminSupabase.from('notifications').insert({
       account_id: userRecord.account_id,

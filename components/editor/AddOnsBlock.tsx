@@ -4,7 +4,7 @@ import * as React from 'react'
 import { IconButton } from '@/components/ui/IconButton'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/app/ConfirmDialog'
-import { currencySymbol } from '@/lib/formatCurrency'
+import { currencySymbol, formatAmount } from '@/lib/formatCurrency'
 
 // ProposalSchemaV1's addOns shape: name, description, price, deliverables. There is no
 // `optional` boolean field on this type — every add-on is conceptually optional by
@@ -56,8 +56,12 @@ export function AddOnsBlock({ addOns, onChange, currency = 'USD' }: AddOnsBlockP
             </div>
             <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 1, flex: 'none', paddingLeft: 16, marginLeft: 4, borderLeft: '1px solid var(--border-hairline)' }}>
               <span style={{ fontSize: 'var(--text-body)', fontWeight: 700, color: 'var(--text-primary)' }}>+{currencySymbol(currency)}</span>
-              <input type="number" value={addon.price} onChange={(e) => updateAddOn(idx, { price: Number(e.target.value) || 0 })}
-                style={{ width: `${Math.max(2, String(addon.price).length + 1)}ch`, border: 'none', outline: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-body)', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }} />
+              {/* Text input with grouped digits, matching PackagesBlock's PriceInput — type="number"
+                  can't render separators and its spinner ate the width, clipping long prices. */}
+              <input type="text" inputMode="numeric" aria-label={`${addon.name || 'Add-on'} price`}
+                value={formatAmount(addon.price, currency)}
+                onChange={(e) => updateAddOn(idx, { price: Number(e.target.value.replace(/\D/g, '')) || 0 })}
+                style={{ width: `calc(${formatAmount(addon.price, currency).length + 1}ch + 4px)`, border: 'none', outline: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-body)', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }} />
             </span>
             <IconButton icon="trash-2" size="sm" variant="ghost" label="Delete add-on" onClick={() => setPendingDelete(idx)} />
           </div>

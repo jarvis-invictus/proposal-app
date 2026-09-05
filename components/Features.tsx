@@ -25,8 +25,9 @@ const features = [
 ];
 
 export function Features() {
+  // id is the target of the navbar's "Product" link — without it that link was a dead anchor.
   return (
-    <section className="py-24 px-4 w-full max-w-5xl mx-auto relative z-10 screen-in delay-200">
+    <section id="product" className="py-24 px-4 w-full max-w-5xl mx-auto relative z-10 screen-in delay-200">
       <div className="text-center mb-16">
         <h2 className="text-[clamp(32px,5vw,48px)] font-medium text-ink tracking-tight">
           Everything a proposal <span className="font-serif italic font-normal">needs</span>, nothing it doesn't

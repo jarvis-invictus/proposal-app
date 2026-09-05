@@ -3,6 +3,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { logError } from '@/lib/logging'
 import { ProposalSchemaV1 } from '@/lib/schema/proposal'
+import { env } from '@/env'
 
 export async function PATCH(
   request: NextRequest,
@@ -19,7 +20,7 @@ export async function PATCH(
     const authHeader = request.headers.get('Authorization')
     
     if (authHeader) {
-      const authClient = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+      const authClient = createAdminClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
         global: { headers: { Authorization: authHeader } }
       })
       const { data } = await authClient.auth.getUser()

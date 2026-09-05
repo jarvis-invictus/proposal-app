@@ -9,13 +9,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   
   // Use service_role key to bypass RLS since unauthenticated users cannot update the proposal record.
   // Alternatively, we update the JSONB `content` property to inject a lastViewedAt timestamp.
-  const adminSupabase = createAdminClient(env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  const adminSupabase = createAdminClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
 
-  // 1. Get the current proposal to check its content
+  // 1. Get the current proposal to check its content. Scoped to PUBLISHED so a guessed/leaked
+  // draft slug can't be used to fire a fake "a client viewed your proposal" notification on
+  // something that was never actually shared.
   const { data: proposal, error: fetchError } = await adminSupabase
     .from('proposals')
     .select('id, account_id, title:content->>title')
     .eq('slug', resolvedParams.id) // The URL param acts as the slug here
+    .eq('status', 'PUBLISHED')
     .single<{ id: string; account_id: string; title: string | null }>()
 
   if (fetchError || !proposal) {

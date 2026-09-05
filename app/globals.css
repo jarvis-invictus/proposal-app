@@ -44,6 +44,13 @@
   --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
 }
 
+/* The marketing navbar's in-page links (#product, #solutions, #pricing) hard-jumped without this.
+   The prefers-reduced-motion block further down already forces scroll-behavior:auto !important,
+   so this is opt-out for anyone who asks for less motion. */
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background: var(--brand-wash);
   color: var(--ink);
@@ -79,6 +86,18 @@ body {
 :focus-visible {
   box-shadow: var(--ring-focus);
   border-radius: var(--radius-sm, 4px);
+}
+
+/* Every text input built with components/ui/Input.tsx sits inside a .input-shell pill that
+   already draws its own ring via .input-shell:has(input:focus-visible) above — this fallback
+   still matched the bare <input> too, so focusing any field in the app (login, signup, the
+   dashboard search bar, every settings form) stacked a second, small, square-cornered ring
+   directly on the input, nested inside the pill's own rounded one. Turning it off here for
+   inputs the shell already handles, not by touching the universal rule itself, since Textarea,
+   Switch, SelectMenu and everything else with no shell of its own still needs it. */
+.input-shell input:focus-visible {
+  box-shadow: none;
+  border-radius: 0;
 }
 
 /* Base Motion */

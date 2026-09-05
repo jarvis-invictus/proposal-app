@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { Logo } from '@/components/ui/Logo'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 
 const ROLE_LABEL: Record<string, string> = { owner: 'Owner', approver: 'Approver', drafter: 'Drafter' }
 
@@ -21,7 +22,7 @@ export default async function SignupPage({
   // proposal page uses it). Only ever surfaces email/role/team-name, nothing sensitive.
   let invitation: { email: string; role: string; teamName: string } | null = null
   if (invite) {
-    const adminSupabase = createAdminClient(env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+    const adminSupabase = createAdminClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
     const { data } = await adminSupabase
       .from('invitations')
       .select('email, role, accounts(name)')
@@ -78,6 +79,12 @@ export default async function SignupPage({
             <Input id="password" name="password" type="password" autoComplete="new-password" required label="Password" placeholder="••••••••" />
             <Button type="submit" variant="primary" fullWidth>{invitation ? 'Join team' : 'Sign up'}</Button>
           </form>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ flex: 1, height: 1, background: 'var(--border-hairline)' }} />
+            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>or</span>
+            <span style={{ flex: 1, height: 1, background: 'var(--border-hairline)' }} />
+          </div>
+          <GoogleSignInButton inviteId={invitation ? invite : undefined} />
           <div style={{ textAlign: 'center', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
             Already have an account?{' '}
             <Link href="/login" style={{ color: 'var(--brand-deep)', fontWeight: 'var(--weight-medium)' }}>

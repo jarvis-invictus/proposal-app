@@ -19,8 +19,9 @@ const steps = [
 ];
 
 export function HowItWorks() {
+  // id is the target of the navbar's "Solutions" link — without it that link was a dead anchor.
   return (
-    <section className="py-24 px-4 w-full max-w-5xl mx-auto relative z-10 screen-in delay-100">
+    <section id="solutions" className="py-24 px-4 w-full max-w-5xl mx-auto relative z-10 screen-in delay-100">
       <div className="text-center mb-20">
         <h2 className="text-[clamp(32px,5vw,48px)] font-medium text-ink tracking-tight">
           From notes to <span className="font-serif italic font-normal">sent</span>, in three steps

@@ -5,7 +5,7 @@ import { IconButton } from '@/components/ui/IconButton'
 import { Icon } from '@/components/ui/Icon'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/app/ConfirmDialog'
-import { currencySymbol } from '@/lib/formatCurrency'
+import { currencySymbol, formatAmount } from '@/lib/formatCurrency'
 
 export type PackageItem = {
   name: string
@@ -40,14 +40,19 @@ export function PackagesBlock({ packages, onChange, currency = 'USD' }: Packages
   const addPackage = () => {
     onChange([...packages, { ...BLANK_PACKAGE, deliverables: [] }])
   }
+  // `deliverables` is required by ProposalSchemaV1, but a proposal row can still reach the editor
+  // without it (older records, a template, a partially-applied AI revision). Reading it
+  // unguarded threw "Cannot read properties of undefined (reading 'map')", which took the whole
+  // editor down behind the error boundary — and "Try again" just re-crashed, permanently locking
+  // the owner out of their own proposal. Treat a missing list as an empty one instead.
   const addDeliverable = (index: number) => {
-    updatePackage(index, { deliverables: [...packages[index].deliverables, ''] })
+    updatePackage(index, { deliverables: [...(packages[index].deliverables ?? []), ''] })
   }
   const updateDeliverable = (index: number, dIndex: number, value: string) => {
-    updatePackage(index, { deliverables: packages[index].deliverables.map((d, i) => (i === dIndex ? value : d)) })
+    updatePackage(index, { deliverables: (packages[index].deliverables ?? []).map((d, i) => (i === dIndex ? value : d)) })
   }
   const removeDeliverable = (index: number, dIndex: number) => {
-    updatePackage(index, { deliverables: packages[index].deliverables.filter((_, i) => i !== dIndex) })
+    updatePackage(index, { deliverables: (packages[index].deliverables ?? []).filter((_, i) => i !== dIndex) })
   }
 
   return (
@@ -88,13 +93,15 @@ export function PackagesBlock({ packages, onChange, currency = 'USD' }: Packages
               }} />
 
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 16 }}>
-              <PriceInput value={pkg.discountedPrice} onChange={(v) => updatePackage(idx, { discountedPrice: v })} size={30} weight={700} currency={currency} />
+              <PriceInput value={pkg.discountedPrice} onChange={(v) => updatePackage(idx, { discountedPrice: v })} size={30} weight={700} currency={currency}
+                label={`${pkg.name || 'Package'} price`} />
               <PriceInput value={pkg.originalPrice} onChange={(v) => updatePackage(idx, { originalPrice: v })} size={16} weight={400}
-                strike={pkg.originalPrice > pkg.discountedPrice} muted={pkg.originalPrice > pkg.discountedPrice} currency={currency} />
+                strike={pkg.originalPrice > pkg.discountedPrice} muted={pkg.originalPrice > pkg.discountedPrice} currency={currency}
+                label={`${pkg.name || 'Package'} original price before discount`} />
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {pkg.deliverables.map((d, dIdx) => (
+              {(pkg.deliverables ?? []).map((d, dIdx) => (
                 <div key={dIdx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Icon name="check" size={14} color="var(--brand-deep)" style={{ flex: 'none' }} />
                   <input value={d} onChange={(e) => updateDeliverable(idx, dIdx, e.target.value)} placeholder="Deliverable"
@@ -126,15 +133,25 @@ export function PackagesBlock({ packages, onChange, currency = 'USD' }: Packages
   )
 }
 
-function PriceInput({ value, onChange, size, weight, strike, muted, currency }: {
-  value: number; onChange: (v: number) => void; size: number; weight: number; strike?: boolean; muted?: boolean; currency: string
+/** A text input rather than type="number" on purpose: the author needs to read this figure at a
+ * glance and `type="number"` can't hold grouping separators, so a six-figure deal rendered as an
+ * unreadable "450000" here while the client's own view showed "$450,000". The old `ch`-based
+ * width also ignored the number spinner Chrome reserves space for inside the control, so the last
+ * digit of a six-figure price was silently cut off — a ₹600,000 package displayed as "60000". */
+function PriceInput({ value, onChange, size, weight, strike, muted, currency, label }: {
+  value: number; onChange: (v: number) => void; size: number; weight: number; strike?: boolean; muted?: boolean; currency: string; label: string
 }) {
+  const formatted = formatAmount(value, currency)
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 1 }}>
       <span style={{ fontSize: size, fontWeight: weight, color: muted ? 'var(--text-muted)' : 'var(--text-primary)' }}>{currencySymbol(currency)}</span>
-      <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value) || 0)}
+      <input type="text" inputMode="numeric" aria-label={label} value={formatted}
+        onChange={(e) => onChange(Number(e.target.value.replace(/\D/g, '')) || 0)}
         style={{
-          width: `${Math.max(2, String(value).length + 1)}ch`, border: 'none', outline: 'none', background: 'transparent',
+          // +1ch of headroom for the caret, plus a few px: `ch` is the advance of "0", but bold
+          // digits at the large size run slightly wider than that reference, which left the
+          // headline price a pixel short of its own content.
+          width: `calc(${formatted.length + 1}ch + 4px)`, border: 'none', outline: 'none', background: 'transparent',
           fontFamily: 'var(--font-sans)', fontSize: size, fontWeight: weight, fontVariantNumeric: 'tabular-nums',
           color: muted ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: strike ? 'line-through' : 'none',
         }} />

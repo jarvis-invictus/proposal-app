@@ -11,7 +11,7 @@ import PublicProposalView from './PublicProposalView'
 const getProposalBySlug = cache(async (slug: string) => {
   // Uses the service_role key so we can get the account's display-only payment details
   // (which is otherwise blocked by RLS for public visitors).
-  const adminSupabase = createSupabaseClient(env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  const adminSupabase = createSupabaseClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
   return adminSupabase
     .from('proposals')
     .select('*, accounts(payment_upi_id, payment_link, payment_qr_url, currency), brand_kits(*)')

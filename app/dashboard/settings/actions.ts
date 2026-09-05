@@ -180,7 +180,7 @@ export async function switchPlan(planTier: string) {
   if (planTier !== 'free') throw new Error('Paid plans are only granted after a completed payment')
   const { role, accountId } = await requireAccount()
   if (role !== 'owner') throw new Error('Only an owner can change the plan')
-  const adminSupabase = createAdminClient(env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  const adminSupabase = createAdminClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
   const { error } = await adminSupabase.from('accounts').update({ plan_tier: 'free' }).eq('id', accountId)
   if (error) throw new Error(error.message)
   revalidatePath('/dashboard/settings')

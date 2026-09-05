@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/Card'
 import { Logo } from '@/components/ui/Logo'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 
 export default async function LoginPage({
   searchParams,
@@ -35,6 +36,12 @@ export default async function LoginPage({
             <Input id="password" name="password" type="password" autoComplete="current-password" required label="Password" placeholder="••••••••" />
             <Button type="submit" variant="primary" fullWidth>Log in</Button>
           </form>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ flex: 1, height: 1, background: 'var(--border-hairline)' }} />
+            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>or</span>
+            <span style={{ flex: 1, height: 1, background: 'var(--border-hairline)' }} />
+          </div>
+          <GoogleSignInButton />
           <div style={{ textAlign: 'center', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
             Don&apos;t have an account?{' '}
             <Link href="/signup" style={{ color: 'var(--brand-deep)', fontWeight: 'var(--weight-medium)' }}>

@@ -4,6 +4,7 @@ import Stripe from 'stripe'
 import { env } from '@/env'
 import { getStripeClient } from '@/lib/stripe'
 import { logError } from '@/lib/logging'
+import { listAllUsers } from '@/lib/supabase/listAllUsers'
 
 // Webhooks carry real billing state — unlike the AI rate limiter or Sentry, there's no safe
 // "bypass and proceed" here. Without a configured secret we can't verify the signature, so we
@@ -39,8 +40,8 @@ async function verifiedEvent(request: NextRequest): Promise<{ event: Stripe.Even
  * from the Stripe dashboard rather than through real checkout). */
 async function findAccountIdByEmail(adminSupabase: any, email: string | null | undefined): Promise<string | null> {
   if (!email) return null
-  const { data } = await adminSupabase.auth.admin.listUsers()
-  const authUser = data?.users.find((u: any) => u.email === email)
+  const users = await listAllUsers(adminSupabase)
+  const authUser = users.find((u) => u.email === email)
   if (!authUser) return null
   const { data: userRecord } = await adminSupabase.from('users').select('account_id').eq('id', authUser.id).single()
   return userRecord?.account_id ?? null
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
   if ('error' in verified) return verified.error
   const { event } = verified
 
-  const adminSupabase = createAdminClient(env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  const adminSupabase = createAdminClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
 
   switch (event.type) {
     case 'checkout.session.completed': {

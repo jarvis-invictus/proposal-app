@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import { env } from '@/env'
+import { listAllUsers } from '@/lib/supabase/listAllUsers'
 import { AppShell } from '@/components/app/AppShell'
 import { SettingsClient } from './SettingsClient'
 import { logout } from '../../(auth)/actions'
@@ -15,8 +16,8 @@ export default async function SettingsPage() {
 
   // Emails aren't stored on public.users — resolve them via the admin API, service-role only.
   // Kicked off immediately since it depends on nothing account-specific, not chained after it.
-  const adminSupabase = createAdminClient(env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-  const authUsersPromise = adminSupabase.auth.admin.listUsers()
+  const adminSupabase = createAdminClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
+  const authUsersPromise = listAllUsers(adminSupabase)
 
   const { data: userRecord } = await supabase.from('users').select('account_id, role').eq('id', user.id).single()
   const accountId = userRecord?.account_id
@@ -30,7 +31,7 @@ export default async function SettingsPage() {
     { data: brandKits },
     { data: templates },
     { data: domains },
-    { data: authUsers },
+    authUsers,
   ] = await Promise.all([
     supabase
       .from('accounts')
@@ -63,7 +64,7 @@ export default async function SettingsPage() {
     supabase.from('domains').select('id, domain_name, cname_verified, ssl_issued').eq('account_id', accountId),
     authUsersPromise,
   ])
-  const emailById = new Map((authUsers?.users ?? []).map((u) => [u.id, u.email ?? '']))
+  const emailById = new Map(authUsers.map((u) => [u.id, u.email ?? '']))
 
   const members = (memberRows ?? []).map((m) => ({ ...m, email: emailById.get(m.id) || '' }))
   const pendingApprovals = (pendingProposals ?? []).map((p) => ({

@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 import { slugify } from '@/lib/slugify'
 import { logError } from '@/lib/logging'
+import { env } from '@/env'
+import { ProposalSchemaV1 } from '@/lib/schema/proposal'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +16,7 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('Authorization')
 
     if (authHeader) {
-      const authClient = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+      const authClient = createAdminClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
         global: { headers: { Authorization: authHeader } }
       })
       const { data } = await authClient.auth.getUser()
@@ -34,6 +36,20 @@ export async function POST(request: NextRequest) {
     const requestedBrandKitId = typeof body.brandKitId === 'string' ? body.brandKitId : null
     if (!content) {
       return NextResponse.json({ error: 'Missing content' }, { status: 400 })
+    }
+
+    // Same validation the PATCH route already applies. Without it this endpoint accepted any
+    // shape at all, so a proposal could be persisted that the editor then couldn't render (a
+    // package missing `deliverables` crashed PackagesBlock, and the error boundary's "Try again"
+    // just re-crashed) — an unopenable document with no way back in. .partial() keeps legacy
+    // rows missing a whole top-level section acceptable, while still fully validating any
+    // section that IS supplied; .passthrough() preserves editor-only fields like themeColor.
+    const parsed = ProposalSchemaV1.partial().passthrough().safeParse(content)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid proposal content', details: parsed.error.flatten() },
+        { status: 400 }
+      )
     }
 
     // 2. Resolve the user's account

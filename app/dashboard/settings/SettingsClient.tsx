@@ -717,10 +717,10 @@ function BillingTab({ account }: { account: Account }) {
       // away to Stripe, so leaving the button in its loading state avoids a flash back to
       // "Subscribe" during that instant.
     } catch (err: any) {
-      // Locally, until Sahil adds real Stripe keys, this is the only way the route can fail —
-      // every other rejection path in /api/billing/checkout returns a specific reason, but this
-      // toast is what the task asked for and matches the actual local dev experience today.
-      pushToast('Stripe keys not configured. Checkout disabled in development.', { tone: 'error' })
+      // Surface the real reason — /api/billing/checkout returns a specific error for every
+      // rejection path (missing keys locally, a bad price id, a Stripe API error), and a
+      // hardcoded "not configured" message here would lie about any failure other than that one.
+      pushToast(err.message || 'Checkout failed — please try again.', { tone: 'error' })
       setCheckingOut(null)
     }
   }
@@ -753,9 +753,12 @@ function BillingTab({ account }: { account: Account }) {
                   {p.lines.map((l) => <span key={l} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}><Icon name="check" size={13} style={{ marginTop: 3 }} />{l}</span>)}
                 </div>
                 <span style={{ flex: 1 }} />
-                <Button variant="secondary" size="sm" fullWidth disabled={isCurrent} loading={switching === p.tier || checkingOut === p.tier}
+                {/* Stripe checkout is disabled while Marg moves to a different, India-friendly
+                    billing provider (docs/DECISION_LOG.md, Sep 4 2026) — re-enable once that
+                    provider is wired up; the checkout flow below is left intact for that. */}
+                <Button variant="secondary" size="sm" fullWidth disabled={isCurrent || isPaid} loading={switching === p.tier || checkingOut === p.tier}
                   onClick={() => (isPaid ? setSubscribeTier(p) : handleSwitch(p.tier))}>
-                  {isCurrent ? 'Your plan' : isPaid ? 'Subscribe' : 'Switch to this'}
+                  {isCurrent ? 'Your plan' : isPaid ? 'Coming soon' : 'Switch to this'}
                 </Button>
               </div>
             )
