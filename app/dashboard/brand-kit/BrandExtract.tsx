@@ -189,7 +189,9 @@ function ScanHero({ url, setUrl, onScan }: { url: string; setUrl: (v: string) =>
             </span>
           </span>
         </div>
-        <div style={{
+        {/* ring-owner (see globals.css): this div draws the ring itself from `focus` state below
+            — without the class, the input's own :focus-visible fallback stacked a second box. */}
+        <div className="ring-owner" style={{
           display: 'flex', alignItems: 'center', gap: 9, padding: '7px 7px 7px 15px', borderRadius: 'var(--radius-pill)',
           background: 'var(--surface-card)', border: '1px solid ' + (focus ? 'var(--brand)' : 'var(--brand-38)'),
           boxShadow: focus ? 'var(--ring-focus)' : 'none', transition: 'border-color var(--duration-base) var(--ease-standard),box-shadow var(--duration-base) var(--ease-standard)',

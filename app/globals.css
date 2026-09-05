@@ -94,8 +94,17 @@ body {
    dashboard search bar, every settings form) stacked a second, small, square-cornered ring
    directly on the input, nested inside the pill's own rounded one. Turning it off here for
    inputs the shell already handles, not by touching the universal rule itself, since Textarea,
-   Switch, SelectMenu and everything else with no shell of its own still needs it. */
-.input-shell input:focus-visible {
+   Switch, SelectMenu and everything else with no shell of its own still needs it.
+
+   .ring-owner is the same fix for the other shape of this bug: a handful of components
+   (the "What did you just agree to?" prompt box, the onboarding "Scan my website" field, the
+   brand kit's hex color input) draw their OWN ring on an outer wrapper via React focus state
+   instead of the :has() pattern above, but never learned to turn off the universal fallback on
+   their own inner input/textarea — so those got the exact same nested double box. Marking the
+   wrapper `ring-owner` opts its child out here, the same way `.input-shell` does. */
+.input-shell input:focus-visible,
+.ring-owner input:focus-visible,
+.ring-owner textarea:focus-visible {
   box-shadow: none;
   border-radius: 0;
 }

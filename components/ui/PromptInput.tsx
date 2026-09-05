@@ -22,7 +22,10 @@ export function PromptInput({ value, onChange, onSubmit, placeholder = 'Describe
   const big = size === 'lg';
   return (
     <div {...rest} style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%', ...style }}>
-      <div className="liquid liquid-strong" style={{
+      {/* ring-owner (see globals.css): this div draws the focus ring itself via `focus` state
+          below — without the class, the textarea's own :focus-visible fallback ring stacked a
+          second, smaller, square-cornered box inside this one. */}
+      <div className="liquid liquid-strong ring-owner" style={{
         display: 'flex', alignItems: big ? 'flex-end' : 'center', gap: 10, padding: big ? '16px 14px 14px 18px' : '8px 8px 8px 14px',
         borderColor: focus ? 'var(--brand)' : 'var(--glass-rim)',
         borderRadius: big ? 'var(--radius-card-lg)' : 'var(--radius-pill)',

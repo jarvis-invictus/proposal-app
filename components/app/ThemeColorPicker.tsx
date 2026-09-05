@@ -274,7 +274,9 @@ function HexField({value,onInput,onCommit,check}:HexFieldProps){
     <div style={{display:'flex',alignItems:'center',gap:7}}>
       <span style={{fontSize:'var(--text-micro)',letterSpacing:'var(--tracking-caps)',textTransform:'uppercase',
         color:'var(--text-muted)',width:46,flex:'none'}}>Hex</span>
-      <label style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:6,height:28,padding:'0 9px',
+      {/* ring-owner (see globals.css): this label draws the ring itself from `focus` state below
+          — without the class, the input's own :focus-visible fallback stacked a second box. */}
+      <label className="ring-owner" style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:6,height:28,padding:'0 9px',
         borderRadius:'var(--radius-sm)',background:'var(--surface-card)',cursor:'text',
         border:'1px solid '+(focus?'var(--brand)':ok?'var(--border-hairline)':'var(--status-caution-border)'),
         boxShadow:focus?'0 0 0 3px var(--brand-22)':'none',
