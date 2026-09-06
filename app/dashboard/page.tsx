@@ -93,6 +93,8 @@ export default async function DashboardPage() {
       displayStatus,
       statusLabel,
       pendingApproval: p.status === 'PENDING_APPROVAL',
+      status: p.status,
+      acceptedAt: p.accepted_at,
     }
   })
 

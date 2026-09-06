@@ -25,9 +25,12 @@ export default async function ProposalEditorPage({ params }: { params: Promise<{
     redirect('/dashboard') // Handle not found
   }
 
+  // Never ship the hash into the editor's client bundle — only whether one is set.
+  const { password_hash, ...proposalForClient } = proposal
+
   return (
     <div className="min-h-screen bg-gray-100">
-      <ProposalEditor initialProposal={proposal} userRole={userRecord?.role || 'owner'} accountCurrency={accountRecord?.currency || 'USD'} accountSubdomain={accountRecord?.subdomain || null} />
+      <ProposalEditor initialProposal={{ ...proposalForClient, hasPassword: !!password_hash }} userRole={userRecord?.role || 'owner'} accountCurrency={accountRecord?.currency || 'USD'} accountSubdomain={accountRecord?.subdomain || null} />
     </div>
   )
 }

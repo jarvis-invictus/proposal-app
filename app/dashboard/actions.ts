@@ -41,6 +41,43 @@ export async function duplicateProposalAsDraft(proposalId: string) {
   return { id: copy.id, title: copy.content?.title as string }
 }
 
+export async function unpublishProposal(proposalId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+
+  const { data: userRecord } = await supabase.from('users').select('role').eq('id', user.id).single()
+  if (!userRecord || (userRecord.role !== 'owner' && userRecord.role !== 'approver')) {
+    throw new Error('Only an owner or approver can unpublish a proposal')
+  }
+
+  const { data: proposalRow } = await supabase.from('proposals').select('status, accepted_at').eq('id', proposalId).maybeSingle()
+  if (!proposalRow) throw new Error('Proposal not found')
+  if (proposalRow.status !== 'PUBLISHED') throw new Error(`Cannot unpublish a proposal with status ${proposalRow.status}`)
+  if (proposalRow.accepted_at) throw new Error('This proposal has been signed and cannot be unpublished.')
+
+  // .eq('status', 'PUBLISHED') is what actually prevents the race, not the earlier SELECT above
+  // — same pattern publish/route.ts and accept/route.ts already use for their own transitions.
+  const { data: updated, error } = await supabase
+    .from('proposals')
+    .update({ status: 'ARCHIVED', updated_at: new Date().toISOString() })
+    .eq('id', proposalId)
+    .eq('status', 'PUBLISHED')
+    .select('status')
+    .maybeSingle()
+
+  if (error) {
+    logError('Failed to unpublish proposal', error, { proposalId })
+    throw new Error('Failed to unpublish the proposal — please try again.')
+  }
+  if (!updated) {
+    throw new Error('This proposal was already changed — refresh and try again.')
+  }
+
+  logAction('unpublish_proposal', user.id, { proposalId })
+  revalidatePath('/dashboard')
+}
+
 export async function deleteProposal(proposalId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

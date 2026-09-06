@@ -8,13 +8,13 @@ import { logError } from '@/lib/logging'
 // yet.
 const configured = !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN
 
-export type Bucket = 'chat' | 'generate' | 'extract'
+export type Bucket = 'chat' | 'generate' | 'extract' | 'proposalUnlock'
 
-// Three independent buckets, not one shared one: conversational turns, a full document
-// generation, and brand-kit extraction have very different cost/behavior profiles, and sharing
-// one budget meant e.g. a normal multi-turn conversation could exhaust the limit before the user
-// ever reached "generate."
-const limiters: Record<Bucket, Ratelimit | null> = { chat: null, generate: null, extract: null }
+// Independent buckets, not one shared one: conversational turns, a full document generation,
+// brand-kit extraction, and a public password-unlock attempt have very different cost/behavior
+// profiles, and sharing one budget meant e.g. a normal multi-turn conversation could exhaust the
+// limit before the user ever reached "generate."
+const limiters: Record<Bucket, Ratelimit | null> = { chat: null, generate: null, extract: null, proposalUnlock: null }
 
 if (configured) {
   const redis = Redis.fromEnv()
@@ -38,6 +38,14 @@ if (configured) {
     limiter: Ratelimit.slidingWindow(6, '10 m'),
     analytics: true,
     prefix: 'marg-ai-ratelimit-extract',
+  })
+  limiters.proposalUnlock = new Ratelimit({
+    redis,
+    // A public, unauthenticated endpoint — sized to stop offline-speed guessing of a short
+    // password/PIN, not to annoy someone who fat-fingered it once or twice.
+    limiter: Ratelimit.slidingWindow(8, '10 m'),
+    analytics: true,
+    prefix: 'marg-ratelimit-proposal-unlock',
   })
 } else if (process.env.NODE_ENV !== 'production') {
   console.warn('[ratelimit] UPSTASH_REDIS_REST_URL/TOKEN not set — rate limiting is bypassed. Fine for local dev, not for production.')

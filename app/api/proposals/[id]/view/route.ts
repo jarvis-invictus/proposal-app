@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 import { env } from '@/env'
 import { logError } from '@/lib/logging'
+import { verifyProposalAccessToken, proposalAccessCookieName } from '@/lib/proposalAccess'
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params
@@ -16,13 +18,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   // something that was never actually shared.
   const { data: proposal, error: fetchError } = await adminSupabase
     .from('proposals')
-    .select('id, account_id, title:content->>title')
+    .select('id, account_id, title:content->>title, password_hash')
     .eq('slug', resolvedParams.id) // The URL param acts as the slug here
     .eq('status', 'PUBLISHED')
-    .single<{ id: string; account_id: string; title: string | null }>()
+    .single<{ id: string; account_id: string; title: string | null; password_hash: string | null }>()
 
   if (fetchError || !proposal) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+  // Same password check the page itself gates on — a direct POST here would otherwise bypass it.
+  if (proposal.password_hash) {
+    const token = (await cookies()).get(proposalAccessCookieName(proposal.id))?.value
+    if (!verifyProposalAccessToken(token, proposal.id, proposal.password_hash)) {
+      return NextResponse.json({ error: 'Password required' }, { status: 401 })
+    }
   }
 
   // SERVER-SIDE CHECK: verify the requester's session against the proposal's account_id
