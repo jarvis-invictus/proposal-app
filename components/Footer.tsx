@@ -34,19 +34,19 @@ export function Footer() {
             <h4 className="text-ink font-semibold text-[14px] mb-2">Product</h4>
             <Link href="#features" className="text-slate text-[14px] hover:text-ink transition-colors">Features</Link>
             <Link href="#pricing" className="text-slate text-[14px] hover:text-ink transition-colors">Pricing</Link>
-            <Link href="#" className="text-slate text-[14px] hover:text-ink transition-colors">Templates</Link>
+            <Link href="/dashboard/templates" className="text-slate text-[14px] hover:text-ink transition-colors">Templates</Link>
           </div>
-          
+
           <div className="flex flex-col gap-3">
             <h4 className="text-ink font-semibold text-[14px] mb-2">Company</h4>
-            <Link href="#" className="text-slate text-[14px] hover:text-ink transition-colors">About</Link>
-            <Link href="#" className="text-slate text-[14px] hover:text-ink transition-colors">Contact</Link>
+            <Link href="/about" className="text-slate text-[14px] hover:text-ink transition-colors">About</Link>
+            <Link href="/contact" className="text-slate text-[14px] hover:text-ink transition-colors">Contact</Link>
           </div>
-          
+
           <div className="flex flex-col gap-3">
             <h4 className="text-ink font-semibold text-[14px] mb-2">Legal</h4>
-            <Link href="#" className="text-slate text-[14px] hover:text-ink transition-colors">Privacy Policy</Link>
-            <Link href="#" className="text-slate text-[14px] hover:text-ink transition-colors">Terms of Service</Link>
+            <Link href="/privacy" className="text-slate text-[14px] hover:text-ink transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="text-slate text-[14px] hover:text-ink transition-colors">Terms of Service</Link>
           </div>
         </div>
       </div>

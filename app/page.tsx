@@ -29,8 +29,14 @@ export default function MarketingHero() {
         </div>
       </div>
 
-      {/* Hero Frame (Convix Style with Video Background) */}
-      <div className="relative z-10 w-full h-[calc(100vh-24px)] sm:h-[calc(100vh-32px)] overflow-hidden rounded-2xl sm:rounded-3xl shadow-xl bg-sky-deep">
+      {/* Hero Frame (Convix Style with Video Background) — min-h, not h: HeroContent's own
+          minHeight (calc(100vh - 120px)) plus this wrapper's pt-[98px] and the pb-12 below add up
+          to ~26-58px taller than a hard 100vh-cap ever allows, which is exactly what forced the
+          inner overflow-y-auto below to fire on every load, trapping scroll in a nested container
+          instead of the page. min-h lets the frame grow to fit its actual content instead of
+          clipping/scrolling it — there is now exactly one scroll container over the hero: the
+          page itself. */}
+      <div className="relative z-10 w-full min-h-[calc(100vh-24px)] sm:min-h-[calc(100vh-32px)] overflow-hidden rounded-2xl sm:rounded-3xl shadow-xl bg-sky-deep">
 
         {/* Background Video — self-hosted from public/hero.mp4. The original, pulled from an
             external CDN, was a 31.5MB 3328x2492 source displayed at well under 1300px wide; this
@@ -58,8 +64,10 @@ export default function MarketingHero() {
 
         {/* Foreground Content — pt-[98px] replaces the vertical space the in-flow navbar used to
             occupy here (measured from the live layout before it was pulled out above), so the
-            headline sits at exactly the same spot on first paint. */}
-        <div className="relative z-10 w-full h-full overflow-y-auto pb-12">
+            headline sits at exactly the same spot on first paint. No overflow/scroll here
+            anymore — the frame above is min-h, so it grows to fit this instead of needing an
+            inner scrollbar. */}
+        <div className="relative z-10 w-full pb-12">
           <div id="main-content" className="pt-[98px]">
             <HeroContent />
           </div>

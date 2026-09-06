@@ -39,7 +39,7 @@ export function TimelineBlock({ timeline, onChange }: TimelineBlockProps) {
             <div style={{ width: 150, flex: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
               <input value={phase.phase} onChange={(e) => updatePhase(idx, { phase: e.target.value })} placeholder="Phase"
                 style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-body)', fontWeight: 700, color: 'var(--text-primary)' }} />
-              <input value={phase.duration} onChange={(e) => updatePhase(idx, { duration: e.target.value })} placeholder="Duration"
+              <input value={phase.duration} onChange={(e) => updatePhase(idx, { duration: e.target.value })} placeholder="Duration" maxLength={40}
                 style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }} />
             </div>
             <div style={{ flex: 1, minWidth: 0, paddingBottom: 18, borderBottom: '1px solid var(--border-hairline)', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
