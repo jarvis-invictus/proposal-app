@@ -5,6 +5,8 @@ import { Modal } from '@/components/app/Modal'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import { Badge } from '@/components/ui/Badge'
+import { Input } from '@/components/ui/Input'
+import { Switch } from '@/components/ui/Switch'
 import { getPublicProposalUrl } from '@/lib/publicUrl'
 
 export interface PublishModalProps {
@@ -15,6 +17,8 @@ export interface PublishModalProps {
   content: any
   brandKitName: string | null
   userRole: string
+  proposalStatus: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'PENDING_APPROVAL'
+  initialHasPassword: boolean
   /** The account's branded subdomain, if set — see Settings → Custom domain → "Your Marg link". */
   accountSubdomain?: string | null
   /** Cancels any pending autosave and saves the current in-memory content immediately, awaited
@@ -37,16 +41,87 @@ function filledSectionsSummary(content: any): string {
   return `${filled} of ${checks.length} complete`
 }
 
-export function PublishModal({ open, onClose, proposalId, slug, content, brandKitName, userRole, accountSubdomain, onBeforePublish, onPublished }: PublishModalProps) {
-  const [stage, setStage] = React.useState<'review' | 'result'>('review')
+/** Password protection controls — shown in both the pre-publish review stage and the post-publish
+ * manage stage, since privacy can be set/changed independent of the publish transition itself.
+ * Owns its own save action rather than piggybacking on the Publish button, so it works before
+ * ever publishing and any time after without re-publishing. */
+function PasswordProtectionField({ proposalId, initialHasPassword }: { proposalId: string; initialHasPassword: boolean }) {
+  const [enabled, setEnabled] = React.useState(initialHasPassword)
+  const [password, setPassword] = React.useState('')
+  const [saving, setSaving] = React.useState(false)
+  const [error, setError] = React.useState('')
+  const [saved, setSaved] = React.useState(false)
+  const [hasPassword, setHasPassword] = React.useState(initialHasPassword)
+
+  const dirty = enabled !== hasPassword || (enabled && password.trim().length > 0)
+
+  const handleSave = async () => {
+    setSaving(true)
+    setError('')
+    setSaved(false)
+    try {
+      const body = enabled ? { password: password.trim() || null } : { password: null }
+      if (enabled && !password.trim() && !hasPassword) {
+        throw new Error('Enter a password')
+      }
+      const res = await fetch(`/api/proposals/${proposalId}/password`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to save')
+      setHasPassword(data.hasPassword)
+      setPassword('')
+      setSaved(true)
+    } catch (err: any) {
+      setError(err.message || 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '13px 15px', borderRadius: 'var(--radius-sm)', background: 'var(--glass-card)', border: '1px solid var(--border-hairline)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Icon name="lock" size={15} color="var(--brand-deep)" />
+        <span style={{ flex: 1, fontSize: 'var(--text-body)' }}>Require a password to view</span>
+        <Switch checked={enabled} onChange={() => { setEnabled((v) => !v); setSaved(false) }} size="sm" />
+      </div>
+      {enabled && (
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <Input
+              type="password"
+              size="sm"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setSaved(false) }}
+              placeholder={hasPassword ? 'Leave blank to keep current password' : 'Choose a password'}
+            />
+          </div>
+          <Button variant="secondary" size="sm" onClick={handleSave} loading={saving} disabled={!dirty}>Save</Button>
+        </div>
+      )}
+      {!enabled && hasPassword !== enabled && (
+        <Button variant="secondary" size="sm" onClick={handleSave} loading={saving} style={{ alignSelf: 'flex-start' }}>Remove password</Button>
+      )}
+      {error && <p style={{ fontSize: 'var(--text-xs)', color: 'var(--status-caution-text)', margin: 0 }}>{error}</p>}
+      {saved && <p style={{ fontSize: 'var(--text-xs)', color: 'var(--brand-deep)', margin: 0 }}>{hasPassword ? 'Password saved.' : 'Password removed — the link is open to anyone who has it.'}</p>}
+    </div>
+  )
+}
+
+export function PublishModal({
+  open, onClose, proposalId, slug, content, brandKitName, userRole, proposalStatus, initialHasPassword,
+  accountSubdomain, onBeforePublish, onPublished,
+}: PublishModalProps) {
+  const [stage, setStage] = React.useState<'review' | 'manage' | 'result'>('review')
   const [publishing, setPublishing] = React.useState(false)
   const [error, setError] = React.useState('')
   const [resultStatus, setResultStatus] = React.useState<'PUBLISHED' | 'PENDING_APPROVAL' | null>(null)
   const [copied, setCopied] = React.useState(false)
 
   React.useEffect(() => {
-    if (open) { setStage('review'); setError(''); setCopied(false) }
-  }, [open])
+    if (open) { setStage(proposalStatus === 'PUBLISHED' ? 'manage' : 'review'); setError(''); setCopied(false) }
+  }, [open, proposalStatus])
 
   const isDrafter = userRole === 'drafter'
   const publicUrl = getPublicProposalUrl(slug, accountSubdomain, typeof window !== 'undefined' ? window.location.origin : '')
@@ -55,7 +130,6 @@ export function PublishModal({ open, onClose, proposalId, slug, content, brandKi
     ['Brand kit applied', brandKitName || 'No brand kit selected'],
     ['Sections', filledSectionsSummary(content)],
     ['Client', content?.clientName || 'No client name set'],
-    ['Link privacy', 'Anyone with the link can view'],
   ]
 
   const handlePublish = async () => {
@@ -81,6 +155,25 @@ export function PublishModal({ open, onClose, proposalId, slug, content, brandKi
     navigator.clipboard.writeText(publicUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  if (stage === 'manage') {
+    return (
+      <Modal open={open} eyebrow="Link settings" title="Manage this proposal's link" onClose={onClose} width={540}
+        footer={<><span style={{ flex: 1 }} /><Button variant="primary" onClick={onClose}>Done</Button></>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '13px 15px', borderRadius: 'var(--radius-sm)',
+            background: 'var(--brand-12)', border: '1px solid var(--brand-38)', fontSize: 'var(--text-sm)', color: 'var(--brand-ink)',
+          }}>
+            <Icon name="link" size={15} color="var(--brand-deep)" style={{ flex: 'none' }} />
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{publicUrl}</span>
+            <Button variant="ghost" size="sm" icon="link" onClick={handleCopy}>{copied ? 'Copied' : 'Copy'}</Button>
+          </div>
+          <PasswordProtectionField proposalId={proposalId} initialHasPassword={initialHasPassword} />
+        </div>
+      </Modal>
+    )
   }
 
   if (stage === 'result') {
@@ -114,6 +207,7 @@ export function PublishModal({ open, onClose, proposalId, slug, content, brandKi
                 <Badge tone="sent">Sent</Badge>
                 <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>You&apos;ll be notified the moment they open it.</span>
               </div>
+              <PasswordProtectionField proposalId={proposalId} initialHasPassword={initialHasPassword} />
             </>
           ) : (
             <p style={{ textAlign: 'center', fontSize: 'var(--text-body)', color: 'var(--text-secondary)' }}>
@@ -144,6 +238,7 @@ export function PublishModal({ open, onClose, proposalId, slug, content, brandKi
             <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{v}</span>
           </div>
         ))}
+        {!isDrafter && <PasswordProtectionField proposalId={proposalId} initialHasPassword={initialHasPassword} />}
         {error && <p style={{ fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>{error}</p>}
         <p style={{ marginTop: 6, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
           {isDrafter

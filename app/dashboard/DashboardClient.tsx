@@ -19,7 +19,7 @@ import { ConfirmDialog } from '@/components/app/ConfirmDialog'
 import { relativeTime } from '@/lib/relativeTime'
 import { getPublicProposalUrl } from '@/lib/publicUrl'
 import { prefersReducedMotion } from '@/lib/reducedMotion'
-import { duplicateProposalAsDraft, deleteProposal } from './actions'
+import { duplicateProposalAsDraft, deleteProposal, unpublishProposal } from './actions'
 
 /** Mirrors the starter ids NewProposal.jsx will branch on once it's rebuilt (Correction 6, item 4) —
  * for now these just carry a `starter` query param the intake page doesn't yet read. */
@@ -51,6 +51,8 @@ export type DashboardProposal = {
   displayStatus: 'draft' | 'sent' | 'viewed' | 'accepted'
   statusLabel?: string
   pendingApproval: boolean
+  status: 'DRAFT' | 'PENDING_APPROVAL' | 'PUBLISHED' | 'ARCHIVED'
+  acceptedAt: string | null
 }
 
 export function DashboardClient({
@@ -78,6 +80,7 @@ export function DashboardClient({
   const [aiValue, setAiValue] = React.useState('')
   const [listening, setListening] = React.useState(false)
   const [pendingDelete, setPendingDelete] = React.useState<DashboardProposal | null>(null)
+  const [pendingUnpublish, setPendingUnpublish] = React.useState<DashboardProposal | null>(null)
 
   const list = proposals.filter((p) =>
     (filter === 'All' || p.displayStatus === filter.toLowerCase()) &&
@@ -115,6 +118,24 @@ export function DashboardClient({
   const handleDelete = (p: DashboardProposal) => {
     setMenu(null)
     setPendingDelete(p)
+  }
+
+  const handleUnpublish = (p: DashboardProposal) => {
+    setMenu(null)
+    setPendingUnpublish(p)
+  }
+
+  const confirmUnpublish = async () => {
+    if (!pendingUnpublish) return
+    const p = pendingUnpublish
+    setPendingUnpublish(null)
+    try {
+      await unpublishProposal(p.id)
+      pushToast('Proposal unpublished')
+      router.refresh()
+    } catch (err: any) {
+      pushToast(err.message || 'Failed to unpublish', { tone: 'error' })
+    }
   }
 
   const confirmDelete = async () => {
@@ -201,7 +222,10 @@ export function DashboardClient({
                   onDuplicate={() => handleDuplicate(p)}
                   onCopyLink={() => handleCopyLink(p)}
                   onExportPdf={() => handleExportPdf(p)}
-                  onDelete={() => handleDelete(p)} />
+                  onDelete={() => handleDelete(p)}
+                  status={p.status}
+                  acceptedAt={p.acceptedAt}
+                  onUnpublish={() => handleUnpublish(p)} />
               ) : null} />
           ))}
         </div>
@@ -222,6 +246,14 @@ export function DashboardClient({
         body="This can't be undone."
         onConfirm={confirmDelete}
         onCancel={() => setPendingDelete(null)}
+      />
+      <ConfirmDialog
+        open={!!pendingUnpublish}
+        title={`Unpublish "${pendingUnpublish?.title || 'this proposal'}"?`}
+        body="The link will stop working for anyone who doesn't already have it open. You can always duplicate it as a new draft and republish later."
+        confirmLabel="Unpublish"
+        onConfirm={confirmUnpublish}
+        onCancel={() => setPendingUnpublish(null)}
       />
     </AppShell>
   )
@@ -372,8 +404,9 @@ function RecommendedRow({ category, onBrowse }: { category: string; onBrowse: ()
   )
 }
 
-function RowMenu({ onClose, onDuplicate, onCopyLink, onExportPdf, onDelete }: {
+function RowMenu({ onClose, onDuplicate, onCopyLink, onExportPdf, onDelete, status, acceptedAt, onUnpublish }: {
   onClose: () => void; onDuplicate: () => void; onCopyLink: () => void; onExportPdf: () => void; onDelete: () => void
+  status: DashboardProposal['status']; acceptedAt: string | null; onUnpublish: () => void
 }) {
   return (
     <Menu onClose={onClose}>
@@ -382,6 +415,16 @@ function RowMenu({ onClose, onDuplicate, onCopyLink, onExportPdf, onDelete }: {
       <MenuRow icon="file-down" onClick={(e) => { e.stopPropagation(); onExportPdf() }}>Export PDF</MenuRow>
       <MenuRow icon="layout-template" disabled>Save as template (coming soon)</MenuRow>
       <MenuDivider />
+      {/* Contextual, not shown-but-disabled, for any status where it's simply inapplicable —
+          only a live PUBLISHED proposal can be taken down at all. A signed one stays visible but
+          disabled with an explanation, since that's the one case worth telling the owner *why*
+          the option they might expect isn't available. */}
+      {status === 'PUBLISHED' && !acceptedAt && (
+        <MenuRow icon="eye-off" onClick={(e) => { e.stopPropagation(); onUnpublish() }}>Unpublish</MenuRow>
+      )}
+      {status === 'PUBLISHED' && acceptedAt && (
+        <MenuRow icon="eye-off" disabled title="Signed proposals can't be unpublished">Unpublish</MenuRow>
+      )}
       <MenuRow icon="trash-2" destructive onClick={(e) => { e.stopPropagation(); onDelete() }}>Delete</MenuRow>
     </Menu>
   )

@@ -1,10 +1,12 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { env } from '@/env'
 import { ESIGN_CONSENT_STATEMENT, type Signature } from '@/lib/signature'
 import { sendEmail } from '@/lib/email'
 import { ProposalSignedEmail } from '@/emails/ProposalSignedEmail'
 import { logError } from '@/lib/logging'
+import { verifyProposalAccessToken, proposalAccessCookieName } from '@/lib/proposalAccess'
 
 // x-forwarded-for can carry a client-supplied chain ("client, proxy1, proxy2") — the first
 // entry is the original client. NextRequest has no reliable .ip in the App Router, so headers
@@ -29,7 +31,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const { data: existing, error: fetchError } = await adminSupabase
     .from('proposals')
-    .select('id, account_id, status, accepted_at, content')
+    .select('id, account_id, status, accepted_at, content, password_hash')
     .eq('slug', slug)
     .single()
 
@@ -41,6 +43,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
   if (existing.accepted_at) {
     return NextResponse.json({ error: 'Already accepted' }, { status: 409 })
+  }
+  // Closes the same bypass a direct API call would otherwise have around the page-level
+  // password gate — the page never even ships an "Accept" button without this cookie already
+  // being valid, but a direct POST here has to be checked independently.
+  if (existing.password_hash) {
+    const token = (await cookies()).get(proposalAccessCookieName(existing.id))?.value
+    if (!verifyProposalAccessToken(token, existing.id, existing.password_hash)) {
+      return NextResponse.json({ error: 'Password required' }, { status: 401 })
+    }
   }
 
   const signature: Signature = {

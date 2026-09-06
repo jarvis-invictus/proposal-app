@@ -86,6 +86,10 @@ export function EditorHeader({
         <Button variant="ghost" size="sm" icon="file-down" onClick={onExportPdf}>Export PDF</Button>
         <Button variant="ghost" size="sm" icon="sparkles" onClick={onPreviewDeck}>Preview as deck</Button>
         <Button variant="ghost" size="sm" icon="eye" onClick={onPreview}>Preview</Button>
+        {/* Once published, canPublish goes false and there was previously no way at all back
+            into PublishModal — no way to see the link again, let alone manage password
+            protection or unpublish. PublishModal itself picks its stage from proposalStatus. */}
+        {proposalStatus === 'PUBLISHED' && <Button variant="ghost" size="sm" icon="lock" onClick={onPublish}>Link settings</Button>}
         {canPublish && <Button variant="primary" size="sm" onClick={onPublish}>{publishLabel}</Button>}
       </div>
     </header>
