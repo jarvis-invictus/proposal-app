@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -17,6 +17,8 @@ import { firstFontFamily } from '@/lib/webfonts'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { ESIGN_CONSENT_STATEMENT, type Signature } from '@/lib/signature'
 import { logError } from '@/lib/logging'
+import { LayoutRenderer } from '@/components/layout/LayoutRenderer'
+import type { LayoutContext } from '@/components/layout/context'
 
 // Pulls in framer-motion, and most visitors never click "View as deck" — code-split it into
 // its own chunk instead of shipping it in the initial bundle of every public proposal page.
@@ -66,6 +68,7 @@ export default function PublicProposalView({
   const bodyFontName = proposal.brand_kits?.fonts?.body || null
   const headingFontFamily = firstFontFamily(headingFontName) ? `"${firstFontFamily(headingFontName)}", var(--font-serif)` : undefined
 
+  const router = useRouter()
   const searchParams = useSearchParams()
   // The document is the permanent, signable record — deck is a presentational extra, so a
   // shared link defaults to the document unless explicitly asked for the deck via ?view=deck.
@@ -175,6 +178,20 @@ export default function PublicProposalView({
   const effectiveThemeColor = pdfConfig.inkSavingMode ? '#000000' : themeColor
   const headerTextToRender = pdfConfig.headerText || content.title
 
+  const layoutCtx: LayoutContext = {
+    accent: effectiveThemeColor,
+    headingFontFamily,
+    currency,
+    packages: content.packages ?? [],
+    timeline: content.timeline ?? [],
+    attachments: content.attachments ?? [],
+    logoUrl: proposal.brand_kits?.logo_url ?? null,
+    paymentSection: content.paymentSection ?? null,
+    paymentDisplay,
+    terms: content.terms ?? [],
+    onAcceptClick: () => setShowSignModal(true),
+  }
+
   if (viewMode === 'deck') {
     return (
       <DeckView
@@ -253,6 +270,9 @@ export default function PublicProposalView({
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {isOwner && proposal.status === 'DRAFT' && (
+            <Button variant="ghost" size="sm" icon="arrow-left" onClick={() => router.push(`/dashboard/proposals/${proposal.id}/edit`)}>Back to Editor</Button>
+          )}
           <Button variant="ghost" size="sm" icon="sparkles" onClick={() => setViewMode('deck')}>View as deck</Button>
           <Button variant="ink" size="sm" icon="settings" onClick={() => setShowConfigModal(true)}>Configure &amp; Print PDF</Button>
         </div>
@@ -267,7 +287,7 @@ export default function PublicProposalView({
             onClose={() => setShowConfigModal(false)}
             title={content.title}
             accent={themeColor}
-            sections={PDF_SECTIONS}
+            sections={content.layout && content.layout.length > 0 ? [] : PDF_SECTIONS}
             onExport={handlePdfExport}
           />
         </div>
@@ -335,6 +355,10 @@ export default function PublicProposalView({
           </div>
         </div>
 
+        {content.layout && content.layout.length > 0 ? (
+          <LayoutRenderer layout={content.layout} ctx={layoutCtx} />
+        ) : (
+        <>
         {/* Packages Section */}
         {content.packages && content.packages.length > 0 && (
           <div className="p-12 print:break-inside-avoid" style={{ borderBottom: '1px solid var(--border-hairline)' }}>
@@ -497,6 +521,8 @@ export default function PublicProposalView({
             </div>
           )}
         </div>
+        </>
+        )}
 
         {/* Signature Certificate — part of the permanent document once signed, so it prints
             and stays visible to both the signer and the owner reviewing the same page. */}
@@ -563,7 +589,9 @@ export default function PublicProposalView({
           <div className="w-full max-w-4xl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
             {!acceptedAt ? (
               <>
-                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Questions? Reach out to whoever sent you this link.</span>
+                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+                  {content.preparedBy ? `Questions? Reach out to ${content.preparedBy}.` : 'Questions? Reach out to whoever sent you this link.'}
+                </span>
                 <Button variant="primary" icon="signature" onClick={() => setShowSignModal(true)}>Accept proposal</Button>
               </>
             ) : (

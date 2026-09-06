@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { LayoutSchema } from '@/lib/layout/registry';
 
 export const ProposalSchemaV1 = z.object({
   title: z.string().describe("The main title of the proposal, e.g., 'Website Redesign for Acme Corp'"),
@@ -12,7 +13,7 @@ export const ProposalSchemaV1 = z.object({
     z.object({
       name: z.string().describe("Name of the tier/package, e.g., 'Core', 'Pro', 'Enterprise'"),
       description: z.string().describe("A brief summary of who this package is best for"),
-      originalPrice: z.number().describe("The higher, un-discounted price (will be shown crossed out)"),
+      originalPrice: z.number().describe("The higher, un-discounted price, shown crossed out next to discountedPrice. Set to 0 if the deal facts don't actually mention a discount or prior price — never invent a markup just to fill this field."),
       discountedPrice: z.number().describe("The actual selling price after discount"),
       popular: z.boolean().describe("Whether this package is highlighted as the 'Most Popular' choice"),
       deliverables: z.array(z.string()).describe("A checklist of specific deliverables included in this package")
@@ -51,7 +52,14 @@ export const ProposalSchemaV1 = z.object({
       type: z.enum(['image', 'video']),
       caption: z.string().optional(),
     })
-  ).optional()
+  ).optional(),
+
+  // Additive, optional — proposals generated or edited before this field existed have no `layout`
+  // key at all, which is exactly the signal PublicProposalView uses to fall back to the classic
+  // fixed rendering. When present, still validated with full strictness (every Section/leaf shape
+  // checked) even under .partial() elsewhere — a malformed layout should be rejected outright, not
+  // silently saved and crash the renderer later.
+  layout: LayoutSchema.shape.layout.optional(),
 });
 
 export type ProposalType = z.infer<typeof ProposalSchemaV1>;

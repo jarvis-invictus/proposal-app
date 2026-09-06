@@ -10,6 +10,11 @@ import { checkAiRateLimit, extractClientIp, rateLimitIdentifier } from '@/lib/ra
 import { resolveBrandKit, brandContextBlock } from '@/lib/brand-extraction/prompt'
 import { logError } from '@/lib/logging'
 import { correctPricing } from '@/lib/generation/pricing'
+import { PRIMITIVE_CATALOGUE } from '@/lib/layout/registry'
+
+const layoutCatalogue = Object.entries(PRIMITIVE_CATALOGUE)
+  .map(([type, guidance]) => `- ${type}: ${guidance}`)
+  .join('\n')
 
 export const maxDuration = 60
 
@@ -36,6 +41,11 @@ function repairChanges(rawChanges: Record<string, any>, original: Record<string,
   const repaired: Record<string, any> = {}
   for (const key of Object.keys(rawChanges)) {
     const value = rawChanges[key]
+    // `layout[i]`'s index doesn't denote stable identity across old/new the way `packages[i]`'s
+    // does — a reorder or replace can change what discriminant `type` sits at a given index, so a
+    // per-index shallow merge below would produce an invalid mixed node. The prompt above already
+    // demands `layout` be sent complete when included, so just pass it through untouched.
+    if (key === 'layout') { repaired[key] = value; continue }
     const originalValue = original?.[key]
     if (Array.isArray(value) && Array.isArray(originalValue)) {
       repaired[key] = value.map((item, i) => (
@@ -91,7 +101,11 @@ ARRAYS (critical — this is the most common way a revision goes wrong): if a fi
 
 GROUNDING (critical): every new value you return must come from either the current proposal content above or something explicitly stated in the request — never invent a package name, deliverable, price, or detail that isn't there. If part of the request needs information you don't have (e.g. "add our logo" when no logo image is available to you), do NOT fabricate a placeholder or fake URL. Leave that field out entirely and say what you couldn't do, plainly, in the summary — a request you can only partially fulfill should be partially fulfilled, with the gap named, not papered over.
 
-OUT OF SCOPE REQUESTS (critical): some requests aren't about the document's content at all — they're about layout, animation, visual styling, or media you don't have (a logo image, a photo). This schema only holds text and numbers; it cannot express those things. When a request is like this, the correct response is an EMPTY changes object and a summary explaining it's not something this can do yet — not a workaround. Specifically: never turn a design/presentation request into a fake sellable add-on, package, or deliverable just to have something to return. Inventing a product nobody asked to sell is worse than doing nothing.
+LAYOUT REQUESTS (critical): section order, which content appears, adding/removing a section, or "make this feel more premium/visual" ARE in scope now — via the \`layout\` field. If you include \`layout\` at all, it must be the COMPLETE replacement array — every Section that should still exist, not just the ones being changed — built only from these primitives:
+${layoutCatalogue}
+Layout primitives reference structured data by index/flag rather than restating it: a pricingTable references content.packages by packageRefs, timelineList/paymentInfo/termsList always render the full corresponding structured field. Never invent a package, price, or deliverable inside a layout primitive that doesn't already exist in the structured content above.
+
+OUT OF SCOPE REQUESTS (critical): some requests still aren't expressible even with layout — animation, a specific font choice, or media you don't have (a logo image that hasn't been uploaded as an attachment). For those, return an EMPTY changes object and a summary explaining it's not something this can do yet — not a workaround. Specifically: never turn a design/presentation request into a fake sellable add-on, package, or deliverable just to have something to return. Inventing a product nobody asked to sell is worse than doing nothing.
 
 CURRENCY (critical): ${currencyPromptInstruction(currency)}
 ${brandContextBlock(brandKit)}

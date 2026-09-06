@@ -45,13 +45,14 @@ const STARTERS = [
 type GenResult = { ok: true; id: string } | { ok: false; error: string; partial?: unknown }
 
 export function NewProposalClient({
-  firstName, pastProposals, brandKits, starter, template,
+  firstName, pastProposals, brandKits, starter, template, initialText,
 }: {
   firstName: string
   pastProposals: PastProposalRef[]
   brandKits: BrandKitPreview[]
   starter: string | null
   template: TemplateSeed
+  initialText?: string | null
 }) {
   const router = useRouter()
   const [phase, setPhase] = React.useState<'intake' | 'review' | 'generating' | 'error'>('intake')
@@ -106,6 +107,8 @@ export function NewProposalClient({
       const s = STARTERS.find((x) => x.id === starter)
       if (s?.seed) append({ role: 'user', content: s.seed }, { body: chatBody() })
       else if (s) setMessages([{ id: 'seed-notes', role: 'assistant', content: "Go ahead and paste whatever you have — notes, a transcript, a rough email. I'll pull out what matters." }])
+    } else if (initialText) {
+      append({ role: 'user', content: initialText }, { body: chatBody() })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -148,15 +151,29 @@ export function NewProposalClient({
     const content = await res.json()
     if (!res.ok) return { ok: false, error: content.error || 'Failed to generate the proposal.' }
 
-    // Fired now, awaited later — critique runs concurrently with the save below instead of
-    // sequentially after it, so it no longer adds to the user's wait on top of generation.
+    // Soft-fail by design (see /api/generate-proposal/layout's own contract) — a rejected or
+    // timed-out layout call must never block saving the structured proposal the user is waiting on.
+    const layoutResult = await fetch('/api/generate-proposal/layout', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        summary: finalSummary, content, styleReference: styleReferenceFrom(reference),
+        referenceLayout: reference?.content?.layout ?? null,
+        brief, brandKitId: selectedBrandKitId,
+      }),
+    }).then((r) => (r.ok ? r.json() : { layout: null })).catch(() => ({ layout: null }))
+
+    const finalContent = layoutResult.layout ? { ...content, layout: layoutResult.layout } : content
+
+    // Fired now (using finalContent, so a layout-quality check can actually see the layout),
+    // awaited later — critique runs concurrently with the save below instead of sequentially
+    // after it, so it no longer adds to the user's wait on top of generation+layout.
     const critiquePromise = fetch('/api/generate-proposal/critique', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ summary: finalSummary, proposal: content }),
+      body: JSON.stringify({ summary: finalSummary, proposal: finalContent, brandKitId: selectedBrandKitId }),
     }).then((r) => (r.ok ? r.json() : { issues: [] })).catch(() => ({ issues: [] }))
 
     const saveRes = await fetch('/api/proposals', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, brandKitId: selectedBrandKitId }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: finalContent, brandKitId: selectedBrandKitId }),
     })
     const saved = await saveRes.json()
     if (!saveRes.ok) return { ok: false, error: saved.error || 'Failed to save the proposal.', partial: content }

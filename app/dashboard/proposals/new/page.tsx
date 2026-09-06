@@ -5,9 +5,9 @@ import { NewProposalClient, type PastProposalRef, type BrandKitPreview, type Tem
 export default async function NewProposalPage({
   searchParams,
 }: {
-  searchParams: Promise<{ starter?: string; template?: string }>
+  searchParams: Promise<{ starter?: string; template?: string; text?: string }>
 }) {
-  const { starter, template: templateId } = await searchParams
+  const { starter, template: templateId, text } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -43,6 +43,6 @@ export default async function NewProposalPage({
   const template: TemplateSeed = templateResult.data ? { id: templateResult.data.id, name: templateResult.data.name, category: templateResult.data.category } : null
 
   return (
-    <NewProposalClient firstName={firstName} pastProposals={pastProposals} brandKits={brandKits} starter={starter || null} template={template} />
+    <NewProposalClient firstName={firstName} pastProposals={pastProposals} brandKits={brandKits} starter={starter || null} template={template} initialText={text || null} />
   )
 }
