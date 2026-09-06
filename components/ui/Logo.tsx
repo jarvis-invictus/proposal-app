@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import * as React from 'react';
 
 export interface LogoProps {
@@ -10,9 +9,10 @@ export interface LogoProps {
   className?: string;
 }
 
-// logo.png's real intrinsic size (542x462) isn't square — forcing equal width/height distorts
-// it and trips Next Image's aspect-ratio warning. Scale height from the real ratio instead.
-const LOGO_ASPECT = 462 / 542
+// logo.png's real intrinsic size (339x324, replacing the old 542x462 opaque-background version —
+// see its own inline history for how it was produced) isn't square — forcing equal width/height
+// distorts it and trips Next Image's aspect-ratio warning. Scale height from the real ratio instead.
+const LOGO_ASPECT = 324 / 339
 
 /** The Marg mark — an angular arrow. Always the image asset; never redrawn. */
 export function Logo({ size = 26, wordmark = false, variant = 'default', label = 'Marg', style, className }: LogoProps) {
@@ -27,7 +27,15 @@ export function Logo({ size = 26, wordmark = false, variant = 'default', label =
       WebkitBackdropFilter: variant === 'glass' ? 'var(--blur-glass)' : 'none',
       border: variant === 'glass' ? '1px solid var(--border-glass)' : '1px solid transparent',
     }}>
-      <Image src="/logo.png" alt={wordmark ? '' : label} width={size} height={imgHeight}
+      {/* Plain <img>, not next/image: this asset's own transparent background — its whole point,
+          replacing an older opaque-square version — came back opaque again once Next's image
+          optimizer served it as WebP/AVIF (its alpha channel decoded intact when read directly
+          from the response bytes with PIL, so this is specific to that re-encode/negotiation
+          path, not the file itself). The icon is a few KB either way; skipping the optimizer
+          sidesteps whatever in that pipeline was flattening it, rather than chasing the exact
+          cause further. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logo.png" alt={wordmark ? '' : label} width={size} height={imgHeight}
         style={{ width: size, height: 'auto', objectFit: 'contain', display: 'block', filter: variant === 'ink' ? 'brightness(0) invert(1)' : 'none' }} />
     </span>
   );
