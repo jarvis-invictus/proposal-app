@@ -61,8 +61,8 @@ export function AddOnsBlock({ addOns, onChange, currency = 'USD' }: AddOnsBlockP
               {/* Text input with grouped digits, matching PackagesBlock's PriceInput — type="number"
                   can't render separators and its spinner ate the width, clipping long prices. */}
               <input type="text" inputMode="numeric" aria-label={`${addon.name || 'Add-on'} price`}
-                value={formatAmount(addon.price, currency)}
-                onChange={(e) => updateAddOn(idx, { price: Number(e.target.value.replace(/\D/g, '')) || 0 })}
+                value={formatAmount(addon.price, currency)} maxLength={15}
+                onChange={(e) => updateAddOn(idx, { price: Number(e.target.value.replace(/\D/g, '').slice(0, 12)) || 0 })}
                 style={{ width: `calc(${formatAmount(addon.price, currency).length + 1}ch + 4px)`, border: 'none', outline: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-body)', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }} />
             </span>
             <IconButton icon="trash-2" size="sm" variant="ghost" label="Delete add-on" onClick={() => setPendingDelete(idx)} />

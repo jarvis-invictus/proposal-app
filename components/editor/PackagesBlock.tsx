@@ -147,8 +147,8 @@ function PriceInput({ value, onChange, size, weight, strike, muted, currency, la
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 1 }}>
       <span style={{ fontSize: size, fontWeight: weight, color: muted ? 'var(--text-muted)' : 'var(--text-primary)' }}>{currencySymbol(currency)}</span>
-      <input type="text" inputMode="numeric" aria-label={label} value={formatted}
-        onChange={(e) => onChange(Number(e.target.value.replace(/\D/g, '')) || 0)}
+      <input type="text" inputMode="numeric" aria-label={label} value={formatted} maxLength={15}
+        onChange={(e) => onChange(Number(e.target.value.replace(/\D/g, '').slice(0, 12)) || 0)}
         style={{
           // +1ch of headroom for the caret, plus a few px: `ch` is the advance of "0", but bold
           // digits at the large size run slightly wider than that reference, which left the
