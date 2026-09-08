@@ -15,3 +15,10 @@ export function logError(message: string, error: unknown, context?: Record<strin
 export function logAction(action: string, actorId: string, target: Record<string, unknown>) {
   console.log(`[action] ${action}`, { actorId, ...target })
 }
+
+/** One-line structured log for which provider actually served a harness-wrapped AI call
+ * (docs/CORE_ENGINE_V2_SPEC.md §3) — primary/fallback routing is otherwise invisible, and this
+ * is the one place to look when a stage silently starts always falling back. */
+export function logAiProvider(stage: string, provider: string, model: string, usedFallback: boolean) {
+  console.log(`[ai-harness] ${stage}`, { provider, model, usedFallback })
+}
