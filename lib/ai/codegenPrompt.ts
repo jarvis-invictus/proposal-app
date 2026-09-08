@@ -37,6 +37,7 @@ TAGGING CONTRACT — non-negotiable, in addition to your creative freedom above.
 ADDITIONAL REQUIREMENTS — also non-negotiable, in addition to your creative freedom above:
 4. Use the exact brand primary color as an arbitrary-value Tailwind class — e.g. bg-[${primaryHex || '#000000'}] or text-[${primaryHex || '#000000'}] — on at least one element. This is a technical class-syntax requirement, distinct from the "never state raw colors as literal text" guidance above, which is about narrative prose only, not Tailwind class syntax.
 5. Include one small inline <script> that runs on page load and adds the exact Tailwind class "opacity-100" to one element via that element's classList.add('opacity-100'), as a simple fade-in effect. Do NOT put "opacity-100" in that element's (or any element's) static class="..." attribute anywhere in the page — it must appear only inside this <script> block.
+6. Include a visible <div id="isolation-check">Checking...</div> somewhere near the bottom of the page. In the same inline <script>, wrap an attempt to read window.parent.document in a try/catch, and set that div's textContent to "BLOCKED — " + error.name + ": " + error.message if it throws, or "NOT BLOCKED — isolation failed" if it does not throw. Do this exactly as described — this is a real security check, not a cosmetic detail.
 
 OUTPUT FORMAT: respond with ONLY the raw HTML document, starting with <!DOCTYPE html> and ending with </html>. No markdown code fences, no explanation before or after, no commentary.`
 }
