@@ -5,6 +5,7 @@ import { runStageText } from '@/lib/ai/harness'
 import { buildCodegenPrompt, type CodegenDealFacts } from '@/lib/ai/codegenPrompt'
 import { verifyProposalTags, type ProposalSourceOfTruth } from '@/lib/ai/verifyProposalTags'
 import { injectVerifiedValues } from '@/lib/ai/injectVerifiedValues'
+import { compileTailwindForHtml, buildFinalArtifact } from '@/lib/ai/compileTailwind'
 
 // Raw facts, not pre-formatted — the model is free to phrase these naturally, which is exactly
 // what's needed to exercise a real correction (Phase 1 sub-piece 2) rather than a no-op where the
@@ -41,11 +42,11 @@ function stripCodeFence(text: string): string {
   return fenced ? fenced[1].trim() : trimmed
 }
 
-/** Proves the full generate → verify → inject chain (docs/CORE_ENGINE_V2_SPEC.md §2 stages 4-7,
- * §4) in isolation. A missing tag is surfaced as-is in `verification` (present: false) — no
- * auto-repair or regeneration attempt exists yet; that's a deferred future sub-piece, not
- * silently worked around here. Deliberately not wired into any real flow, same as
- * /api/dev/harness-check and /api/dev/codegen-check's sub-piece 1 version. */
+/** Proves the full generate → verify → inject → compile → combine chain
+ * (docs/CORE_ENGINE_V2_SPEC.md §2 stages 4-8, §4, §7) in isolation. A missing tag is surfaced
+ * as-is in `verification` (present: false) — no auto-repair or regeneration attempt exists yet;
+ * that's a deferred future sub-piece, not silently worked around here. Deliberately not wired
+ * into any real flow, same as /api/dev/harness-check and this route's sub-piece 1/2 versions. */
 export async function GET() {
   const account = await getAccountContext()
   if (!account) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -59,13 +60,17 @@ export async function GET() {
     const verification = verifyProposalTags(root, SOURCE_OF_TRUTH)
     const htmlAfterInjection = injectVerifiedValues(root, SOURCE_OF_TRUTH)
 
+    const compiledCss = await compileTailwindForHtml(htmlAfterInjection)
+    const finalHtml = buildFinalArtifact(htmlAfterInjection, compiledCss)
+
     return NextResponse.json({
       provider: result.provider,
       model: result.model,
       usedFallback: result.usedFallback,
       verification,
-      htmlBeforeInjection,
       htmlAfterInjection,
+      compiledCss,
+      finalHtml,
     })
   } catch {
     return NextResponse.json({ error: 'Both primary and fallback failed.' }, { status: 500 })
