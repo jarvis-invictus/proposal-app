@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { slugify } from '@/lib/slugify'
 import { logError, logAction } from '@/lib/logging'
+import { checkActiveProposalLimit } from '@/lib/proposalLimits'
 
 export async function duplicateProposalAsDraft(proposalId: string) {
   const supabase = await createClient()
@@ -16,6 +17,9 @@ export async function duplicateProposalAsDraft(proposalId: string) {
     .eq('id', proposalId)
     .single()
   if (fetchError || !source) throw new Error('Proposal not found')
+
+  const limitCheck = await checkActiveProposalLimit(supabase, source.account_id)
+  if (!limitCheck.allowed) throw new Error(limitCheck.reason)
 
   const title = (source.content?.title || 'Untitled proposal') + ' (copy)'
   const content = { ...source.content, title }

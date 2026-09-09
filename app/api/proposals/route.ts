@@ -6,6 +6,7 @@ import { slugify } from '@/lib/slugify'
 import { logError } from '@/lib/logging'
 import { env } from '@/env'
 import { ProposalSchemaV1 } from '@/lib/schema/proposal'
+import { checkActiveProposalLimit } from '@/lib/proposalLimits'
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,6 +62,11 @@ export async function POST(request: NextRequest) {
 
     if (userError || !userRow) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+    }
+
+    const limitCheck = await checkActiveProposalLimit(supabase, userRow.account_id)
+    if (!limitCheck.allowed) {
+      return NextResponse.json({ error: limitCheck.reason }, { status: 403 })
     }
 
     // 3. Pick a default template (no template-selection UI exists yet)
