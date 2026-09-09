@@ -10,8 +10,10 @@ export type PublishGeneratedPageInput = {
 
 /** Hard round cap (docs/CORE_ENGINE_V2_SPEC.md §2 stage 10, §8) — enforced inside the
  * `publish_generated_page` Postgres function itself (see the migration), not here, so there's no
- * separate path that could bypass it. */
-const MAX_VERSIONS = 3
+ * separate path that could bypass it. Set to 4 (v1 + 3 revisions) per §8's "2-3 rounds" language
+ * at its upper bound — sub-piece 1's real observed token costs (~1183-1195 prompt /
+ * ~906-920 completion tokens per round) showed no cost reason to hold the cap below that. */
+const MAX_VERSIONS = 4
 
 /** Writes a new versioned row to `generated_pages` and marks it published
  * (docs/CORE_ENGINE_V2_SPEC.md §2 stage 11, §9). Service-role only — this table has no
