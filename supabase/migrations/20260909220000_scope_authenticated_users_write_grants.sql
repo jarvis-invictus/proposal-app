@@ -1,0 +1,24 @@
+-- Defense-in-depth, not a fix for a live hole: authenticated's UPDATE grant on `users` was
+-- still table-wide (id, account_id, role, avatar_url — every column that exists on this table)
+-- even though the actual owner-only enforcement for `role` changes already lives in a BEFORE
+-- UPDATE trigger (enforce_role_change_by_owner, 20260904080000_rls_authorization_lockdown.sql),
+-- proven live against real authenticated sessions (a real non-owner's escalation attempt
+-- rejected with "Only an account owner can change a member's role"; a real owner's legitimate
+-- change and a real non-owner's own avatar_url update both still succeed).
+--
+-- Same reasoning as 20260908131232's scope_anon_proposals_write_grants: GRANT and the
+-- enforcement layer above it (RLS there, a trigger here) are independent, and each should be
+-- correct on its own rather than relying on the other to carry the whole burden — a single
+-- future change to the trigger, made without also re-examining the grant, would otherwise
+-- silently reopen this exact path.
+--
+-- `role` stays in the grant, not excluded — verified against every real `.from('users')
+-- .update(...)` call site in the app (auth/callback/route.ts, dashboard/settings/actions.ts):
+-- changeMemberRole() legitimately writes `role` through this same authenticated client (it is
+-- not routed through a service-role client the way accounts.plan_tier is), so removing `role`
+-- from the grant would break the real, working owner-driven role-change feature — the trigger,
+-- not the grant, is what actually enforces the owner-only restriction, exactly as designed.
+-- `id` and `account_id` are excluded: no real code path anywhere in the app ever writes either
+-- column directly.
+REVOKE UPDATE ON public.users FROM authenticated;
+GRANT UPDATE (avatar_url, role) ON public.users TO authenticated;
