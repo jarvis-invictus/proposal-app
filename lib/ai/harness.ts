@@ -46,36 +46,40 @@ export async function runStage<T>(
   }
 }
 
+export type StageTextUsage = { promptTokens: number; completionTokens: number }
+
 /** Same harness, for stages whose output is long free-form text (e.g. a full generated HTML
  * page) rather than a small structured object — `generateText` is the right primitive here, not
- * `generateObject` against an unwieldy single-giant-string schema. */
+ * `generateObject` against an unwieldy single-giant-string schema. Returns real `usage` figures
+ * straight from the AI SDK's own result (not an estimate) — needed to report actual token/cost
+ * numbers for revision rounds, where a full prior-HTML context makes prompt size worth watching. */
 export async function runStageText(
   stage: string,
   opts: { prompt: string; maxOutputTokens?: number }
-): Promise<{ text: string; provider: StageProvider; model: string; usedFallback: boolean }> {
+): Promise<{ text: string; provider: StageProvider; model: string; usedFallback: boolean; usage: StageTextUsage }> {
   const config = getStageConfig(stage)
   const maxTokens = opts.maxOutputTokens ?? 1000
 
   try {
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       model: resolveModel(config.primary.provider, config.primary.model),
       prompt: opts.prompt,
       maxTokens,
     })
     logAiProvider(stage, config.primary.provider, config.primary.model, false)
-    return { text, provider: config.primary.provider, model: config.primary.model, usedFallback: false }
+    return { text, provider: config.primary.provider, model: config.primary.model, usedFallback: false, usage }
   } catch (primaryError) {
     logError(`[ai-harness] ${stage} primary failed, retrying fallback`, primaryError, {
       provider: config.primary.provider,
       model: config.primary.model,
     })
 
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       model: resolveModel(config.fallback.provider, config.fallback.model),
       prompt: opts.prompt,
       maxTokens,
     })
     logAiProvider(stage, config.fallback.provider, config.fallback.model, true)
-    return { text, provider: config.fallback.provider, model: config.fallback.model, usedFallback: true }
+    return { text, provider: config.fallback.provider, model: config.fallback.model, usedFallback: true, usage }
   }
 }

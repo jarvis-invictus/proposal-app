@@ -17,6 +17,10 @@ const STAGES: Record<string, StageConfig> = {
     primary: { provider: 'anthropic', model: process.env.CODEGEN_PRIMARY_MODEL || 'claude-sonnet-5' },
     fallback: { provider: 'openai', model: process.env.CODEGEN_FALLBACK_MODEL || 'gpt-4o' },
   },
+  'revise': {
+    primary: { provider: 'anthropic', model: process.env.REVISE_PRIMARY_MODEL || 'claude-sonnet-5' },
+    fallback: { provider: 'openai', model: process.env.REVISE_FALLBACK_MODEL || 'gpt-4o' },
+  },
 }
 
 export function getStageConfig(stage: string): StageConfig {
