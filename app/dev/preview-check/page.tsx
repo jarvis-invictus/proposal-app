@@ -2,12 +2,14 @@ import { redirect } from 'next/navigation'
 import { parse } from 'node-html-parser'
 import { getAccountContext } from '@/lib/accountContext'
 import { runStageText } from '@/lib/ai/harness'
-import { buildCodegenPrompt, type CodegenDealFacts } from '@/lib/ai/codegenPrompt'
+import { buildCodegenPrompt } from '@/lib/ai/codegenPrompt'
 import { buildRevisePrompt } from '@/lib/ai/revisePrompt'
-import { verifyProposalTags, type ProposalSourceOfTruth, type VerificationReport } from '@/lib/ai/verifyProposalTags'
+import { verifyProposalTags, type VerificationReport } from '@/lib/ai/verifyProposalTags'
 import { injectVerifiedValues } from '@/lib/ai/injectVerifiedValues'
 import { compileTailwindForHtml, buildFinalArtifact } from '@/lib/ai/compileTailwind'
 import { publishGeneratedPage } from '@/lib/ai/publishGeneratedPage'
+import { stripCodeFence } from '@/lib/ai/stripCodeFence'
+import { FIXTURE_FACTS, SOURCE_OF_TRUTH, FIXTURE_BRAND_KIT } from '@/lib/ai/fixtures'
 
 // Default test proposal (Phase 1 sub-piece 5's leftover — already at version 1, so it's NOT used
 // for real verification runs, only as a fallback if no ?proposalId= is given). Each real
@@ -25,35 +27,6 @@ const REVISION_ROUNDS = [
   'Make the tone more premium and upscale throughout.',
   "Add a one-sentence testimonial quote near the top, attributed to 'a past client'.",
 ]
-
-const FIXTURE_FACTS: CodegenDealFacts = {
-  clientName: 'Bloom & Ives',
-  projectName: 'Website Redesign',
-  totalPrice: '4500 USD',
-  dueDate: 'the 15th of November, 2026',
-  deliverables: ['Homepage redesign', '5 interior pages', 'Mobile-responsive layout'],
-  paymentTerm: '50% due upon acceptance, 50% due on delivery',
-}
-
-const SOURCE_OF_TRUTH: ProposalSourceOfTruth = {
-  priceTotal: 4500,
-  currency: 'USD',
-  dueDate: '2026-11-15',
-}
-
-const FIXTURE_BRAND_KIT = {
-  id: 'fixture',
-  name: 'Bloom & Ives',
-  colors: { primary: '#2F6F4E', secondary: '#F4EFE6', accent: '#C97B4A' },
-  fonts: { heading: 'Fraunces', body: 'Inter' },
-  personality: 'Warm, earthy, understated confidence — like a boutique florist that also does corporate work.',
-}
-
-function stripCodeFence(text: string): string {
-  const trimmed = text.trim()
-  const fenced = trimmed.match(/^```(?:html)?\s*\n([\s\S]*?)\n```$/)
-  return fenced ? fenced[1].trim() : trimmed
-}
 
 type RoundOutput = {
   htmlAfterInjection: string
