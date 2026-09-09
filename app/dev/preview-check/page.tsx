@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { parse } from 'node-html-parser'
 import { getAccountContext } from '@/lib/accountContext'
 import { runStageText } from '@/lib/ai/harness'
-import { buildCodegenPrompt } from '@/lib/ai/codegenPrompt'
+import { buildCodegenPromptTestOnly } from '@/lib/ai/codegenPrompt'
 import { buildRevisePrompt } from '@/lib/ai/revisePrompt'
 import { verifyProposalTags, type VerificationReport } from '@/lib/ai/verifyProposalTags'
 import { injectVerifiedValues } from '@/lib/ai/injectVerifiedValues'
@@ -81,7 +81,7 @@ export default async function PreviewCheckPage({ searchParams }: { searchParams:
   const summaries: RoundSummary[] = []
 
   // v1 — generation.
-  const v1Prompt = buildCodegenPrompt(FIXTURE_FACTS, FIXTURE_BRAND_KIT)
+  const v1Prompt = buildCodegenPromptTestOnly(FIXTURE_FACTS, FIXTURE_BRAND_KIT)
   const v1Result = await runStageText('codegen', { prompt: v1Prompt, maxOutputTokens: 6000 })
   const v1Round = await runRound(v1Result.text)
   const v1Published = await publishGeneratedPage(proposalId, {

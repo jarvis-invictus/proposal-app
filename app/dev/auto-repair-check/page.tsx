@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { parse } from 'node-html-parser'
 import { getAccountContext } from '@/lib/accountContext'
 import { runStageText } from '@/lib/ai/harness'
-import { buildCodegenPrompt, type CodegenDealFacts } from '@/lib/ai/codegenPrompt'
+import { buildCodegenPromptTestOnly, type CodegenDealFacts } from '@/lib/ai/codegenPrompt'
 import { verifyProposalTags } from '@/lib/ai/verifyProposalTags'
 import { injectVerifiedValues } from '@/lib/ai/injectVerifiedValues'
 import { compileTailwindForHtml, buildFinalArtifact } from '@/lib/ai/compileTailwind'
@@ -125,7 +125,7 @@ export default async function AutoRepairCheckPage({ searchParams }: { searchPara
 
   if (scenario === 'b') {
     // Normal, working prompt — expect allPresent: true, zero repair attempts.
-    const genPrompt = buildCodegenPrompt(FIXTURE_FACTS, FIXTURE_BRAND_KIT)
+    const genPrompt = buildCodegenPromptTestOnly(FIXTURE_FACTS, FIXTURE_BRAND_KIT)
     const genResult = await runStageText('codegen', { prompt: genPrompt, maxOutputTokens: 6000 })
     const htmlBeforeInjection = stripCodeFence(genResult.text)
     const verification = verifyProposalTags(parse(htmlBeforeInjection), SOURCE_OF_TRUTH)

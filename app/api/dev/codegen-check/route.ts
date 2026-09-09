@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { parse } from 'node-html-parser'
 import { getAccountContext } from '@/lib/accountContext'
 import { runStageText } from '@/lib/ai/harness'
-import { buildCodegenPrompt, type CodegenDealFacts } from '@/lib/ai/codegenPrompt'
+import { buildCodegenPromptTestOnly, type CodegenDealFacts } from '@/lib/ai/codegenPrompt'
 import { verifyProposalTags, type ProposalSourceOfTruth } from '@/lib/ai/verifyProposalTags'
 import { injectVerifiedValues } from '@/lib/ai/injectVerifiedValues'
 import { compileTailwindForHtml, buildFinalArtifact } from '@/lib/ai/compileTailwind'
@@ -52,7 +52,7 @@ export async function GET() {
   if (!account) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    const prompt = buildCodegenPrompt(FIXTURE_FACTS, FIXTURE_BRAND_KIT)
+    const prompt = buildCodegenPromptTestOnly(FIXTURE_FACTS, FIXTURE_BRAND_KIT)
     const result = await runStageText('codegen', { prompt, maxOutputTokens: 6000 })
     const htmlBeforeInjection = stripCodeFence(result.text)
 

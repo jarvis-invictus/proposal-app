@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { isBetaAiEngineEnabled } from '@/lib/betaFlags'
 import { NewProposalClient, type PastProposalRef, type BrandKitPreview, type TemplateSeed } from './NewProposalClient'
 
 export default async function NewProposalPage({
@@ -16,6 +17,9 @@ export default async function NewProposalPage({
   }
 
   const firstName = (user.user_metadata?.full_name as string | undefined)?.split(' ')[0] || user.email?.split('@')[0] || 'there'
+
+  const { data: userRecord } = await supabase.from('users').select('account_id').eq('id', user.id).single()
+  const betaAiEngineEnabled = isBetaAiEngineEnabled(userRecord?.account_id ?? null)
 
   const [{ data: proposalRows }, { data: brandKitRows }, templateResult] = await Promise.all([
     // Only published proposals are meaningful as a stylistic reference — a draft is unfinished
@@ -43,6 +47,6 @@ export default async function NewProposalPage({
   const template: TemplateSeed = templateResult.data ? { id: templateResult.data.id, name: templateResult.data.name, category: templateResult.data.category } : null
 
   return (
-    <NewProposalClient firstName={firstName} pastProposals={pastProposals} brandKits={brandKits} starter={starter || null} template={template} initialText={text || null} />
+    <NewProposalClient firstName={firstName} pastProposals={pastProposals} brandKits={brandKits} starter={starter || null} template={template} initialText={text || null} betaAiEngineEnabled={betaAiEngineEnabled} />
   )
 }

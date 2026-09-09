@@ -45,7 +45,7 @@ const STARTERS = [
 type GenResult = { ok: true; id: string } | { ok: false; error: string; partial?: unknown }
 
 export function NewProposalClient({
-  firstName, pastProposals, brandKits, starter, template, initialText,
+  firstName, pastProposals, brandKits, starter, template, initialText, betaAiEngineEnabled,
 }: {
   firstName: string
   pastProposals: PastProposalRef[]
@@ -53,6 +53,7 @@ export function NewProposalClient({
   starter: string | null
   template: TemplateSeed
   initialText?: string | null
+  betaAiEngineEnabled?: boolean
 }) {
   const router = useRouter()
   const [phase, setPhase] = React.useState<'intake' | 'review' | 'generating' | 'error'>('intake')
@@ -63,6 +64,10 @@ export function NewProposalClient({
   const [confirmClient, setConfirmClient] = React.useState('')
   const [saveError, setSaveError] = React.useState('')
   const [generatedProposal, setGeneratedProposal] = React.useState<unknown>(null)
+  // Set only when the beta button (not the plain "Generate proposal" button) was clicked — the
+  // existing schema-based path below always runs unchanged either way; this only decides whether
+  // the new engine ALSO runs afterward, on the same real, just-saved proposal.
+  const [useBetaEngine, setUseBetaEngine] = React.useState(false)
   const [listening, setListening] = React.useState(false)
   const [reference, setReference] = React.useState<PastProposalRef | null>(null)
   const [selectedBrandKitId, setSelectedBrandKitId] = React.useState<string | null>(brandKits[0]?.id ?? null)
@@ -184,6 +189,15 @@ export function NewProposalClient({
     if (Array.isArray(issues) && issues.length) {
       try { sessionStorage.setItem(`critique:${saved.id}`, JSON.stringify(issues)) } catch { /* best-effort only */ }
     }
+
+    // Only when the beta button was clicked, and only AFTER the real, primary save above already
+    // succeeded — this never blocks or replaces the existing schema-based path, and a failure
+    // here is intentionally swallowed (logged server-side by the route itself) rather than
+    // surfaced as a save failure for the real proposal, which already saved successfully.
+    if (useBetaEngine) {
+      fetch(`/api/proposals/${saved.id}/beta-ai-page`, { method: 'POST' }).catch(() => {})
+    }
+
     return { ok: true, id: saved.id }
   }
 
@@ -279,7 +293,12 @@ export function NewProposalClient({
               onSelect={setConfirmClient} />
             <span style={{ flex: 1 }} />
             <Button variant="ghost" onClick={() => setPhase('intake')}>Back</Button>
-            <Button variant="primary" iconRight="arrow-right" onClick={() => setPhase('generating')}>Generate proposal</Button>
+            {betaAiEngineEnabled && (
+              <Button variant="ghost" iconRight="sparkles" onClick={() => { setUseBetaEngine(true); setPhase('generating') }}>
+                Also try the new AI page designer (beta)
+              </Button>
+            )}
+            <Button variant="primary" iconRight="arrow-right" onClick={() => { setUseBetaEngine(false); setPhase('generating') }}>Generate proposal</Button>
           </>
         }>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
