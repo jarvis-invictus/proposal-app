@@ -248,9 +248,11 @@ export default function PublicProposalView({
         }
       `}</style>
 
-      {/* Top action bar - Hidden in Print */}
-      <div className="print:hidden px-4 sm:px-8" style={{
-        position: 'sticky', top: 0, zIndex: 40, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center',
+      {/* Top action bar - Hidden in Print. display comes from the `flex flex-wrap` classes, not
+          an inline style — an inline `display` value always beats a class rule regardless of
+          `@media print`, which is exactly what silently defeated `print:hidden` here before. */}
+      <div className="flex flex-wrap print:hidden px-4 sm:px-8" style={{
+        position: 'sticky', top: 0, zIndex: 40, justifyContent: 'space-between', alignItems: 'center',
         // paddingTop/Bottom only — the shorthand `padding: '16px 0'` used to sit here, and because
         // inline styles beat classes it silently cancelled this element's own `px-4 sm:px-8`,
         // leaving the proposal title flush against the left edge of the screen.
@@ -313,7 +315,7 @@ export default function PublicProposalView({
           <div style={{ position: 'relative', zIndex: 1 }}>
           <h1 className="text-4xl font-bold mb-1 print:text-5xl" style={{ fontFamily: headingFontFamily }}>{headerTextToRender}</h1>
           {!pdfConfig.inkSavingMode && (
-            <span aria-hidden="true" className="print:hidden" style={{ display: 'block', width: 48, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.55)', margin: '14px 0 20px' }} />
+            <span aria-hidden="true" className="block print:hidden" style={{ width: 48, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.55)', margin: '14px 0 20px' }} />
           )}
           <div className="grid grid-cols-2 gap-8 mt-8 opacity-90 text-sm print:opacity-100">
             {/* Each block is gated on actually having a value. Previously the labels rendered
@@ -529,7 +531,7 @@ export default function PublicProposalView({
         {acceptedAt && (
           <div className="p-12 print:break-inside-avoid" style={{ borderTop: '1px solid var(--border-hairline)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <span aria-hidden="true" className="print:hidden" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '50%', background: themeColor, flex: 'none' }}>
+              <span aria-hidden="true" className="flex print:hidden" style={{ alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '50%', background: themeColor, flex: 'none' }}>
                 <Icon name="lock" size={15} color="#fff" />
               </span>
               <Icon name="lock" size={15} color="var(--text-muted)" className="hidden print:inline" />
@@ -581,8 +583,8 @@ export default function PublicProposalView({
 
       {/* Review & sign / accepted state — pinned to the viewport bottom, hidden in print. */}
       {canAcceptSign && (
-        <div className="print:hidden" style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, display: 'flex', justifyContent: 'center',
+        <div className="flex print:hidden" style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, justifyContent: 'center',
           padding: '16px 24px', background: 'var(--glass-quiet)', backdropFilter: 'var(--blur-glass)', WebkitBackdropFilter: 'var(--blur-glass)',
           borderTop: '1px solid var(--border-hairline)', fontFamily: 'var(--font-sans)',
         }}>
