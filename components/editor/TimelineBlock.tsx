@@ -3,7 +3,9 @@
 import * as React from 'react'
 import { IconButton } from '@/components/ui/IconButton'
 import { Button } from '@/components/ui/Button'
+import { Icon } from '@/components/ui/Icon'
 import { ConfirmDialog } from '@/components/app/ConfirmDialog'
+import { parseDurationDays } from '@/lib/ai/mapProposalToDealFacts'
 
 export type TimelinePhase = {
   phase: string
@@ -20,12 +22,25 @@ const BLANK_PHASE: TimelinePhase = { phase: 'New phase', duration: '', descripti
 
 export function TimelineBlock({ timeline, onChange }: TimelineBlockProps) {
   const [pendingDelete, setPendingDelete] = React.useState<number | null>(null)
+  // Per-phase index, same positional identity every other reference in this file already uses
+  // (TimelinePhase has no id field). Reindexed on delete below so a removed phase's touched state
+  // never silently reattaches to whatever phase slides into its old index.
+  const [touched, setTouched] = React.useState<Set<number>>(new Set())
   const updatePhase = (index: number, patch: Partial<TimelinePhase>) => {
     onChange(timeline.map((p, i) => (i === index ? { ...p, ...patch } : p)))
   }
   const confirmRemovePhase = () => {
     if (pendingDelete === null) return
-    onChange(timeline.filter((_, i) => i !== pendingDelete))
+    const removedIndex = pendingDelete
+    onChange(timeline.filter((_, i) => i !== removedIndex))
+    setTouched((prev) => {
+      const next = new Set<number>()
+      for (const i of prev) {
+        if (i < removedIndex) next.add(i)
+        else if (i > removedIndex) next.add(i - 1)
+      }
+      return next
+    })
     setPendingDelete(null)
   }
   const addPhase = () => onChange([...timeline, { ...BLANK_PHASE }])
@@ -39,8 +54,17 @@ export function TimelineBlock({ timeline, onChange }: TimelineBlockProps) {
             <div style={{ width: 150, flex: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
               <input value={phase.phase} onChange={(e) => updatePhase(idx, { phase: e.target.value })} placeholder="Phase"
                 style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-body)', fontWeight: 700, color: 'var(--text-primary)' }} />
-              <input value={phase.duration} onChange={(e) => updatePhase(idx, { duration: e.target.value })} placeholder="Duration" maxLength={40}
+              <input value={phase.duration} onChange={(e) => updatePhase(idx, { duration: e.target.value })}
+                onBlur={() => setTouched((prev) => new Set(prev).add(idx))} placeholder="Duration" maxLength={40}
                 style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }} />
+              {touched.has(idx) && parseDurationDays(phase.duration) === null && (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+                  <Icon name="triangle-alert" size={12} color="var(--text-muted)" style={{ marginTop: 1, flex: 'none' }} />
+                  <span style={{ fontFamily: 'var(--font-sans)', fontSize: 11, lineHeight: 'var(--leading-snug)', color: 'var(--text-muted)' }}>
+                    Use a format like "2 weeks" — needed for the AI page designer to compute a due date.
+                  </span>
+                </div>
+              )}
             </div>
             <div style={{ flex: 1, minWidth: 0, paddingBottom: 18, borderBottom: '1px solid var(--border-hairline)', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
               <textarea value={phase.description} onChange={(e) => updatePhase(idx, { description: e.target.value })} placeholder="What happens during this phase" rows={2}

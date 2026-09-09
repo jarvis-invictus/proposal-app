@@ -10,7 +10,7 @@ import type { ProposalSourceOfTruth } from '@/lib/ai/verifyProposalTags'
 const DURATION_PATTERN = /^(\d+)\s+(day|days|week|weeks|month|months)$/i
 const DAYS_PER_UNIT: Record<string, number> = { day: 1, days: 1, week: 7, weeks: 7, month: 30, months: 30 }
 
-function parseDurationDays(duration: string): number | null {
+export function parseDurationDays(duration: string): number | null {
   const match = DURATION_PATTERN.exec(duration.trim())
   if (!match) return null
   const [, countStr, unit] = match
