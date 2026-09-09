@@ -1,14 +1,26 @@
 import { compile } from '@tailwindcss/node'
 
-/** Broad text scan across the entire document — not attribute-specific parsing. A class
- * referenced only from inside a <script> block (e.g. `element.classList.add('opacity-100')` in a
- * scroll-triggered effect) never appears in any class="..." attribute, so attribute-only
+/** CORRECTION (Phase 2 sub-piece 1, dated after the original Phase 1 sub-piece 3 introduction of
+ * this function — see docs/DECISION_LOG.md for both entries) — the original pattern excluded `'`
+ * and `"` entirely, which broke any arbitrary-value class containing an internal quote, e.g.
+ * `font-['Fraunces']`: the scan split at the internal `'` characters, so the utility was never
+ * seen as one token and silently never compiled. Confirmed directly against the installed
+ * Tailwind compiler that `font-['Fraunces']` compiles correctly when passed as one candidate —
+ * the compiler was never the problem, only this extraction regex. Widened to a two-alternative
+ * pattern: a bracketed alternative first (`[^\s"'`<>=]*\[[^\]]*\][^\s"'`<>=]*`) that treats an
+ * entire `[...]` group as opaque — anything except `]` is allowed inside, quotes included — so a
+ * bracketed arbitrary value is captured as one token regardless of what's inside it; the original
+ * plain-token pattern remains as the fallback for everything without brackets, unchanged. Broad
+ * text scan across the entire document — not attribute-specific parsing — remains deliberate: a
+ * class referenced only from inside a <script> block (e.g. `element.classList.add('opacity-100')`
+ * in a scroll-triggered effect) never appears in any class="..." attribute, so attribute-only
  * extraction would silently fail to compile it. Over-matching (HTML tag names, JS keywords, prose
- * words) is harmless — compile()'s .build() only emits rules for tokens that are genuinely valid
- * Tailwind utilities and silently drops everything else. Only under-matching a real class would
- * be a bug, and attribute-only parsing is exactly how that happens. */
+ * words) stays harmless — compile()'s .build() only emits rules for tokens that are genuinely
+ * valid Tailwind utilities and silently drops everything else. Only under-matching a real class
+ * is a bug, which is exactly what both the original attribute-only risk and this quote-splitting
+ * gap were. */
 function extractCandidates(html: string): string[] {
-  const tokens = html.match(/[^\s"'`<>=]+/g) ?? []
+  const tokens = html.match(/[^\s"'`<>=]*\[[^\]]*\][^\s"'`<>=]*|[^\s"'`<>=]+/g) ?? []
   return [...new Set(tokens)]
 }
 

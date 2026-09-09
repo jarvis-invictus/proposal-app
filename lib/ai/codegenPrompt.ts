@@ -26,6 +26,7 @@ export const TAGGING_CONTRACT_BLOCK = `TAGGING CONTRACT — non-negotiable, in a
  * call required, so a fixture object satisfies it directly. */
 export function buildCodegenPrompt(facts: CodegenDealFacts, brandKit: BrandKitContext | null): string {
   const primaryHex = brandKit?.colors?.primary
+  const headingFont = brandKit?.fonts?.heading || 'Georgia'
 
   return `You are writing a complete, self-contained HTML proposal page for a freelancer/agency to send a client.
 
@@ -47,6 +48,7 @@ ADDITIONAL REQUIREMENTS — also non-negotiable, in addition to your creative fr
 2. Include one small inline <script> that runs on page load and adds the exact Tailwind class "opacity-100" to one element via that element's classList.add('opacity-100'), as a simple fade-in effect. Do NOT put "opacity-100" in that element's (or any element's) static class="..." attribute anywhere in the page — it must appear only inside this <script> block.
 3. Include a visible <div id="isolation-check">Checking...</div> somewhere near the bottom of the page. In the same inline <script>, wrap an attempt to read window.parent.document in a try/catch, and set that div's textContent to "BLOCKED — " + error.name + ": " + error.message if it throws, or "NOT BLOCKED — isolation failed" if it does not throw. Do this exactly as described — this is a real security check, not a cosmetic detail.
 4. Include a visible <div id="cookie-isolation-check">Checking...</div> near the bottom of the page. In the same inline <script>, check document.cookie for the substring "subpiece5_isolation_marker". If it is NOT found, set that div's textContent to "BLOCKED — cookie not visible from this origin". If it IS found, set it to "NOT BLOCKED — isolation failed, cookie: " + document.cookie. This proves origin isolation via subdomain, a separate real security check from #3's iframe check — do not skip or merge these.
+5. Use the exact brand heading font as a QUOTED arbitrary-value Tailwind class — font-['${headingFont}'] literally, including the single quotes inside the brackets — on at least one heading element. This specific quoted-arbitrary-value form (not the unquoted font-[${headingFont}] form) is required — it exercises a real class of bug found and fixed in this pipeline (a quote-containing arbitrary-value class silently failing to compile), and must never silently regress.
 
 OUTPUT FORMAT: respond with ONLY the raw HTML document, starting with <!DOCTYPE html> and ending with </html>. No markdown code fences, no explanation before or after, no commentary.`
 }
