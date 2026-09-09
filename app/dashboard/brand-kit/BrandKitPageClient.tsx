@@ -40,6 +40,29 @@ export function BrandKitPageClient({ accountId, accountName, kits }: { accountId
     )
   }
 
+  // Lifted up here (not held per-card) — a ConfirmDialog rendered *inside* a `.stagger>*` grid
+  // item inherits that item's entrance-animation transform as its containing block (a completed
+  // CSS animation held via `animation-fill-mode: both` still reports a resolved, non-`none`
+  // transform matrix even at its identity end state), which makes the dialog's own
+  // `position:fixed` resolve against the small card instead of the viewport — clipped inside it.
+  // One shared dialog at this top level, same as DashboardClient's proposal-delete pattern, never
+  // sits inside an animated card in the first place.
+  const [pendingDelete, setPendingDelete] = React.useState<BrandKitRow | null>(null)
+  const [deletingId, setDeletingId] = React.useState<string | null>(null)
+
+  const handleDelete = async () => {
+    if (!pendingDelete) return
+    const kit = pendingDelete
+    setPendingDelete(null)
+    setDeletingId(kit.id)
+    try {
+      await deleteBrandKit(kit.id)
+      router.refresh()
+    } catch {
+      setDeletingId(null)
+    }
+  }
+
   return (
     <div style={{ maxWidth: 880, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 14, flexWrap: 'wrap' }}>
@@ -50,41 +73,31 @@ export function BrandKitPageClient({ accountId, accountName, kits }: { accountId
       </div>
 
       <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 14 }}>
-        {kits.map((kit) => <BrandKitCard key={kit.id} kit={kit} onDeleted={() => router.refresh()} />)}
+        {kits.map((kit) => (
+          <BrandKitCard key={kit.id} kit={kit} deleting={deletingId === kit.id} onRequestDelete={() => setPendingDelete(kit)} />
+        ))}
       </div>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title={`Delete "${pendingDelete?.name}"?`}
+        body="This can't be undone."
+        onConfirm={handleDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }
 
-function BrandKitCard({ kit, onDeleted }: { kit: BrandKitRow; onDeleted: () => void }) {
-  const [deleting, setDeleting] = React.useState(false)
-  const [confirming, setConfirming] = React.useState(false)
+function BrandKitCard({ kit, deleting, onRequestDelete }: { kit: BrandKitRow; deleting: boolean; onRequestDelete: () => void }) {
   const swatches = [kit.colors?.primary, kit.colors?.secondary, kit.colors?.accent].filter(Boolean) as string[]
-
-  const handleDelete = async () => {
-    setConfirming(false)
-    setDeleting(true)
-    try {
-      await deleteBrandKit(kit.id)
-      onDeleted()
-    } catch {
-      setDeleting(false)
-    }
-  }
 
   return (
     <div style={{ position: 'relative', padding: '18px 18px 16px', borderRadius: 'var(--radius-card)', background: 'var(--surface-card)', border: '1px solid var(--border-hairline)', opacity: deleting ? 0.5 : 1 }}>
-      <button type="button" onClick={() => setConfirming(true)} disabled={deleting} aria-label={`Delete ${kit.name}`}
+      <button type="button" onClick={onRequestDelete} disabled={deleting} aria-label={`Delete ${kit.name}`}
         style={{ position: 'absolute', top: 10, right: 10, border: 'none', background: 'none', padding: 4, color: 'var(--text-muted)', cursor: deleting ? 'default' : 'pointer', display: 'flex' }}>
         <Icon name="trash-2" size={14} />
       </button>
-      <ConfirmDialog
-        open={confirming}
-        title={`Delete "${kit.name}"?`}
-        body="This can't be undone."
-        onConfirm={handleDelete}
-        onCancel={() => setConfirming(false)}
-      />
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
         {kit.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
