@@ -6,6 +6,12 @@ import { buildCodegenPrompt, type CodegenDealFacts } from '@/lib/ai/codegenPromp
 import { verifyProposalTags, type ProposalSourceOfTruth } from '@/lib/ai/verifyProposalTags'
 import { injectVerifiedValues } from '@/lib/ai/injectVerifiedValues'
 import { compileTailwindForHtml, buildFinalArtifact } from '@/lib/ai/compileTailwind'
+import { publishGeneratedPage } from '@/lib/ai/publishGeneratedPage'
+
+// One dedicated test proposal row (supabase/migrations/20260908184816_add_generated_pages.sql's
+// sibling data — inserted directly, not via migration, since it's fixture data, not schema),
+// under the local dev test account. Never one of the real proposals.
+const TEST_PROPOSAL_ID = 'd80d88e6-39ba-428a-a83d-ddb2e083116c'
 
 // Same fixture as app/api/dev/codegen-check/route.ts — this page reuses the exact same
 // generate→verify→inject→compile chain, just rendered as a real page instead of returning JSON.
@@ -61,6 +67,13 @@ export default async function PreviewCheckPage() {
   const compiledCss = await compileTailwindForHtml(htmlAfterInjection)
   const finalHtml = buildFinalArtifact(htmlAfterInjection, compiledCss)
 
+  const published = await publishGeneratedPage(TEST_PROPOSAL_ID, {
+    html: finalHtml,
+    provider: result.provider,
+    model: result.model,
+    usedFallback: result.usedFallback,
+  })
+
   return (
     <div style={{ padding: 16, fontFamily: 'monospace', fontSize: 13 }}>
       <p>
@@ -68,6 +81,9 @@ export default async function PreviewCheckPage() {
         {compiledCss.length} bytes
       </p>
       <p>verification: {JSON.stringify(verification)}</p>
+      <p>
+        published: generated_pages id={published.id}, version={published.version}
+      </p>
       <p>
         Look inside the iframe below for a div reading either <b>BLOCKED — ...</b> (isolation working) or{' '}
         <b>NOT BLOCKED — isolation failed</b>. Also check the browser console for a security error.
