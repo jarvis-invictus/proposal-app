@@ -91,7 +91,7 @@ Brand Kit System, Template Library, AI Intake Engine, No-Code Editing Layer, Pro
 - International payment mechanism for Flow B.
 - Post-publish mutability: edit a PUBLISHED link, or clone + spend a new credit?
 - Formal client "Accept" step vs. simple scroll-to-payment.
-- Notification depth: instant vs. dashboard-only.
+- Notification depth: confirmed dashboard-only and non-live today, verified end-to-end 2026-09-09 (server-rendered once per page load, no polling/realtime — a new notification needs a navigation/reload to appear). Whether to build instant/live notifications remains a genuinely open, undecided future option.
 - Real ₹ pricing numbers — untested with real users.
 - UTR storage schema.
 - Credit enforcement mechanism — needs rebuilding since `credit_transactions` was dropped.
