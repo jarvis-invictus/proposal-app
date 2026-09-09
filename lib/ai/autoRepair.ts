@@ -21,21 +21,29 @@ export type AutoRepairOptions = {
   buildPrompt?: typeof buildRevisePrompt
 }
 
-function describeMissingTags(v: VerificationReport): string[] {
-  const missing: string[] = []
-  if (!v.priceTotal.present) missing.push('data-proposal-field="price_total" (on the element whose visible text shows the final total price)')
-  if (!v.dueDate.present) missing.push('data-proposal-field="due_date" (on the element whose visible text shows the project due date)')
-  if (!v.acceptAction.present) missing.push('data-proposal-action="accept" (on the single accept/sign button)')
-  return missing
+function describeTagFailures(v: VerificationReport): string[] {
+  const failures: string[] = []
+  if (!v.priceTotal.present) failures.push('data-proposal-field="price_total" (on the element whose visible text shows the final total price) is missing — add it to the real element.')
+  if (!v.dueDate.present) failures.push('data-proposal-field="due_date" (on the element whose visible text shows the project due date) is missing — add it to the real element.')
+  if (!v.acceptAction.present) {
+    failures.push('data-proposal-action="accept" is missing — add it to the single accept/sign button.')
+  } else if (!v.acceptAction.exactlyOne) {
+    // Distinct wording from the missing case, on purpose — "remove the extra" is a different
+    // instruction than "add the missing one", and conflating them risks the model not
+    // understanding which real change is actually being asked for.
+    failures.push(`data-proposal-action="accept" appears on ${v.acceptAction.count} different elements, but must appear on exactly ONE. Remove this attribute from every extra element — keep it on only the real accept/sign button — without changing anything else about the page.`)
+  }
+  return failures
 }
 
-/** Bounded, mechanical retry for the guardrail gap flagged since Phase 1 sub-piece 2:
- * `verifyProposalTags` reporting a missing tag with nothing attempting a fix
- * (docs/CORE_ENGINE_V2_SPEC.md §4). Reuses the existing revise pathway (Phase 2) rather than new
- * prompt infrastructure — the feedback string names the specific missing element(s) by their real
- * attribute, not a vague "fix this". Gated purely on tag *presence* (`allPresent`), not
- * `acceptAction.exactlyOne` — a duplicated accept action is a different failure mode this does
- * not attempt to fix.
+/** Bounded, mechanical retry for the guardrail gaps flagged since Phase 1 sub-piece 2:
+ * `verifyProposalTags` reporting a missing tag, or a duplicated accept action, with nothing
+ * attempting a fix (docs/CORE_ENGINE_V2_SPEC.md §4). Reuses the existing revise pathway (Phase 2)
+ * rather than new prompt infrastructure — the feedback string names the specific problem(s) by
+ * their real attribute, with distinct wording for "missing" vs. "duplicated" rather than a vague
+ * "fix this". `allPresent` (gating below) requires `acceptAction.exactlyOne`, not just `present` —
+ * a page with two accept buttons is exactly as unready to publish as one missing its accept
+ * button, so both are handled by the same bounded retry.
  *
  * Not a user-directed revision: the caller must NOT publish intermediate attempts or count them
  * against MAX_VERSIONS — only the final result (repaired-and-passing, or exhausted-and-failed) is
@@ -61,8 +69,8 @@ export async function attemptAutoRepair(
   let currentVerification = verification
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const missing = describeMissingTags(currentVerification)
-    const feedback = `AUTOMATIC REPAIR REQUIRED — the previous version is missing required elements: ${missing.join('; ')}. Fix ONLY this: add the missing attribute(s) to the correct real element(s). Do not change anything else about the page.`
+    const failures = describeTagFailures(currentVerification)
+    const feedback = `AUTOMATIC REPAIR REQUIRED — the previous version has the following problem(s): ${failures.join('; ')}. Fix ONLY this. Do not change anything else about the page.`
 
     const prompt = buildPrompt(currentHtml, facts, brandKit, feedback)
     const result = await runStageText('revise', { prompt, maxOutputTokens: 6000 })

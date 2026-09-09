@@ -69,6 +69,9 @@ export function verifyProposalTags(root: HTMLElement, sot: ProposalSourceOfTruth
     priceTotal,
     dueDate,
     acceptAction,
-    allPresent: priceTotal.present && dueDate.present && acceptAction.present,
+    // Requires exactlyOne, not just present — a page with two accept/sign buttons is not
+    // structurally ready to publish either, and nothing else in the pipeline catches it
+    // (injectVerifiedValues never touches data-proposal-action by design).
+    allPresent: priceTotal.present && dueDate.present && acceptAction.present && acceptAction.exactlyOne,
   }
 }

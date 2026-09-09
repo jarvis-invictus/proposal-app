@@ -72,7 +72,7 @@ OUTPUT FORMAT: respond with ONLY the raw HTML document, starting with <!DOCTYPE 
 }
 
 /** Proves the missing-tag auto-repair mechanism (docs/CORE_ENGINE_V2_SPEC.md §4) — the gap
- * flagged and deferred since Phase 1 sub-piece 2. Pass ?scenario=a|b|c (default a).
+ * flagged and deferred since Phase 1 sub-piece 2. Pass ?scenario=a|b|c|d (default a).
  * Scenario a (repair succeeds) is the only one that publishes — give it its own fresh
  * ?proposalId= each run, same hygiene as every other /dev proof page. Deliberately not wired
  * into any real flow. */
@@ -144,26 +144,70 @@ export default async function AutoRepairCheckPage({ searchParams }: { searchPara
     )
   }
 
-  // scenario === 'c' — exhaustion path. Repair itself is also instructed to omit the tag, via the
-  // injectable buildPrompt option, so it can never succeed — proving the cap fires deterministically.
-  const genPrompt = buildBrokenCodegenPromptTestOnly(FIXTURE_FACTS, FIXTURE_BRAND_KIT)
+  if (scenario === 'c') {
+    // Exhaustion path. Repair itself is also instructed to omit the tag, via the injectable
+    // buildPrompt option, so it can never succeed — proving the cap fires deterministically.
+    const genPrompt = buildBrokenCodegenPromptTestOnly(FIXTURE_FACTS, FIXTURE_BRAND_KIT)
+    const genResult = await runStageText('codegen', { prompt: genPrompt, maxOutputTokens: 6000 })
+    const htmlBeforeInjection = stripCodeFence(genResult.text)
+    const initialVerification = verifyProposalTags(parse(htmlBeforeInjection), SOURCE_OF_TRUTH)
+
+    const repair = await attemptAutoRepair(htmlBeforeInjection, FIXTURE_FACTS, FIXTURE_BRAND_KIT, SOURCE_OF_TRUTH, initialVerification, {
+      buildPrompt: buildBrokenRevisePromptTestOnly,
+    })
+
+    return (
+      <div style={{ padding: 16, fontFamily: 'monospace', fontSize: 13 }}>
+        <h3>Scenario C — exhaustion path</h3>
+        <p>initial verification (expect acceptAction.present: false): {JSON.stringify(initialVerification)}</p>
+        <p>
+          attemptsUsed: {repair.attemptsUsed} (expect 2) · repaired: {String(repair.repaired)} (expect false)
+        </p>
+        <p>final verification: {JSON.stringify(repair.verification)}</p>
+        <p><b>No publishGeneratedPage call is made in this branch — confirmed by code path, not just this report.</b></p>
+      </div>
+    )
+  }
+
+  // scenario === 'd' — duplicate accept action, the gap closed by this task. Forced
+  // deterministically at the DOM level, not by asking the model to add a second button (far less
+  // reliable than the missing-tag scenarios' technique of omitting an instruction — a model asked
+  // to affirmatively duplicate an element isn't guaranteed to comply, especially with
+  // TAGGING_CONTRACT_BLOCK's own "exactly one" instruction still present in the same prompt).
+  const genPrompt = buildCodegenPromptTestOnly(FIXTURE_FACTS, FIXTURE_BRAND_KIT)
   const genResult = await runStageText('codegen', { prompt: genPrompt, maxOutputTokens: 6000 })
   const htmlBeforeInjection = stripCodeFence(genResult.text)
-  const initialVerification = verifyProposalTags(parse(htmlBeforeInjection), SOURCE_OF_TRUTH)
 
-  const repair = await attemptAutoRepair(htmlBeforeInjection, FIXTURE_FACTS, FIXTURE_BRAND_KIT, SOURCE_OF_TRUTH, initialVerification, {
-    buildPrompt: buildBrokenRevisePromptTestOnly,
-  })
+  const cleanRoot = parse(htmlBeforeInjection)
+  const cleanVerification = verifyProposalTags(cleanRoot, SOURCE_OF_TRUTH)
+  // Sanity check the real generation actually produced a single accept element before mutating —
+  // confirmed, not assumed, same discipline as every other forced-test-case this session.
+  if (!cleanVerification.acceptAction.exactlyOne) {
+    return (
+      <div style={{ padding: 16, fontFamily: 'monospace', fontSize: 13 }}>
+        <h3>Scenario D — setup failed</h3>
+        <p>Real generation did not produce exactly one accept element to duplicate: {JSON.stringify(cleanVerification.acceptAction)}</p>
+        <p>Re-run — this is the codegen step misbehaving, not the thing being tested.</p>
+      </div>
+    )
+  }
+
+  const acceptEl = cleanRoot.querySelector('[data-proposal-action="accept"]')!
+  acceptEl.after(acceptEl.clone())
+  const duplicatedHtml = cleanRoot.toString()
+  const initialVerification = verifyProposalTags(parse(duplicatedHtml), SOURCE_OF_TRUTH)
+
+  const repair = await attemptAutoRepair(duplicatedHtml, FIXTURE_FACTS, FIXTURE_BRAND_KIT, SOURCE_OF_TRUTH, initialVerification)
 
   return (
     <div style={{ padding: 16, fontFamily: 'monospace', fontSize: 13 }}>
-      <h3>Scenario C — exhaustion path</h3>
-      <p>initial verification (expect acceptAction.present: false): {JSON.stringify(initialVerification)}</p>
+      <h3>Scenario D — duplicate accept action</h3>
+      <p>clean single-accept verification, pre-mutation (expect exactlyOne: true, count: 1): {JSON.stringify(cleanVerification.acceptAction)}</p>
+      <p>initial verification post-mutation (expect count: 2, exactlyOne: false, allPresent: false): {JSON.stringify(initialVerification)}</p>
       <p>
-        attemptsUsed: {repair.attemptsUsed} (expect 2) · repaired: {String(repair.repaired)} (expect false)
+        attemptsUsed: {repair.attemptsUsed} · repaired: {String(repair.repaired)}
       </p>
-      <p>final verification: {JSON.stringify(repair.verification)}</p>
-      <p><b>No publishGeneratedPage call is made in this branch — confirmed by code path, not just this report.</b></p>
+      <p>final verification (expect count: 1, exactlyOne: true, allPresent: true): {JSON.stringify(repair.verification)}</p>
     </div>
   )
 }
