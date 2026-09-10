@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation'
 import { parse } from 'node-html-parser'
-import { getAccountContext } from '@/lib/accountContext'
+import { requireDevAccess } from '@/lib/devAccess'
 import { flattenProposalFacts } from '@/lib/ai/flattenProposalFacts'
 import { genericVerifyFields } from '@/lib/ai/genericVerifyFields'
 import { genericInjectFields } from '@/lib/ai/genericInjectFields'
@@ -80,8 +79,7 @@ const MISMATCH_FIELD_PATH = 'packages[0].discountedPrice'
 /** Proves the generic fact-addressing walker (docs/PROJECT_ROADMAP.md §6, sub-piece 1) against a
  * hand-built fixture — no AI call, no real DB row, deliberately not wired into any real flow. */
 export default async function GenericFactWalkerCheckPage() {
-  const account = await getAccountContext()
-  if (!account) redirect('/login')
+  await requireDevAccess()
 
   const facts = flattenProposalFacts(FIXTURE_CONTENT, FIXTURE_CURRENCY)
   const root = parse(FIXTURE_HTML)

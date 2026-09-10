@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation'
 import { parse } from 'node-html-parser'
-import { getAccountContext } from '@/lib/accountContext'
+import { requireDevAccess } from '@/lib/devAccess'
 import { runStageText } from '@/lib/ai/harness'
 import { stripCodeFence } from '@/lib/ai/stripCodeFence'
 import { flattenProposalFacts, type FlatFact } from '@/lib/ai/flattenProposalFacts'
@@ -88,8 +87,7 @@ async function runAndEvaluate(runIndex: number, facts: FlatFact[], prompt: strin
  * hand-built ProposalType (3 packages, 4 timeline phases — FIXTURE_PROPOSAL_CONTENT), but the
  * generation itself is real, via runStageText. Deliberately not wired into any real flow. */
 export default async function GenericCodegenCheckPage() {
-  const account = await getAccountContext()
-  if (!account) redirect('/login')
+  await requireDevAccess()
 
   const facts = flattenProposalFacts(FIXTURE_PROPOSAL_CONTENT, FIXTURE_CURRENCY)
   const prompt = buildGenericCodegenPrompt(facts, FIXTURE_BRAND_KIT)

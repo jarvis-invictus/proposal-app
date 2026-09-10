@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation'
 import { parse } from 'node-html-parser'
-import { getAccountContext } from '@/lib/accountContext'
+import { requireDevAccess } from '@/lib/devAccess'
 import { runStageText } from '@/lib/ai/harness'
 import { stripCodeFence } from '@/lib/ai/stripCodeFence'
 import { flattenProposalFacts } from '@/lib/ai/flattenProposalFacts'
@@ -32,8 +31,7 @@ function looksTruncated(html: string): boolean {
  * flow — flattenProposalFacts/genericVerifyFields/genericInjectFields/buildGenericCodegenPrompt
  * are all otherwise unchanged from sub-pieces 1-2. */
 export default async function GenericMissingValueCheckPage() {
-  const account = await getAccountContext()
-  if (!account) redirect('/login')
+  await requireDevAccess()
 
   const facts = flattenProposalFacts(FIXTURE_PROPOSAL_CONTENT_WITH_GAPS, FIXTURE_CURRENCY)
   const prompt = buildGenericCodegenPrompt(facts, FIXTURE_BRAND_KIT)

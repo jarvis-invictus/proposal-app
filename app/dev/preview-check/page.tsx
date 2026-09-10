@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation'
 import { parse } from 'node-html-parser'
-import { getAccountContext } from '@/lib/accountContext'
+import { requireDevAccess } from '@/lib/devAccess'
 import { runStageText } from '@/lib/ai/harness'
 import { buildCodegenPromptTestOnly } from '@/lib/ai/codegenPrompt'
 import { buildRevisePrompt } from '@/lib/ai/revisePrompt'
@@ -72,8 +71,7 @@ type RoundSummary = {
  * refuse the run for reasons unrelated to whether chained revision itself works. Deliberately not
  * wired into any real flow, same as every other /dev proof page this phase. */
 export default async function PreviewCheckPage({ searchParams }: { searchParams: Promise<{ proposalId?: string }> }) {
-  const account = await getAccountContext()
-  if (!account) redirect('/login')
+  await requireDevAccess()
 
   const { proposalId: queryProposalId } = await searchParams
   const proposalId = queryProposalId || DEFAULT_TEST_PROPOSAL_ID

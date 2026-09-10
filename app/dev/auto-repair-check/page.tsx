@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation'
 import { parse } from 'node-html-parser'
-import { getAccountContext } from '@/lib/accountContext'
+import { requireDevAccess } from '@/lib/devAccess'
 import { runStageText } from '@/lib/ai/harness'
 import { buildCodegenPromptTestOnly, type CodegenDealFacts } from '@/lib/ai/codegenPrompt'
 import { verifyProposalTags } from '@/lib/ai/verifyProposalTags'
@@ -77,8 +76,7 @@ OUTPUT FORMAT: respond with ONLY the raw HTML document, starting with <!DOCTYPE 
  * ?proposalId= each run, same hygiene as every other /dev proof page. Deliberately not wired
  * into any real flow. */
 export default async function AutoRepairCheckPage({ searchParams }: { searchParams: Promise<{ scenario?: string; proposalId?: string }> }) {
-  const account = await getAccountContext()
-  if (!account) redirect('/login')
+  await requireDevAccess()
 
   const { scenario: scenarioParam, proposalId: queryProposalId } = await searchParams
   const scenario = scenarioParam || 'a'

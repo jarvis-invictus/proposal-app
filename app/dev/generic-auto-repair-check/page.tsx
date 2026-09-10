@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation'
 import { parse } from 'node-html-parser'
-import { getAccountContext } from '@/lib/accountContext'
+import { requireDevAccess } from '@/lib/devAccess'
 import { runStageText } from '@/lib/ai/harness'
 import { stripCodeFence } from '@/lib/ai/stripCodeFence'
 import { flattenProposalFacts, type FlatFact } from '@/lib/ai/flattenProposalFacts'
@@ -84,8 +83,7 @@ async function runOnce(runIndex: number, facts: FlatFact[]) {
  * genericCodegenPrompt/genericRevisePrompt are all unchanged from sub-pieces 1-4; only
  * genericAutoRepair.ts (new) is added here. */
 export default async function GenericAutoRepairCheckPage() {
-  const account = await getAccountContext()
-  if (!account) redirect('/login')
+  await requireDevAccess()
 
   const facts = flattenProposalFacts(FIXTURE_PROPOSAL_CONTENT, FIXTURE_CURRENCY)
 
