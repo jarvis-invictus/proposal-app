@@ -80,7 +80,7 @@ Brand Kit System, Template Library, AI Intake Engine, No-Code Editing Layer, Pro
 
 ### Addendum — Session Discipline (added 2026-09-08)
 
-- Every session must read this file and any active feature spec (e.g. docs/CORE_ENGINE_V2_SPEC.md) in full, then restate its understood scope for the current session before proposing a plan or writing any code.
+- Every session must read this file, docs/PROJECT_ROADMAP.md, and any active feature spec (e.g. docs/CORE_ENGINE_V2_SPEC.md) in full, then restate its understood scope for the current session before proposing a plan or writing any code.
 - No self-merge. Every PR stays open for Sahil's review — prepare a short summary of what changed and why, but do not click merge yourself.
 - One phase/scope per session. If something adjacent-but-out-of-scope is noticed mid-session, report it as a suggestion for a future phase — do not build it in the same session.
 - End of session: update DECISION_LOG.md and the relevant status doc with real evidence (file paths, actual output, row counts) — not narrative summaries.
