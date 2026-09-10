@@ -3,9 +3,13 @@ import { currencySymbol, formatAmount } from '@/lib/formatCurrency'
 
 export type FlatFact = {
   path: string
-  value: string | number
+  provided: boolean
+  value: string | number | null
   displayValue: string
 }
+
+const TEXT_NOT_PROVIDED = 'Not yet specified'
+const PRICE_NOT_PROVIDED = 'Pricing to be confirmed'
 
 function moneyDisplay(amount: number, currency: string): string {
   return `${currencySymbol(currency)}${formatAmount(amount, currency)}`
@@ -16,18 +20,34 @@ function moneyDisplay(amount: number, currency: string): string {
  * `packages[i].popular` (a selection flag, never rendered as text), `attachments[i].url`/`type`
  * (asset references, not editable prose), and all of `layout` (the old renderer's presentation
  * tree, and its array indices are documented elsewhere — app/api/proposals/[id]/revise/route.ts —
- * as unstable identity, unlike packages/addOns/timeline). Skips fields/items absent on a given
- * real record (no synthesized placeholders — that's a separate future sub-piece). */
+ * as unstable identity, unlike packages/addOns/timeline).
+ *
+ * A leaf that IS in scope but genuinely blank (missing key, empty string, or — for a price field
+ * only — null/undefined, never a literal 0) is still pushed, with `provided: false` and an honest
+ * placeholder as `displayValue` — never skipped invisibly, and never left for the AI to invent a
+ * plausible-looking value for. `genericInjectFields`/`genericVerifyFields` need no awareness of
+ * this: they already operate purely on `displayValue`, so a not-provided leaf's placeholder gets
+ * force-injected the exact same way a wrong real value would be corrected. A literal `0` on any
+ * price field (`originalPrice` included) is always a real, provided value, never treated as
+ * "blank" — confirmed decision: a genuinely free package/add-on misreading as "Pricing to be
+ * confirmed" is a worse, client-facing inaccuracy than a visible $0 a human would catch. */
 export function flattenProposalFacts(content: ProposalType, currency: string): FlatFact[] {
   const facts: FlatFact[] = []
 
   const pushString = (path: string, value: string | undefined | null) => {
-    if (!value) return
-    facts.push({ path, value, displayValue: value.trim() })
+    const trimmed = value?.trim()
+    if (trimmed) {
+      facts.push({ path, provided: true, value: trimmed, displayValue: trimmed })
+    } else {
+      facts.push({ path, provided: false, value: null, displayValue: TEXT_NOT_PROVIDED })
+    }
   }
   const pushMoney = (path: string, value: number | undefined | null) => {
-    if (value == null) return
-    facts.push({ path, value, displayValue: moneyDisplay(value, currency) })
+    if (value == null) {
+      facts.push({ path, provided: false, value: null, displayValue: PRICE_NOT_PROVIDED })
+    } else {
+      facts.push({ path, provided: true, value, displayValue: moneyDisplay(value, currency) })
+    }
   }
 
   pushString('title', content.title)
@@ -60,10 +80,8 @@ export function flattenProposalFacts(content: ProposalType, currency: string): F
 
   content.terms?.forEach((term, i) => pushString(`terms[${i}]`, term))
 
-  if (content.paymentSection) {
-    pushString('paymentSection.schedule', content.paymentSection.schedule)
-    pushString('paymentSection.terms', content.paymentSection.terms)
-  }
+  pushString('paymentSection.schedule', content.paymentSection?.schedule)
+  pushString('paymentSection.terms', content.paymentSection?.terms)
 
   content.attachments?.forEach((att, i) => pushString(`attachments[${i}].caption`, att.caption))
 

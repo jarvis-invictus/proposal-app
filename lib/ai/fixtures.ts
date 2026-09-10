@@ -88,3 +88,28 @@ export const FIXTURE_PROPOSAL_CONTENT: ProposalType = {
   },
   attachments: [{ url: 'https://example.com/homepage-mock.png', type: 'image', caption: 'Homepage concept preview' }],
 }
+
+/** Sub-piece 3 (honest handling of missing values) fixture — the same real proposal as above,
+ * with three deliberate real-shaped gaps, one per case this sub-piece needs to distinguish:
+ * `clientName` set to `undefined` (behaviorally identical to a real record where the key is
+ * missing entirely — confirmed the dominant real shape via a live query of local data), one
+ * timeline phase's `description` left as an empty string (the other real "blank" shape found),
+ * and one package's `discountedPrice` set to the literal `0` — the negative case, proving a real
+ * $0 price is never treated as "not provided," per the confirmed decision.
+ *
+ * `title` is deliberately REWORDED here, not reused verbatim from FIXTURE_PROPOSAL_CONTENT — the
+ * base fixture's title ("...for Meridian Analytics") literally contains the client's name, which
+ * would leak the real value elsewhere in the same prompt and confound the one thing this fixture
+ * exists to test (does the model fabricate a value it has genuinely zero information about,
+ * anywhere in the prompt). Confirmed via a first real run: with the leaky title, the model simply
+ * never tagged `clientName` at all rather than inventing anything — a real result, but not a clean
+ * answer to the actual question, since the model still had the true name available via `title`.
+ *
+ * Never real customer data. */
+export const FIXTURE_PROPOSAL_CONTENT_WITH_GAPS: ProposalType = {
+  ...FIXTURE_PROPOSAL_CONTENT,
+  title: 'Marketing Site Rebuild Proposal',
+  clientName: undefined as unknown as string,
+  packages: FIXTURE_PROPOSAL_CONTENT.packages.map((pkg, i) => (i === 0 ? { ...pkg, discountedPrice: 0 } : pkg)),
+  timeline: FIXTURE_PROPOSAL_CONTENT.timeline.map((phase, i) => (i === 2 ? { ...phase, description: '' } : phase)),
+}
