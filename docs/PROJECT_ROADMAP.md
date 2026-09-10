@@ -102,13 +102,17 @@ evidence (not claims) before being trusted:
   GPT-4o), not the intended primary (Claude) — Anthropic API access
   was never set up. Nobody has yet seen what this engine produces on
   its actual intended primary model.
-- Only handles a single price and a single date — see Section 6,
-  this is being redesigned generically, not patched narrowly.
 - No real click-to-edit UI exists yet — the only way to change
-  anything post-generation is the AI-driven revise loop. See Section
-  6 — this changes.
-- No handling yet for "this fact was never provided" — every test
-  case assumed complete data.
+  anything post-generation is the AI-driven revise loop. Section 6.4
+  explains why the generic fact-addressing work below makes this
+  mechanical to build later, but the UI itself isn't built.
+- Real compliance (does the AI actually tag every fact it's told
+  about) sits around 96-98% on a clean generation, never 100% —
+  measured directly, not estimated, across dozens of real runs.
+  Auto-repair (below) exists specifically because this small gap is
+  the normal case on real data, not an anomaly.
+
+**Section 6 (below) is done, not a plan anymore — implemented, proven, and cut over live.** The narrow single-price/single-date limitation and the "no handling for a fact that was never provided" gap this section originally described are both closed as of 2026-09-10: `beta-ai-page` now runs entirely on the generic, path-based mechanism — see `docs/DECISION_LOG.md`'s six sub-piece entries for the full real evidence (flatten/verify/inject, real codegen wiring, honest missing-value handling, generic revise, generic auto-repair, and the real production cutover itself, including two real bugs found and fixed via actual output inspection, not assumed from a success response). Section 6's own text below is kept as the original design record, not rewritten after the fact.
 
 ### 2.3 Security & correctness audit — closed
 

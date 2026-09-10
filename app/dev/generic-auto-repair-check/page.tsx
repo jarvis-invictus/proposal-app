@@ -7,7 +7,7 @@ import { flattenProposalFacts, type FlatFact } from '@/lib/ai/flattenProposalFac
 import { genericVerifyFields } from '@/lib/ai/genericVerifyFields'
 import { genericInjectFields } from '@/lib/ai/genericInjectFields'
 import { buildGenericCodegenPrompt } from '@/lib/ai/genericCodegenPrompt'
-import { attemptGenericAutoRepair } from '@/lib/ai/genericAutoRepair'
+import { attemptGenericAutoRepair, checkAcceptAction } from '@/lib/ai/genericAutoRepair'
 import { FIXTURE_PROPOSAL_CONTENT, FIXTURE_CURRENCY, FIXTURE_BRAND_KIT } from '@/lib/ai/fixtures'
 
 const INITIAL_MAX_OUTPUT_TOKENS = 8000
@@ -46,12 +46,14 @@ async function runOnce(runIndex: number, facts: FlatFact[]) {
   const brokenPrompt = buildGenericCodegenPrompt(visibleFacts, FIXTURE_BRAND_KIT)
 
   const gen = await generateWithRetry(brokenPrompt)
-  const initialReport = genericVerifyFields(parse(gen.html), facts)
+  const initialRoot = parse(gen.html)
+  const initialReport = genericVerifyFields(initialRoot, facts)
+  const initialAcceptAction = checkAcceptAction(initialRoot)
   const initialPresentCount = initialReport.filter((r) => r.present).length
   const forcedGapConfirmed = OMITTED_PATHS.every((p) => initialReport.find((r) => r.path === p)?.present === false)
   const unforcedMissing = initialReport.filter((r) => !r.present && !OMITTED_PATHS.includes(r.path)).map((r) => r.path)
 
-  const repair = await attemptGenericAutoRepair(gen.html, facts, FIXTURE_BRAND_KIT, initialReport)
+  const repair = await attemptGenericAutoRepair(gen.html, facts, FIXTURE_BRAND_KIT, initialReport, initialAcceptAction)
 
   const finalRoot = parse(repair.html)
   genericInjectFields(finalRoot, facts) // real pipeline order: repair, then inject
@@ -64,12 +66,14 @@ async function runOnce(runIndex: number, facts: FlatFact[]) {
     initialGenTruncated: gen.truncated,
     initialGenRetried: gen.retried,
     initialPresentCount,
+    initialAcceptAction,
     forcedGapConfirmed,
     unforcedMissing,
     attemptsUsed: repair.attemptsUsed,
     repaired: repair.repaired,
     forcedGapRepaired,
     finalPresentCount,
+    finalAcceptAction: repair.acceptAction,
     attemptsLog: repair.attemptsLog,
   }
 }
@@ -106,8 +110,10 @@ export default async function GenericAutoRepairCheckPage() {
           <p>all 3 forced-omitted paths confirmed missing before repair (expect true): {String(r.forcedGapConfirmed)}</p>
           {r.unforcedMissing.length > 0 && <p style={{ whiteSpace: 'pre-wrap' }}>other, unforced missing paths (normal ~2% variance, not hidden): {JSON.stringify(r.unforcedMissing)}</p>}
 
+          <p>accept-action before repair: {JSON.stringify(r.initialAcceptAction)}</p>
           <p>
-            repair — attemptsUsed: {r.attemptsUsed} · repaired: {String(r.repaired)} · final present: {r.finalPresentCount}/{facts.length}
+            repair — attemptsUsed: {r.attemptsUsed} · repaired: {String(r.repaired)} · final present: {r.finalPresentCount}/{facts.length} · final accept-action:{' '}
+            {JSON.stringify(r.finalAcceptAction)}
           </p>
           <p>all 3 forced-omitted paths present after repair (expect true): {String(r.forcedGapRepaired)}</p>
 

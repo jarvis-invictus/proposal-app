@@ -67,9 +67,11 @@ ADDITIONAL REQUIREMENTS — also non-negotiable, in addition to your creative fr
 OUTPUT FORMAT: respond with ONLY the raw HTML document, starting with <!DOCTYPE html> and ending with </html>. No markdown code fences, no explanation before or after, no commentary.`
 }
 
-/** Builds the REAL code-generation prompt (docs/CORE_ENGINE_V2_SPEC.md §2 stage 4, §4's tagging
- * contract enforced in this same prompt rather than as a separate pass) — the only variant used
- * by any real, customer-facing generation path (`app/api/proposals/[id]/beta-ai-page/route.ts`).
+/** Builds the fixed-3-contract code-generation prompt (docs/CORE_ENGINE_V2_SPEC.md §2 stage 4,
+ * §4's tagging contract enforced in this same prompt rather than as a separate pass). No longer
+ * used by any real, customer-facing path — `app/api/proposals/[id]/beta-ai-page/route.ts` cut over
+ * to `genericCodegenPrompt.ts`'s `buildGenericCodegenPrompt` (docs/PROJECT_ROADMAP.md §6, sub-piece
+ * 6). Kept, unmodified, only for the dev proof routes below that still exercise this fixed-3 path.
  * Contains no dev-proof scaffolding: no isolation-check divs, no script-only class, no synthetic
  * arbitrary-hex-class requirement. Reuses `brandContextBlock()` as-is — it already takes a plain
  * `BrandKitContext`-shaped object, no DB call required, so a fixture object satisfies it directly

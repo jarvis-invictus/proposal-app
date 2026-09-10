@@ -25,9 +25,10 @@ data-proposal-action="accept"`
  * mechanism exists to prevent (accurate prose next to a mistagged or paraphrased path).
  * data-proposal-action="accept" stays its own fixed, separate instruction below — it's a UI
  * affordance (which element triggers acceptance), not a data value, so it has no FlatFact entry
- * and never will. Dev-only for now: no test-only variant (nothing here needs to be deliberately
- * broken), and this is NOT wired into codegenPrompt.ts or any real generation path yet (sub-piece
- * 5, after mapProposalToDealFacts is retired per docs/PROJECT_ROADMAP.md §6). */
+ * and never will. No test-only variant (nothing here needs to be deliberately broken). Now the
+ * real generation prompt for app/api/proposals/[id]/beta-ai-page/route.ts (sub-piece 6,
+ * docs/PROJECT_ROADMAP.md §6, mapProposalToDealFacts retired) — codegenPrompt.ts/
+ * buildCodegenPrompt is untouched but no longer used by any real, customer-facing path. */
 export function buildGenericCodegenPrompt(facts: FlatFact[], brandKit: BrandKitContext | null): string {
   const headingFont = brandKit?.fonts?.heading || 'Georgia'
 
