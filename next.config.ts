@@ -7,7 +7,13 @@ const nextConfig: NextConfig = {
   // binary via a dynamic `require(...)` path that Turbopack/webpack can't statically bundle.
   // Marking these external tells Next.js to leave them un-bundled and let Node's own require()
   // resolve them directly at runtime, instead of failing with "Module not found" at build time.
-  serverExternalPackages: ["@tailwindcss/node", "@tailwindcss/oxide", "lightningcss"],
+  // `tailwindcss` itself was missed here originally — compileTailwind.ts's compile('@import
+  // "tailwindcss";', ...) call has @tailwindcss/node resolve the real tailwindcss package
+  // internally at runtime, the same class of dynamic resolution as the other three. Confirmed via
+  // a real production error, not assumed: "Package path . is exported from package tailwindcss,
+  // but no valid target file was found" — the identical error shape that motivated externalizing
+  // the other three packages in the first place, reproduced on 2 separate real beta-ai-page calls.
+  serverExternalPackages: ["@tailwindcss/node", "@tailwindcss/oxide", "lightningcss", "tailwindcss"],
 };
 
 // Only wrap with the Sentry build plugin when a DSN is actually configured — with no DSN
