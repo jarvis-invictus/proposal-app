@@ -68,6 +68,7 @@ export default async function DashboardPage() {
     supabase
       .from('proposals')
       .select("id, slug, updated_at, status, accepted_at, last_viewed_at, title:content->>title, client:content->>clientName, packages:content->packages")
+      .is('deleted_at', null)
       .order('updated_at', { ascending: false })
       .limit(500),
     supabase.from('brand_kits').select('id', { count: 'exact', head: true }),

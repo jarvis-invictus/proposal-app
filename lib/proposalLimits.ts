@@ -22,6 +22,7 @@ export async function checkActiveProposalLimit(supabase: SupabaseClient, account
     .select('id', { count: 'exact', head: true })
     .eq('account_id', accountId)
     .neq('status', 'ARCHIVED')
+    .is('deleted_at', null)
 
   if ((count ?? 0) >= FREE_TIER_ACTIVE_PROPOSAL_LIMIT) {
     return { allowed: false, reason: `Free plan is limited to ${FREE_TIER_ACTIVE_PROPOSAL_LIMIT} active proposal. Archive your existing proposal or upgrade to create another.` }

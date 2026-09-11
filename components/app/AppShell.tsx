@@ -14,6 +14,7 @@ const NAV: NavItem[] = [
 // to. Activity now has a real destination (Notifications, Correction 6.8) and is wired in.
 const UTIL: NavItem[] = [
   { id: 'notifications', label: 'Activity', icon: 'bell' },
+  { id: 'trash', label: 'Trash', icon: 'trash-2' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
 ]
 
@@ -22,6 +23,7 @@ const ROUTES: Record<string, string> = {
   templates: '/dashboard/templates',
   brand: '/dashboard/brand-kit',
   notifications: '/dashboard/notifications',
+  trash: '/dashboard/trash',
   settings: '/dashboard/settings',
 }
 

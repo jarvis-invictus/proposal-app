@@ -82,24 +82,74 @@ export async function unpublishProposal(proposalId: string) {
   revalidatePath('/dashboard')
 }
 
+/** Soft delete — moves the proposal to Trash (docs/DECISION_LOG.md, 2026-09-11). Uniform across
+ * every status, no role/accepted_at restriction: reversible, only hides the row from the active
+ * dashboard view. The real, irreversible action is `permanentlyDeleteProposal` below, which is
+ * where the signed-record protection actually lives. */
 export async function deleteProposal(proposalId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
 
-  // Fetched before the delete — account_id is how uploaded attachments are located in storage,
-  // and it's only available through this row.
-  const { data: proposalRow } = await supabase.from('proposals').select('account_id').eq('id', proposalId).maybeSingle()
+  const { error } = await supabase
+    .from('proposals')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', proposalId)
+
+  if (error) {
+    logError('Failed to move proposal to trash', error, { proposalId })
+    throw new Error('Failed to move the proposal to trash — please try again.')
+  }
+
+  logAction('trash_proposal', user.id, { proposalId })
+  revalidatePath('/dashboard')
+}
+
+/** Moves a trashed proposal back to the active dashboard — real status (DRAFT/PUBLISHED/etc.) was
+ * never touched by the soft delete, so it reappears exactly as it was. */
+export async function restoreProposal(proposalId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+
+  const { error } = await supabase
+    .from('proposals')
+    .update({ deleted_at: null })
+    .eq('id', proposalId)
+
+  if (error) {
+    logError('Failed to restore proposal', error, { proposalId })
+    throw new Error('Failed to restore the proposal — please try again.')
+  }
+
+  logAction('restore_proposal', user.id, { proposalId })
+  revalidatePath('/dashboard')
+  revalidatePath('/dashboard/trash')
+}
+
+/** The real, irreversible delete — only reachable from Trash. App-level guard mirrors
+ * unpublishProposal's exact pattern, same error string as the DB trigger
+ * (enforce_proposal_delete_signed_lock) by design: a signed proposal is a legal record and must
+ * not be destroyable, even from Trash. Attachment cleanup moved here from the old hard-delete
+ * path — a soft-deleted proposal's attachments must survive in case it's restored. */
+export async function permanentlyDeleteProposal(proposalId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+
+  const { data: proposalRow } = await supabase.from('proposals').select('account_id, accepted_at').eq('id', proposalId).maybeSingle()
+  if (!proposalRow) throw new Error('Proposal not found')
+  if (proposalRow.accepted_at) throw new Error('This proposal has been signed and cannot be permanently deleted.')
 
   const { error } = await supabase.from('proposals').delete().eq('id', proposalId)
   if (error) {
-    logError('Failed to delete proposal', error, { proposalId })
-    throw new Error('Failed to delete the proposal — please try again.')
+    logError('Failed to permanently delete proposal', error, { proposalId })
+    throw new Error('Failed to permanently delete the proposal — please try again.')
   }
 
-  // Best-effort: the proposal is considered deleted the moment its row is gone — a storage
-  // cleanup failure shouldn't resurrect it or block the user, just leave an orphaned file.
-  if (proposalRow?.account_id) {
+  // Best-effort: the proposal is considered gone the moment its row is gone — a storage cleanup
+  // failure shouldn't resurrect it or block the user, just leave an orphaned file.
+  if (proposalRow.account_id) {
     try {
       const prefix = `${proposalRow.account_id}/attachments/${proposalId}`
       const { data: files } = await supabase.storage.from('public-assets').list(prefix)
@@ -111,6 +161,6 @@ export async function deleteProposal(proposalId: string) {
     }
   }
 
-  logAction('delete_proposal', user.id, { proposalId })
-  revalidatePath('/dashboard')
+  logAction('permanently_delete_proposal', user.id, { proposalId })
+  revalidatePath('/dashboard/trash')
 }

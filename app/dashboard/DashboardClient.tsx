@@ -144,10 +144,10 @@ export function DashboardClient({
     setPendingDelete(null)
     try {
       await deleteProposal(p.id)
-      pushToast('Proposal deleted')
+      pushToast('Moved to Trash')
       router.refresh()
     } catch (err: any) {
-      pushToast(err.message || 'Failed to delete', { tone: 'error' })
+      pushToast(err.message || 'Failed to move to trash', { tone: 'error' })
     }
   }
 
@@ -242,8 +242,9 @@ export function DashboardClient({
       )}
       <ConfirmDialog
         open={!!pendingDelete}
-        title={`Delete "${pendingDelete?.title || 'this proposal'}"?`}
-        body="This can't be undone."
+        title={`Move "${pendingDelete?.title || 'this proposal'}" to Trash?`}
+        body="You can restore it from Trash later, or delete it permanently from there."
+        confirmLabel="Move to Trash"
         onConfirm={confirmDelete}
         onCancel={() => setPendingDelete(null)}
       />
