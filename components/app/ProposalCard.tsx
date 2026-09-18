@@ -33,7 +33,7 @@ export function ProposalCard({title,client,updated,status='draft',statusLabel,va
         boxShadow:hover?'var(--shadow-brand)':'none',transform:hover?'var(--hover-lift)':'none',
         transition:'transform var(--duration-base) var(--ease-spring),box-shadow var(--duration-base) var(--ease-standard),border-color var(--duration-base) var(--ease-standard)'}}>
         <Thumb title={title} client={client} value={value}/>
-        <div style={{position:'absolute',top:10,right:10,zIndex:5,opacity:hover||menu?1:0,transition:'opacity var(--duration-base) var(--ease-standard)'}}>
+        <div style={{position:'absolute',top:10,right:10,zIndex:5}}>
           <IconButton icon="ellipsis" variant="outline" size="sm" label="Proposal options"
             active={!!menu} onClick={e=>{e.stopPropagation();onMenu&&onMenu(e);}}/>
           {menu}
