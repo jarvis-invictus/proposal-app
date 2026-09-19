@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from './Icon';
 
 export type SelectOption = string | { value: string; label: React.ReactNode };
@@ -14,6 +15,19 @@ export interface SelectMenuProps {
   style?: React.CSSProperties;
 }
 
+// Matches this component's own real gap convention (previously `top: 'calc(100% + 8px)'`) —
+// not reused from Menu.tsx's unrelated offset.
+const GAP = 8;
+
+interface ListboxAnchor {
+  containerTop: number;
+  containerBottom: number;
+  containerLeft: number;
+  containerRight: number;
+  phase: 'measuring' | 'ready';
+  flip: boolean;
+}
+
 export function SelectMenu({ label, value, options = [], onSelect, icon, align = 'left', style, ...rest }: SelectMenuProps) {
   const [open, setOpen] = React.useState(false);
   const [hover, setHover] = React.useState(false);
@@ -21,19 +35,63 @@ export function SelectMenu({ label, value, options = [], onSelect, icon, align =
   const containerRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const listboxRef = React.useRef<HTMLDivElement>(null);
+  const [anchor, setAnchor] = React.useState<ListboxAnchor | null>(null);
+
+  // Fresh open/close only. Captures the trigger's real screen position so the portaled listbox
+  // below can escape any clipping ancestor (overflow:hidden/auto) it would otherwise sit inside.
+  React.useLayoutEffect(() => {
+    if (open && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setAnchor({ containerTop: rect.top, containerBottom: rect.bottom, containerLeft: rect.left, containerRight: rect.right, phase: 'measuring', flip: false });
+    } else {
+      setAnchor(null);
+    }
+  }, [open]);
+
+  // Second pass: now that the listbox is mounted (invisible), measure its real height and decide
+  // whether it needs to flip upward to stay within the viewport. Runs once per open — the phase
+  // guard makes any later re-entry (from this same effect's own state update) a no-op.
+  React.useLayoutEffect(() => {
+    if (!anchor || anchor.phase !== 'measuring' || !listboxRef.current) return;
+    const listboxHeight = listboxRef.current.getBoundingClientRect().height;
+    const flip = anchor.containerBottom + GAP + listboxHeight > window.innerHeight;
+    setAnchor({ ...anchor, phase: 'ready', flip });
+  }, [anchor]);
+
+  // Land on the current selection (or the first option) the way a native <select> does, rather
+  // than leaving focus on the trigger with no indication where keyboard nav starts. Deliberately
+  // keyed on `anchor?.phase` rather than `open`: the listbox only actually exists in the DOM once
+  // `anchor` is set, and empirically (verified directly, not assumed from React's general
+  // effect-ordering docs) a `[open]`-keyed passive effect can still run before the portaled node
+  // is mounted — `listboxRef.current` measured `null` at that point in real testing.
+  React.useEffect(() => {
+    if (anchor?.phase !== 'ready' || !listboxRef.current) return;
+    const selectedButton = listboxRef.current.querySelector<HTMLButtonElement>('[aria-selected="true"]');
+    (selectedButton ?? listboxRef.current.querySelector<HTMLButtonElement>('button'))?.focus();
+  }, [anchor?.phase]);
 
   React.useEffect(() => {
     if (!open) return;
-    // Land on the current selection (or the first option) the way a native <select> does,
-    // rather than leaving focus on the trigger with no indication where keyboard nav starts.
-    const selectedButton = listboxRef.current?.querySelector<HTMLButtonElement>('[aria-selected="true"]');
-    (selectedButton ?? listboxRef.current?.querySelector<HTMLButtonElement>('button'))?.focus();
-
+    // Now that the listbox portals to document.body, it's no longer a DOM descendant of
+    // containerRef — checking listboxRef too keeps a click on an option from reading as "outside".
     const handleOutside = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (containerRef.current?.contains(target) || listboxRef.current?.contains(target)) return;
+      setOpen(false);
     };
+    // Anchored via a rect captured once at open time — a scroll or resize would otherwise leave
+    // the listbox visually detached from its trigger with no live repositioning. capture:true on
+    // 'scroll' is required: element scroll doesn't bubble, but capture still runs top-down
+    // through ancestors on the way to the target.
+    const onInvalidate = () => setOpen(false);
     document.addEventListener('mousedown', handleOutside);
-    return () => document.removeEventListener('mousedown', handleOutside);
+    document.addEventListener('scroll', onInvalidate, true);
+    window.addEventListener('resize', onInvalidate);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('scroll', onInvalidate, true);
+      window.removeEventListener('resize', onInvalidate);
+    };
   }, [open]);
 
   const handleListboxKeyDown = (e: React.KeyboardEvent) => {
@@ -52,8 +110,13 @@ export function SelectMenu({ label, value, options = [], onSelect, icon, align =
     } else if (e.key === 'Tab') {
       // A listbox is a closed little world while open — Tab exiting it without an explicit
       // choice reads as abandoning the picker, so treat it the same as Escape instead of
-      // leaving an open panel behind while focus moves elsewhere on the page.
+      // leaving an open panel behind while focus moves elsewhere on the page. Now load-bearing,
+      // not just tidy: once portaled, the listbox's options are no longer DOM descendants of any
+      // wrapping Modal, so an un-prevented Tab's native default could jump focus straight out of
+      // the modal's own focus trap instead of merely landing somewhere odd on the page.
+      e.preventDefault();
       setOpen(false);
+      triggerRef.current?.focus();
     }
   };
 
@@ -73,9 +136,13 @@ export function SelectMenu({ label, value, options = [], onSelect, icon, align =
         {value}
         <Icon name="chevron-down" size={15} color="var(--text-muted)" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform var(--duration-base) var(--ease-standard)' }} />
       </button>
-      {open && (
+      {anchor && createPortal(
         <div ref={listboxRef} role="listbox" id={listboxId} aria-label={label} onKeyDown={handleListboxKeyDown} style={{
-          position: 'absolute', top: 'calc(100% + 8px)', [align]: 0, minWidth: 200, padding: 6, zIndex: 40,
+          position: 'fixed',
+          ...(align === 'left' ? { left: anchor.containerLeft } : { right: window.innerWidth - anchor.containerRight }),
+          ...(anchor.flip ? { bottom: window.innerHeight - anchor.containerTop + GAP } : { top: anchor.containerBottom + GAP }),
+          minWidth: 200, padding: 6, zIndex: 70,
+          opacity: anchor.phase === 'measuring' ? 0 : 1, pointerEvents: anchor.phase === 'measuring' ? 'none' : 'auto',
           background: 'var(--glass-panel)', backdropFilter: 'var(--blur-glass)', WebkitBackdropFilter: 'var(--blur-glass)',
           border: '1px solid var(--border-hairline)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-raised)',
           animation: 'fade-up var(--duration-base) var(--ease-out-soft) both',
@@ -84,7 +151,8 @@ export function SelectMenu({ label, value, options = [], onSelect, icon, align =
             const v = typeof o === 'string' ? o : o.value;
             return <Option key={v} selected={v === value} onClick={() => { onSelect?.(v); setOpen(false); triggerRef.current?.focus(); }}>{typeof o === 'string' ? o : o.label}</Option>;
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
