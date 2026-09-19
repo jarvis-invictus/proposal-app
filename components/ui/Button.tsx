@@ -64,7 +64,7 @@ export function Button({ variant = 'primary', size = 'md', icon, iconRight, disa
         // phone the public proposal's primary "Accept proposal" CTA rendered as "Accept proposa".
         // flex-shrink:0 stops a flex parent squeezing the button below its content width.
         cursor: inert ? 'not-allowed' : 'pointer', opacity: inert ? 0.42 : 1, whiteSpace: 'nowrap', flexShrink: 0,
-        boxShadow: hover && !inert ? v.shadow : 'none',
+        boxShadow: hover && !inert ? v.shadow : undefined,
         transform: inert ? 'none' : press ? 'scale(var(--press-scale))' : hover ? 'translateY(-2px)' : 'none',
         transition: 'transform var(--duration-base) var(--ease-spring),background var(--duration-base) var(--ease-standard),box-shadow var(--duration-base) var(--ease-standard),opacity var(--duration-base) var(--ease-standard)',
         ...style,
