@@ -10,3 +10,9 @@ export async function getAccountShellInfo(supabase: SupabaseClient): Promise<{ a
     planLabel: PLAN_LABEL[data?.plan_tier || 'free'],
   }
 }
+
+/** For callers that already have `plan_tier` from their own query and don't need a second
+ * `accounts` round trip just to label it — see Brand Kit's fix in DECISION_LOG.md. */
+export function planLabelFor(planTier: string | null | undefined): string {
+  return PLAN_LABEL[planTier || 'free']
+}

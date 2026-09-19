@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import { env } from '@/env'
-import { listAllUsers } from '@/lib/supabase/listAllUsers'
 import { AppShell } from '@/components/app/AppShell'
 import { SettingsClient } from './SettingsClient'
 import { logout } from '../../(auth)/actions'
@@ -15,9 +14,7 @@ export default async function SettingsPage() {
   if (!user) redirect('/login')
 
   // Emails aren't stored on public.users — resolve them via the admin API, service-role only.
-  // Kicked off immediately since it depends on nothing account-specific, not chained after it.
   const adminSupabase = createAdminClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
-  const authUsersPromise = listAllUsers(adminSupabase)
 
   const { data: userRecord } = await supabase.from('users').select('account_id, role').eq('id', user.id).single()
   const accountId = userRecord?.account_id
@@ -31,7 +28,6 @@ export default async function SettingsPage() {
     { data: brandKits },
     { data: templates },
     { data: domains },
-    authUsers,
   ] = await Promise.all([
     supabase
       .from('accounts')
@@ -62,9 +58,19 @@ export default async function SettingsPage() {
     supabase.from('brand_kits').select('id, source_reference').eq('account_id', accountId),
     supabase.from('templates').select('id, name').eq('account_id', accountId),
     supabase.from('domains').select('id, domain_name, cname_verified, ssl_issued').eq('account_id', accountId),
-    authUsersPromise,
   ])
-  const emailById = new Map(authUsers.map((u) => [u.id, u.email ?? '']))
+
+  // Resolve emails only for the specific, bounded set of IDs this page actually needs — not
+  // every signup on the whole platform (see DECISION_LOG.md for the listAllUsers() this
+  // replaces). The ID set isn't known until the queries above resolve, so this is a genuinely
+  // separate second wave, not folded into the Promise.all above.
+  const memberIds = (memberRows ?? []).map((m) => m.id)
+  const submitterIds = (pendingProposals ?? []).map((p) => p.submitted_by).filter((id): id is string => !!id)
+  const approverIds = (approvedProposals ?? []).map((p) => p.approved_by).filter((id): id is string => !!id)
+  const neededIds = Array.from(new Set([...memberIds, ...submitterIds, ...approverIds]))
+
+  const authUserResults = await Promise.all(neededIds.map((id) => adminSupabase.auth.admin.getUserById(id)))
+  const emailById = new Map(neededIds.map((id, i) => [id, authUserResults[i].data.user?.email ?? '']))
 
   const members = (memberRows ?? []).map((m) => ({ ...m, email: emailById.get(m.id) || '' }))
   const pendingApprovals = (pendingProposals ?? []).map((p) => ({
