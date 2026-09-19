@@ -28,7 +28,7 @@ export function IconButton({ icon = 'more-horizontal', size = 'md', variant = 'g
         border: variant === 'outline' ? '1px solid var(--border-strong)' : solid ? '1px solid var(--brand)' : '1px solid transparent',
         background: active && !solid ? 'var(--brand-22)' : hover && !disabled ? (solid ? 'var(--brand-deep)' : 'var(--brand-12)') : bgRest,
         color: fg, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1,
-        boxShadow: solid && hover && !disabled ? 'var(--shadow-brand)' : 'none',
+        boxShadow: solid && hover && !disabled ? 'var(--shadow-brand)' : undefined,
         transform: press ? 'scale(0.94)' : hover && !disabled ? 'translateY(-1px)' : 'none',
         transition: 'background var(--duration-base) var(--ease-standard),transform var(--duration-base) var(--ease-spring),color var(--duration-base) var(--ease-standard),box-shadow var(--duration-base) var(--ease-standard)',
         ...style,
