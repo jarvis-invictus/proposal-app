@@ -405,12 +405,12 @@ function RecommendedRow({ category, onBrowse }: { category: string; onBrowse: ()
   )
 }
 
-function RowMenu({ onClose, onDuplicate, onCopyLink, onExportPdf, onDelete, status, acceptedAt, onUnpublish }: {
+function RowMenu({ onClose, onDuplicate, onCopyLink, onExportPdf, onDelete, status, acceptedAt, onUnpublish, top }: {
   onClose: () => void; onDuplicate: () => void; onCopyLink: () => void; onExportPdf: () => void; onDelete: () => void
-  status: DashboardProposal['status']; acceptedAt: string | null; onUnpublish: () => void
+  status: DashboardProposal['status']; acceptedAt: string | null; onUnpublish: () => void; top?: number
 }) {
   return (
-    <Menu onClose={onClose}>
+    <Menu onClose={onClose} top={top}>
       <MenuRow icon="copy" onClick={(e) => { e.stopPropagation(); onDuplicate() }}>Duplicate as draft</MenuRow>
       <MenuRow icon="link" onClick={(e) => { e.stopPropagation(); onCopyLink() }}>Copy share link</MenuRow>
       <MenuRow icon="file-down" onClick={(e) => { e.stopPropagation(); onExportPdf() }}>Export PDF</MenuRow>

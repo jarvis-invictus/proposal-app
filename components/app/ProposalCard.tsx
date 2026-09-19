@@ -24,19 +24,45 @@ export interface ProposalCardProps extends React.HTMLAttributes<HTMLDivElement> 
   menu?: React.ReactNode;
 }
 
+interface MenuAnchor { top:number; right:number; phase:'measuring'|'ready'; flip:boolean; menuHeight:number }
+
+// Gap between the trigger's top edge and the menu, matching this app's own convention
+// (components/ui/SelectMenu.tsx uses the identical 8px clearance) — needed to compute the
+// flipped (upward-opening) offset from the real measured menu height.
+const FLIP_GAP=8;
+
 export function ProposalCard({title,client,updated,status='draft',statusLabel,value,onOpen,onMenu,menu,style,...rest}:ProposalCardProps){
   const [hover,setHover]=React.useState(false);
   const active=hover||!!menu;
+  const isOpen=!!menu;
   const wrapperRef=React.useRef<HTMLDivElement>(null);
-  const [menuAnchor,setMenuAnchor]=React.useState<{top:number;right:number}|null>(null);
+  const portalRef=React.useRef<HTMLDivElement>(null);
+  const [menuAnchor,setMenuAnchor]=React.useState<MenuAnchor|null>(null);
+
+  // Fresh open/close only — keyed on the stable `isOpen` boolean rather than `menu` itself,
+  // since `menu` is a new JSX reference on every unrelated parent re-render; keying on it
+  // directly would re-enter the 'measuring' (invisible) phase below on e.g. every keystroke
+  // in the dashboard search box while a menu is open, a new flicker this fix must not add.
   React.useLayoutEffect(()=>{
-    if(menu&&wrapperRef.current){
+    if(isOpen&&wrapperRef.current){
       const rect=wrapperRef.current.getBoundingClientRect();
-      setMenuAnchor({top:rect.top,right:window.innerWidth-rect.right});
+      setMenuAnchor({top:rect.top,right:window.innerWidth-rect.right,phase:'measuring',flip:false,menuHeight:0});
     } else {
       setMenuAnchor(null);
     }
-  },[menu]);
+  },[isOpen]);
+
+  // Second pass: now that the menu is mounted (invisible), measure its real height and decide
+  // whether it needs to flip upward. Runs once per open — the phase guard makes any later
+  // re-entry (from this same effect's own state update) a no-op, not an infinite loop.
+  React.useLayoutEffect(()=>{
+    if(!menuAnchor||menuAnchor.phase!=='measuring'||!portalRef.current)return;
+    const menuEl=portalRef.current.querySelector<HTMLElement>('[role="menu"]');
+    const menuHeight=menuEl?.getBoundingClientRect().height??0;
+    const flip=menuAnchor.top+menuHeight+FLIP_GAP>window.innerHeight;
+    setMenuAnchor({...menuAnchor,phase:'ready',flip,menuHeight});
+  },[menuAnchor]);
+
   return (
     <div {...rest} onClick={onOpen} onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}
       style={{display:'flex',flexDirection:'column',gap:12,cursor:'pointer',fontFamily:'var(--font-sans)',...style}}>
@@ -50,8 +76,11 @@ export function ProposalCard({title,client,updated,status='draft',statusLabel,va
             active={!!menu} onClick={e=>{e.stopPropagation();onMenu&&onMenu(e);}}/>
         </div>
         {menuAnchor&&menu&&createPortal(
-          <div style={{position:'fixed',top:menuAnchor.top,right:menuAnchor.right,zIndex:30}}>
-            {menu}
+          <div ref={portalRef} style={{position:'fixed',top:menuAnchor.top,right:menuAnchor.right,zIndex:30,
+            opacity:menuAnchor.phase==='measuring'?0:1,pointerEvents:menuAnchor.phase==='measuring'?'none':'auto'}}>
+            {menuAnchor.flip&&React.isValidElement(menu)
+              ?React.cloneElement(menu as React.ReactElement<{top?:number}>,{top:-(menuAnchor.menuHeight+FLIP_GAP)})
+              :menu}
           </div>,
           document.body
         )}
