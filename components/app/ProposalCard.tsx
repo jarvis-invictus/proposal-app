@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { Badge } from '../ui/Badge';
 import { IconButton } from '../ui/IconButton';
 
@@ -25,19 +26,35 @@ export interface ProposalCardProps extends React.HTMLAttributes<HTMLDivElement> 
 
 export function ProposalCard({title,client,updated,status='draft',statusLabel,value,onOpen,onMenu,menu,style,...rest}:ProposalCardProps){
   const [hover,setHover]=React.useState(false);
+  const active=hover||!!menu;
+  const wrapperRef=React.useRef<HTMLDivElement>(null);
+  const [menuAnchor,setMenuAnchor]=React.useState<{top:number;right:number}|null>(null);
+  React.useLayoutEffect(()=>{
+    if(menu&&wrapperRef.current){
+      const rect=wrapperRef.current.getBoundingClientRect();
+      setMenuAnchor({top:rect.top,right:window.innerWidth-rect.right});
+    } else {
+      setMenuAnchor(null);
+    }
+  },[menu]);
   return (
     <div {...rest} onClick={onOpen} onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}
       style={{display:'flex',flexDirection:'column',gap:12,cursor:'pointer',fontFamily:'var(--font-sans)',...style}}>
       <div style={{position:'relative',aspectRatio:'4 / 3',borderRadius:'var(--radius-card)',overflow:'hidden',
-        background:'var(--surface-card)',border:'1px solid '+(hover?'var(--brand)':'var(--border-hairline)'),
-        boxShadow:hover?'var(--shadow-brand)':'none',transform:hover?'var(--hover-lift)':'none',
+        background:'var(--surface-card)',border:'1px solid '+(active?'var(--brand)':'var(--border-hairline)'),
+        boxShadow:active?'var(--shadow-brand)':'none',transform:active?'var(--hover-lift)':'none',
         transition:'transform var(--duration-base) var(--ease-spring),box-shadow var(--duration-base) var(--ease-standard),border-color var(--duration-base) var(--ease-standard)'}}>
         <Thumb title={title} client={client} value={value}/>
-        <div style={{position:'absolute',top:10,right:10,zIndex:5}}>
+        <div ref={wrapperRef} style={{position:'absolute',top:10,right:10,zIndex:5}}>
           <IconButton icon="ellipsis" variant="outline" size="sm" label="Proposal options"
             active={!!menu} onClick={e=>{e.stopPropagation();onMenu&&onMenu(e);}}/>
-          {menu}
         </div>
+        {menuAnchor&&menu&&createPortal(
+          <div style={{position:'fixed',top:menuAnchor.top,right:menuAnchor.right,zIndex:30}}>
+            {menu}
+          </div>,
+          document.body
+        )}
       </div>
       <div style={{display:'flex',flexDirection:'column',gap:5}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>

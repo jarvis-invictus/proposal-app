@@ -30,8 +30,17 @@ export function Menu({
     ref.current?.querySelector<HTMLElement>(MENUITEM_SELECTOR)?.focus();
     const away=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))onClose&&onClose();};
     const esc=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose&&onClose();};
+    // Anchored via a rect captured once at open time (see ProposalCard.tsx) — a scroll or resize
+    // would otherwise leave the menu visually detached from its trigger with no live
+    // repositioning. Closing on either is the deliberately simple fix, not live re-anchoring.
+    // capture:true on 'scroll' is required: element scroll doesn't bubble, but capture still
+    // runs top-down through ancestors on the way to the target, so this closes the menu on a
+    // scroll anywhere on the page, not just a window-level one — intentional, not incidental.
+    const onInvalidate=()=>onClose&&onClose();
     document.addEventListener('mousedown',away);document.addEventListener('keydown',esc);
-    return()=>{document.removeEventListener('mousedown',away);document.removeEventListener('keydown',esc);};
+    document.addEventListener('scroll',onInvalidate,true);window.addEventListener('resize',onInvalidate);
+    return()=>{document.removeEventListener('mousedown',away);document.removeEventListener('keydown',esc);
+      document.removeEventListener('scroll',onInvalidate,true);window.removeEventListener('resize',onInvalidate);};
   },[open,onClose]);
   if(!open)return null;
   const handleKeyDown=(e:React.KeyboardEvent)=>{
