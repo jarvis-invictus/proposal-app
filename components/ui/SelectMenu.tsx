@@ -2,6 +2,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from './Icon';
+import { useDismissOnOutsideOrInvalidate } from '../../hooks/useDismissOnOutsideOrInvalidate';
 
 export type SelectOption = string | { value: string; label: React.ReactNode };
 
@@ -70,29 +71,12 @@ export function SelectMenu({ label, value, options = [], onSelect, icon, align =
     (selectedButton ?? listboxRef.current.querySelector<HTMLButtonElement>('button'))?.focus();
   }, [anchor?.phase]);
 
-  React.useEffect(() => {
-    if (!open) return;
-    // Now that the listbox portals to document.body, it's no longer a DOM descendant of
-    // containerRef — checking listboxRef too keeps a click on an option from reading as "outside".
-    const handleOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (containerRef.current?.contains(target) || listboxRef.current?.contains(target)) return;
-      setOpen(false);
-    };
-    // Anchored via a rect captured once at open time — a scroll or resize would otherwise leave
-    // the listbox visually detached from its trigger with no live repositioning. capture:true on
-    // 'scroll' is required: element scroll doesn't bubble, but capture still runs top-down
-    // through ancestors on the way to the target.
-    const onInvalidate = () => setOpen(false);
-    document.addEventListener('mousedown', handleOutside);
-    document.addEventListener('scroll', onInvalidate, true);
-    window.addEventListener('resize', onInvalidate);
-    return () => {
-      document.removeEventListener('mousedown', handleOutside);
-      document.removeEventListener('scroll', onInvalidate, true);
-      window.removeEventListener('resize', onInvalidate);
-    };
-  }, [open]);
+  // Outside-click (containerRef covers the trigger, listboxRef covers the portaled listbox —
+  // now that it portals to document.body, it's no longer a DOM descendant of containerRef) and
+  // scroll/resize-close — shared with Menu.tsx's identical logic via this hook. Escape/Tab stay
+  // in handleListboxKeyDown below, untouched: they differ for a real reason (listbox-scoped,
+  // bundled with arrow-nav, and refocus the trigger on close).
+  useDismissOnOutsideOrInvalidate(open, () => setOpen(false), [containerRef, listboxRef]);
 
   const handleListboxKeyDown = (e: React.KeyboardEvent) => {
     const buttons = Array.from(listboxRef.current?.querySelectorAll<HTMLButtonElement>('button') ?? []);
