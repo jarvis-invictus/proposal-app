@@ -8,14 +8,17 @@ export default async function TrashPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const shellInfo = await getAccountShellInfo(supabase)
-
-  const { data: rows } = await supabase
-    .from('proposals')
-    .select("id, slug, status, accepted_at, deleted_at, title:content->>title, client:content->>clientName")
-    .not('deleted_at', 'is', null)
-    .order('deleted_at', { ascending: false })
-    .limit(500)
+  // Neither query depends on the other's result — both are RLS-scoped with no explicit
+  // account filter needing input from the other side, so they run in parallel.
+  const [shellInfo, { data: rows }] = await Promise.all([
+    getAccountShellInfo(supabase),
+    supabase
+      .from('proposals')
+      .select("id, slug, status, accepted_at, deleted_at, title:content->>title, client:content->>clientName")
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false })
+      .limit(500),
+  ])
 
   const proposals: TrashProposal[] = (rows ?? []).map((p) => ({
     id: p.id,

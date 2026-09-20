@@ -12,14 +12,14 @@ export default async function TemplatesPage() {
     redirect('/login')
   }
 
-  const shellInfo = await getAccountShellInfo(supabase)
-
-  // RLS unions system defaults (is_system_default = true, publicly readable) with the
-  // account's own saved templates (account_id = get_account_id()) — no explicit filter needed.
-  const { data: rows, error } = await supabase
-    .from('templates')
-    .select('id, name, category, structure')
-    .order('name')
+  // Neither query depends on the other's result — both are RLS-scoped with no explicit filter
+  // needing input from the other side, so they run in parallel instead of sequentially.
+  const [shellInfo, { data: rows, error }] = await Promise.all([
+    getAccountShellInfo(supabase),
+    // RLS unions system defaults (is_system_default = true, publicly readable) with the
+    // account's own saved templates (account_id = get_account_id()) — no explicit filter needed.
+    supabase.from('templates').select('id, name, category, structure').order('name'),
+  ])
 
   if (error) {
     logError('Error fetching templates', error, { userId: userData.user.id })

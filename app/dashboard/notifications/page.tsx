@@ -8,14 +8,17 @@ export default async function NotificationsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: userRecord } = await supabase.from('users').select('role').eq('id', user.id).single()
-  const shellInfo = await getAccountShellInfo(supabase)
-
-  const { data: rows } = await supabase
-    .from('notifications')
-    .select('id, message, read, created_at, proposal_id, proposals(id, slug, status)')
-    .order('created_at', { ascending: false })
-    .limit(50)
+  // None of the three depends on either of the other two's result — all RLS-scoped or keyed
+  // only on the already-known user.id — so they run in one parallel wave.
+  const [{ data: userRecord }, shellInfo, { data: rows }] = await Promise.all([
+    supabase.from('users').select('role').eq('id', user.id).single(),
+    getAccountShellInfo(supabase),
+    supabase
+      .from('notifications')
+      .select('id, message, read, created_at, proposal_id, proposals(id, slug, status)')
+      .order('created_at', { ascending: false })
+      .limit(50),
+  ])
 
   const notifications: NotificationRow[] = (rows ?? []).map((n: any) => ({
     id: n.id,
