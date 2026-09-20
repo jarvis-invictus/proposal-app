@@ -14,12 +14,17 @@ export interface MenuProps extends React.HTMLAttributes<HTMLDivElement> {
   width?: number;
   /** Offset below the anchor. */
   top?: number;
+  /** Excluded from the outside-click check. The panel is portaled to document.body, so it has
+   * no DOM knowledge of its own trigger — without this, a mousedown on the trigger reads as
+   * "outside" and closes the menu before the paired click's own toggle runs, which then
+   * reopens it against the already-mutated state. */
+  triggerRef?: React.RefObject<HTMLElement | null>;
 }
 
 const MENUITEM_SELECTOR = '[role="menuitem"]:not([disabled])';
 
 export function Menu({
-  open=true,onClose,align='right',width=210,top=36,children,style,...rest
+  open=true,onClose,align='right',width=210,top=36,triggerRef,children,style,...rest
 }:MenuProps){
   const ref=React.useRef<HTMLDivElement>(null);
   React.useEffect(()=>{
@@ -28,7 +33,11 @@ export function Menu({
     // has nothing to move focus relative to, since opening a menu doesn't move focus anywhere
     // by itself.
     ref.current?.querySelector<HTMLElement>(MENUITEM_SELECTOR)?.focus();
-    const away=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))onClose&&onClose();};
+    const away=(e:MouseEvent)=>{
+      const target=e.target as Node;
+      const insideTrigger=!!triggerRef?.current&&triggerRef.current.contains(target);
+      if(ref.current&&!ref.current.contains(target)&&!insideTrigger)onClose&&onClose();
+    };
     const esc=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose&&onClose();};
     // Anchored via a rect captured once at open time (see ProposalCard.tsx) — a scroll or resize
     // would otherwise leave the menu visually detached from its trigger with no live

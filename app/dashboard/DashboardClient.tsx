@@ -405,12 +405,13 @@ function RecommendedRow({ category, onBrowse }: { category: string; onBrowse: ()
   )
 }
 
-function RowMenu({ onClose, onDuplicate, onCopyLink, onExportPdf, onDelete, status, acceptedAt, onUnpublish, top }: {
+function RowMenu({ onClose, onDuplicate, onCopyLink, onExportPdf, onDelete, status, acceptedAt, onUnpublish, top, triggerRef }: {
   onClose: () => void; onDuplicate: () => void; onCopyLink: () => void; onExportPdf: () => void; onDelete: () => void
   status: DashboardProposal['status']; acceptedAt: string | null; onUnpublish: () => void; top?: number
+  triggerRef?: React.RefObject<HTMLElement | null>
 }) {
   return (
-    <Menu onClose={onClose} top={top}>
+    <Menu onClose={onClose} top={top} triggerRef={triggerRef}>
       <MenuRow icon="copy" onClick={(e) => { e.stopPropagation(); onDuplicate() }}>Duplicate as draft</MenuRow>
       <MenuRow icon="link" onClick={(e) => { e.stopPropagation(); onCopyLink() }}>Copy share link</MenuRow>
       <MenuRow icon="file-down" onClick={(e) => { e.stopPropagation(); onExportPdf() }}>Export PDF</MenuRow>

@@ -78,8 +78,9 @@ export function ProposalCard({title,client,updated,status='draft',statusLabel,va
         {menuAnchor&&menu&&createPortal(
           <div ref={portalRef} style={{position:'fixed',top:menuAnchor.top,right:menuAnchor.right,zIndex:30,
             opacity:menuAnchor.phase==='measuring'?0:1,pointerEvents:menuAnchor.phase==='measuring'?'none':'auto'}}>
-            {menuAnchor.flip&&React.isValidElement(menu)
-              ?React.cloneElement(menu as React.ReactElement<{top?:number}>,{top:-(menuAnchor.menuHeight+FLIP_GAP)})
+            {React.isValidElement(menu)
+              ?React.cloneElement(menu as React.ReactElement<{top?:number;triggerRef?:React.RefObject<HTMLElement|null>}>,
+                  menuAnchor.flip?{top:-(menuAnchor.menuHeight+FLIP_GAP),triggerRef:wrapperRef}:{triggerRef:wrapperRef})
               :menu}
           </div>,
           document.body
