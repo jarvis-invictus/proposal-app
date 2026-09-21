@@ -8,6 +8,11 @@ import { sendEmail } from '@/lib/email'
 import { TeamInviteEmail } from '@/emails/TeamInviteEmail'
 import { validateSubdomain } from '@/lib/publicUrl'
 import { env } from '@/env'
+import { logError } from '@/lib/logging'
+import { isBetaAiEngineEnabled } from '@/lib/betaFlags'
+import { resolveBrandKit } from '@/lib/brand-extraction/prompt'
+import { generateAndPublishPage, GenerationFailedError } from '@/lib/ai/generateAndPublishPage'
+import type { ProposalType } from '@/lib/schema/proposal'
 
 async function requireAccount() {
   const supabase = await createClient()
@@ -97,18 +102,42 @@ export async function changeMemberRole({ userId, role }: { userId: string; role:
   revalidatePath('/dashboard/settings')
 }
 
-export async function approveProposal(proposalId: string) {
-  const { supabase, user, role } = await requireAccount()
+/** The second of two real "goes live" transitions to PUBLISHED (the other is
+ * app/api/proposals/[id]/publish/route.ts, for an owner/approver publishing directly) — a
+ * drafter's PENDING_APPROVAL submission only actually becomes live here, so this is the real spot
+ * that path's own Core Engine V2 generation call belongs, not the earlier submit step (content
+ * can still change via "Request changes" before this point). Same reasoning as the other path:
+ * never lets a generation failure block the actual publish (the status update is the real,
+ * reliable guarantee), reports the outcome back instead of swallowing it — see the return type. */
+export async function approveProposal(proposalId: string): Promise<{ aiPageGenerated: boolean; aiPageError: string | null }> {
+  const { supabase, user, role, accountId } = await requireAccount()
   if (role !== 'owner' && role !== 'approver') throw new Error('Only an owner or approver can release a proposal')
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('proposals')
     .update({ status: 'PUBLISHED', approved_by: user.id, approved_at: new Date().toISOString() })
     .eq('id', proposalId)
     .eq('status', 'PENDING_APPROVAL')
+    .select('id, content, brand_kit_id')
+    .maybeSingle()
   if (error) throw new Error(error.message)
   revalidatePath('/dashboard/settings')
   revalidatePath('/dashboard/notifications')
   revalidatePath('/dashboard')
+
+  let aiPageGenerated = false
+  let aiPageError: string | null = null
+  if (updated && isBetaAiEngineEnabled(accountId)) {
+    try {
+      const { data: accountRow } = await supabase.from('accounts').select('currency').eq('id', accountId).single()
+      const brandKit = await resolveBrandKit(accountId, updated.brand_kit_id)
+      await generateAndPublishPage(updated.id, updated.content as ProposalType, brandKit, accountRow?.currency || 'USD')
+      aiPageGenerated = true
+    } catch (genError) {
+      aiPageError = genError instanceof GenerationFailedError ? genError.message : 'Something went wrong generating the AI page design.'
+      logError('AI page generation failed during approve-and-publish', genError, { proposalId })
+    }
+  }
+  return { aiPageGenerated, aiPageError }
 }
 
 export async function requestChanges(proposalId: string) {

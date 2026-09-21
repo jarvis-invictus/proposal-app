@@ -1,34 +1,21 @@
 import { NextResponse } from 'next/server'
-import { parse } from 'node-html-parser'
 import { createClient } from '@/lib/supabase/server'
 import { getAccountContext } from '@/lib/accountContext'
 import { isBetaAiEngineEnabled } from '@/lib/betaFlags'
 import { resolveBrandKit } from '@/lib/brand-extraction/prompt'
-import { flattenProposalFacts } from '@/lib/ai/flattenProposalFacts'
-import { computeDueDateFact } from '@/lib/ai/computeDueDateFact'
-import { buildGenericCodegenPrompt, resolveDisplayFonts } from '@/lib/ai/genericCodegenPrompt'
-import { runStageText } from '@/lib/ai/harness'
-import { stripCodeFence } from '@/lib/ai/stripCodeFence'
-import { genericVerifyFields } from '@/lib/ai/genericVerifyFields'
-import { genericInjectFields } from '@/lib/ai/genericInjectFields'
-import { verifyHeadingFontUsage } from '@/lib/ai/verifyHeadingFont'
-import { attemptGenericAutoRepair, checkAcceptAction, looksTruncated } from '@/lib/ai/genericAutoRepair'
-import { compileTailwindForHtml, buildFinalArtifact } from '@/lib/ai/compileTailwind'
-import { googleFontsHref } from '@/lib/webfonts'
-import { publishGeneratedPage } from '@/lib/ai/publishGeneratedPage'
+import { generateAndPublishPage, GenerationFailedError } from '@/lib/ai/generateAndPublishPage'
 import { logError } from '@/lib/logging'
 import type { ProposalType } from '@/lib/schema/proposal'
 
-const INITIAL_MAX_OUTPUT_TOKENS = 8000
-const RETRY_MAX_OUTPUT_TOKENS = 14000
+export const maxDuration = 60
 
-/** Real integration point for the generic fact-addressing mechanism (docs/PROJECT_ROADMAP.md §6,
- * sub-piece 6 — the actual cutover, retiring mapProposalToDealFacts's role here). Feature-flagged,
- * checked server-side (not just a hidden UI button) so a direct request from a non-flagged account
- * is genuinely refused, not merely hidden. Every generic pipeline call below is the exact,
- * unmodified function every dev proof route (sub-pieces 1-5) already proved — the only new logic
- * in this route is appending one computed due-date fact and the truncation-check-and-retry on the
- * initial generation, matching every real generation call site elsewhere in this project. */
+/** Thin wrapper around lib/ai/generateAndPublishPage.ts's real pipeline (docs/PROJECT_ROADMAP.md
+ * §6, sub-piece 6) — the pipeline itself moved there so app/api/proposals/[id]/publish/route.ts
+ * and approveProposal() (app/dashboard/settings/actions.ts) can call the exact same
+ * implementation instead of a second copy. This route's own job is now just: auth, the
+ * feature-flag gate (checked server-side, not just a hidden UI button, so a direct request from a
+ * non-flagged account is genuinely refused), fetching the proposal, and shaping the response —
+ * unchanged from before the extraction. */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const account = await getAccountContext()
@@ -53,59 +40,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try {
     const brandKit = await resolveBrandKit(account.accountId, proposal.brand_kit_id)
     const content = proposal.content as ProposalType
-
-    const facts = flattenProposalFacts(content, account.currency)
-    facts.push(computeDueDateFact(content))
-
-    const prompt = buildGenericCodegenPrompt(facts, brandKit)
-
-    let result = await runStageText('codegen', { prompt, maxOutputTokens: INITIAL_MAX_OUTPUT_TOKENS })
-    let html = stripCodeFence(result.text)
-    if (looksTruncated(html)) {
-      result = await runStageText('codegen', { prompt, maxOutputTokens: RETRY_MAX_OUTPUT_TOKENS })
-      html = stripCodeFence(result.text)
-    }
-
-    let root = parse(html)
-    let report = genericVerifyFields(root, facts)
-    let acceptAction = checkAcceptAction(root)
-
-    if (!report.every((r) => r.present) || !acceptAction.exactlyOne) {
-      const repair = await attemptGenericAutoRepair(html, facts, brandKit, report, acceptAction)
-      html = repair.html
-      report = repair.report
-      acceptAction = repair.acceptAction
-      if (!report.every((r) => r.present) || !acceptAction.exactlyOne) {
-        return NextResponse.json(
-          { error: 'Could not generate a valid page for this proposal after repair attempts.', report, acceptAction },
-          { status: 500 }
-        )
-      }
-    }
-
-    const finalRoot = parse(html)
-    const htmlAfterInjection = genericInjectFields(finalRoot, facts)
-    const compiledCss = await compileTailwindForHtml(htmlAfterInjection)
-    const fontLinkHref = googleFontsHref([brandKit?.fonts?.heading, brandKit?.fonts?.body])
-    const displayFonts = resolveDisplayFonts(brandKit)
-    const finalHtml = buildFinalArtifact(htmlAfterInjection, compiledCss, fontLinkHref, displayFonts)
-
-    // Real, code-level confirmation that the codegen prompt's font-discipline rule actually
-    // took — checks the real class tokens AND that .heading-font/--font-heading resolve to the
-    // expected font in the document's own <style> blocks, not a substring search over markup
-    // text (see verifyHeadingFont.ts for the real bug that distinction fixes). Advisory only
-    // (design quality, not a missing fact), so it logs rather than blocks.
-    const headingFontReport = verifyHeadingFontUsage(finalHtml, displayFonts.heading)
-    if (headingFontReport.missing.length > 0 || !headingFontReport.cssVariableResolved) {
-      console.warn(`[beta-ai-page] heading font check failed — ${headingFontReport.missing.length}/${headingFontReport.total} heading(s) missing the class, cssVariableResolved=${headingFontReport.cssVariableResolved}`, { proposalId: id, missing: headingFontReport.missing, resolvedFontFamily: headingFontReport.resolvedFontFamily })
-    }
-
-    const published = await publishGeneratedPage(proposal.id, {
-      html: finalHtml,
-      provider: result.provider,
-      model: result.model,
-      usedFallback: result.usedFallback,
-    })
+    const published = await generateAndPublishPage(proposal.id, content, brandKit, account.currency)
 
     return NextResponse.json({
       version: published.version,
@@ -113,6 +48,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       previewPath: `/${proposal.slug}`,
     })
   } catch (error) {
+    if (error instanceof GenerationFailedError) {
+      return NextResponse.json({ error: error.message, report: error.report, acceptAction: error.acceptAction }, { status: 500 })
+    }
     logError('Beta AI page generation failed', error, { proposalId: id })
     return NextResponse.json({ error: 'Something went wrong generating the beta page.' }, { status: 500 })
   }

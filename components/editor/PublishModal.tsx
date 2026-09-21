@@ -118,6 +118,12 @@ export function PublishModal({
   const [error, setError] = React.useState('')
   const [resultStatus, setResultStatus] = React.useState<'PUBLISHED' | 'PENDING_APPROVAL' | null>(null)
   const [copied, setCopied] = React.useState(false)
+  // Real failure mode, must not be silent: the publish route also attempts Core Engine V2
+  // generation for beta-enabled accounts, awaited in the same request. aiPageError is only ever
+  // set when that was genuinely attempted and failed (see app/api/proposals/[id]/publish/
+  // route.ts) — non-beta accounts and accounts where generation isn't attempted get null here,
+  // so this is never shown as noise to someone who was never getting the AI page anyway.
+  const [aiPageError, setAiPageError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     if (open) { setStage(proposalStatus === 'PUBLISHED' ? 'manage' : 'review'); setError(''); setCopied(false) }
@@ -142,6 +148,7 @@ export function PublishModal({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to publish')
       setResultStatus(data.status)
+      setAiPageError(data.aiPageError || null)
       setStage('result')
       onPublished({ status: data.status, slug: data.slug })
     } catch (err: any) {
@@ -203,6 +210,15 @@ export function PublishModal({
               }}>
                 <Icon name="link" size={15} color="var(--brand-deep)" />{publicUrl}
               </div>
+              {aiPageError && (
+                <div style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 10, padding: '13px 15px', borderRadius: 'var(--radius-sm)',
+                  background: 'var(--status-caution-surface)', border: '1px solid var(--status-caution-border)', fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)',
+                }}>
+                  <Icon name="triangle-alert" size={15} style={{ marginTop: 1, flex: 'none' }} />
+                  <span>The new AI page design didn&apos;t generate this time ({aiPageError}) — your client will see the standard proposal layout instead. The link above is still real and live.</span>
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Badge tone="sent">Sent</Badge>
                 <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>You&apos;ll be notified the moment they open it.</span>

@@ -22,6 +22,29 @@ const getProposalBySlug = cache(async (slug: string) => {
     .single()
 })
 
+// Real bug this session found and closed: Publish never called Core Engine V2, so this route
+// always rendered proposal.content through the classic block template, regardless of whether a
+// generated_pages row existed for the proposal. Publish (app/api/proposals/[id]/publish/route.ts)
+// and approveProposal() (app/dashboard/settings/actions.ts) now both attempt real generation at
+// the actual "goes live" moment — this is the other half: serve what they produced, when they
+// produced it. generated_pages has no anon/authenticated grants (service-role only, by design —
+// see its migration), so this needs the same admin client getProposalBySlug already uses, not the
+// request-scoped one. Falls back to the classic render below whenever no row exists — every
+// non-beta proposal, plus a beta one where generation hasn't run yet or failed (see the
+// aiPageError handling on the publish paths above, which is exactly what makes that failure
+// visible to the person who published, not just an invisible fallback here).
+const getLatestGeneratedPage = cache(async (proposalId: string) => {
+  const adminSupabase = createSupabaseClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
+  return adminSupabase
+    .from('generated_pages')
+    .select('html')
+    .eq('proposal_id', proposalId)
+    .not('published_at', 'is', null)
+    .order('version', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+})
+
 // Also cache()-deduped — both generateMetadata and the page component need to know whether the
 // current visitor is the owning account, and this was previously computed twice (or, in
 // generateMetadata's case, never at all — see the comment below).
@@ -121,6 +144,29 @@ export default async function PublicProposalPage({ params }: { params: Promise<{
 
   // Never ship the hash to the client, even for the owner's own preview.
   const { password_hash: _password_hash, ...proposalForClient } = proposal
+
+  // Checked only after every gate above (archived/draft/password) has already decided WHO may
+  // see this page — this only ever changes WHAT they see once that's settled, for both a real
+  // visitor and the owner's own preview alike (consistent with them otherwise seeing the same
+  // classic render below).
+  const { data: generatedPage } = await getLatestGeneratedPage(proposal.id)
+  if (generatedPage?.html) {
+    // Same origin-isolation this app already researched and human-verified (docs/DECISION_LOG.md,
+    // Phase 1 sub-piece 4): sandbox="allow-scripts" ALONE (no allow-same-origin) gives the framed
+    // document an opaque/null origin — it cannot read this page's cookies or DOM. This remains
+    // acceptable only because generation itself stays gated behind isBetaAiEngineEnabled
+    // (currently exactly one trusted account) — see that gate's own comment for why a second
+    // account must not be added without first building the real subdomain-based isolation it
+    // already flags as still outstanding.
+    return (
+      <iframe
+        title={proposalForClient.content?.title || 'Proposal'}
+        sandbox="allow-scripts"
+        srcDoc={generatedPage.html}
+        style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', border: 'none' }}
+      />
+    )
+  }
 
   return (
     <PublicProposalView

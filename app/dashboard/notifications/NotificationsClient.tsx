@@ -36,6 +36,11 @@ export function NotificationsClient({
   const router = useRouter()
   const [items, setItems] = React.useState(notifications)
   const [approvingId, setApprovingId] = React.useState<string | null>(null)
+  // Visible flag for a real failure mode, not a silent one: approveProposal() also attempts Core
+  // Engine V2 generation for beta-enabled accounts, and a failure there must not read as "nothing
+  // happened" — the proposal really is live (on the standard template), but the AI-designed page
+  // didn't generate this time. Keyed by proposal id so it only shows against the item just acted on.
+  const [aiPageWarning, setAiPageWarning] = React.useState<{ proposalId: string; message: string } | null>(null)
   const canApprove = myRole === 'owner' || myRole === 'approver'
 
   const markRead = (id: string) => {
@@ -53,9 +58,11 @@ export function NotificationsClient({
   const handleApprove = async (n: NotificationRow) => {
     if (!n.proposalId) return
     setApprovingId(n.id)
+    setAiPageWarning(null)
     try {
-      await approveProposal(n.proposalId)
+      const { aiPageError } = await approveProposal(n.proposalId)
       setItems((prev) => prev.map((item) => (item.proposalId === n.proposalId ? { ...item, proposalStatus: 'PUBLISHED' } : item)))
+      if (aiPageError) setAiPageWarning({ proposalId: n.proposalId, message: aiPageError })
     } catch (err) {
       logError('Failed to approve proposal', err, { proposalId: n.proposalId })
     } finally {
@@ -92,6 +99,12 @@ export function NotificationsClient({
                       {!n.read && <Badge tone="new">New</Badge>}
                     </div>
                     <div style={{ marginTop: 3, fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{relativeTime(n.createdAt)}</div>
+                    {aiPageWarning?.proposalId === n.proposalId && (
+                      <div style={{ marginTop: 8, display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 'var(--text-sm)', color: 'var(--status-caution-text)' }}>
+                        <Icon name="triangle-alert" size={14} style={{ marginTop: 2, flex: 'none' }} />
+                        <span>Published, but the AI page design didn&apos;t generate ({aiPageWarning.message}) — the client sees the standard template instead.</span>
+                      </div>
+                    )}
                   </div>
                   {showApprove && (
                     <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
