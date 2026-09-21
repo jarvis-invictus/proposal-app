@@ -159,6 +159,18 @@ All of the above is committed and live on production.
   engine styled with real brand colors/fonts instead of the plain
   fallback.
 
+### 2.5 Recycle bin / soft-delete — shipped
+
+Built, shipped, and verified end-to-end on both local dev and
+production as of 2026-09-11 (full detail and real evidence in
+`docs/DECISION_LOG.md`). Soft-delete via a `deleted_at` column on
+`proposals` (uniform across all statuses); signed proposals can be
+soft-deleted but can never be permanently purged, enforced by both a
+DB trigger and an app-level guard; a new `/dashboard/trash` view
+lists trashed proposals with Restore and Delete Permanently actions;
+no auto-purge — manual empty only, since the app has no
+scheduled-job infrastructure.
+
 ---
 
 ## 3. The core product-thinking mistake to actively avoid going forward
