@@ -6,13 +6,15 @@ import { isBetaAiEngineEnabled } from '@/lib/betaFlags'
 import { resolveBrandKit } from '@/lib/brand-extraction/prompt'
 import { flattenProposalFacts } from '@/lib/ai/flattenProposalFacts'
 import { computeDueDateFact } from '@/lib/ai/computeDueDateFact'
-import { buildGenericCodegenPrompt } from '@/lib/ai/genericCodegenPrompt'
+import { buildGenericCodegenPrompt, resolveDisplayFonts } from '@/lib/ai/genericCodegenPrompt'
 import { runStageText } from '@/lib/ai/harness'
 import { stripCodeFence } from '@/lib/ai/stripCodeFence'
 import { genericVerifyFields } from '@/lib/ai/genericVerifyFields'
 import { genericInjectFields } from '@/lib/ai/genericInjectFields'
+import { verifyHeadingFontUsage } from '@/lib/ai/verifyHeadingFont'
 import { attemptGenericAutoRepair, checkAcceptAction, looksTruncated } from '@/lib/ai/genericAutoRepair'
 import { compileTailwindForHtml, buildFinalArtifact } from '@/lib/ai/compileTailwind'
+import { googleFontsHref } from '@/lib/webfonts'
 import { publishGeneratedPage } from '@/lib/ai/publishGeneratedPage'
 import { logError } from '@/lib/logging'
 import type { ProposalType } from '@/lib/schema/proposal'
@@ -84,7 +86,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const finalRoot = parse(html)
     const htmlAfterInjection = genericInjectFields(finalRoot, facts)
     const compiledCss = await compileTailwindForHtml(htmlAfterInjection)
-    const finalHtml = buildFinalArtifact(htmlAfterInjection, compiledCss)
+    const fontLinkHref = googleFontsHref([brandKit?.fonts?.heading, brandKit?.fonts?.body])
+    const displayFonts = resolveDisplayFonts(brandKit)
+    const finalHtml = buildFinalArtifact(htmlAfterInjection, compiledCss, fontLinkHref, displayFonts)
+
+    // Real, code-level confirmation that the codegen prompt's font-discipline rule actually
+    // took — checks the real class tokens AND that .heading-font/--font-heading resolve to the
+    // expected font in the document's own <style> blocks, not a substring search over markup
+    // text (see verifyHeadingFont.ts for the real bug that distinction fixes). Advisory only
+    // (design quality, not a missing fact), so it logs rather than blocks.
+    const headingFontReport = verifyHeadingFontUsage(finalHtml, displayFonts.heading)
+    if (headingFontReport.missing.length > 0 || !headingFontReport.cssVariableResolved) {
+      console.warn(`[beta-ai-page] heading font check failed — ${headingFontReport.missing.length}/${headingFontReport.total} heading(s) missing the class, cssVariableResolved=${headingFontReport.cssVariableResolved}`, { proposalId: id, missing: headingFontReport.missing, resolvedFontFamily: headingFontReport.resolvedFontFamily })
+    }
 
     const published = await publishGeneratedPage(proposal.id, {
       html: finalHtml,

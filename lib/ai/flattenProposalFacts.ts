@@ -28,9 +28,17 @@ function moneyDisplay(amount: number, currency: string): string {
  * plausible-looking value for. `genericInjectFields`/`genericVerifyFields` need no awareness of
  * this: they already operate purely on `displayValue`, so a not-provided leaf's placeholder gets
  * force-injected the exact same way a wrong real value would be corrected. A literal `0` on any
- * price field (`originalPrice` included) is always a real, provided value, never treated as
- * "blank" — confirmed decision: a genuinely free package/add-on misreading as "Pricing to be
- * confirmed" is a worse, client-facing inaccuracy than a visible $0 a human would catch. */
+ * price field is always a real, provided value, never treated as "blank" — confirmed decision: a
+ * genuinely free package/add-on misreading as "Pricing to be confirmed" is a worse, client-facing
+ * inaccuracy than a visible $0 a human would catch.
+ *
+ * `packages[i].originalPrice` is the one deliberate exception to that rule, not a leaf at all:
+ * it's an optional "was there a real discount" fact, not a required price field, so it's only
+ * pushed when non-null AND genuinely higher than discountedPrice (see `pushOriginalPrice` below).
+ * Anything else — null, a literal 0, or a bogus value `correctPricing` should have already caught
+ * — is skipped entirely, not pushed with a placeholder, so the generation prompt's "every fact
+ * below must appear as real content" rule never forces a "$0" or "Pricing to be confirmed"
+ * strikethrough line onto a package that has no actual discount. */
 export function flattenProposalFacts(content: ProposalType, currency: string): FlatFact[] {
   const facts: FlatFact[] = []
 
@@ -49,6 +57,14 @@ export function flattenProposalFacts(content: ProposalType, currency: string): F
       facts.push({ path, provided: true, value, displayValue: moneyDisplay(value, currency) })
     }
   }
+  // See the file-level comment above — originalPrice only becomes a fact (and thus only gets
+  // forced onto the generated page) when it's a genuine discount. Anything else is skipped, not
+  // pushed with `provided: false`, since there is no honest placeholder for "no discount" that
+  // belongs in a rendered strikethrough line.
+  const pushOriginalPrice = (path: string, original: number | undefined | null, discounted: number | undefined) => {
+    if (original == null || typeof discounted !== 'number' || original <= discounted) return
+    facts.push({ path, provided: true, value: original, displayValue: moneyDisplay(original, currency) })
+  }
 
   pushString('title', content.title)
   pushString('clientName', content.clientName)
@@ -60,7 +76,7 @@ export function flattenProposalFacts(content: ProposalType, currency: string): F
   content.packages?.forEach((pkg, i) => {
     pushString(`packages[${i}].name`, pkg.name)
     pushString(`packages[${i}].description`, pkg.description)
-    pushMoney(`packages[${i}].originalPrice`, pkg.originalPrice)
+    pushOriginalPrice(`packages[${i}].originalPrice`, pkg.originalPrice, pkg.discountedPrice)
     pushMoney(`packages[${i}].discountedPrice`, pkg.discountedPrice)
     pkg.deliverables?.forEach((d, j) => pushString(`packages[${i}].deliverables[${j}]`, d))
   })

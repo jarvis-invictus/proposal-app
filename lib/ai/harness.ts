@@ -1,12 +1,34 @@
 import { anthropic } from '@ai-sdk/anthropic'
 import { openai } from '@ai-sdk/openai'
-import { generateObject, generateText } from 'ai'
+import { generateObject, generateText, LoadAPIKeyError } from 'ai'
 import type { ZodType } from 'zod'
 import { getStageConfig, type StageProvider } from '@/lib/ai/stageConfig'
 import { logAiProvider, logError } from '@/lib/logging'
 
 function resolveModel(provider: StageProvider, model: string) {
   return provider === 'anthropic' ? anthropic(model) : openai(model)
+}
+
+/** `ANTHROPIC_API_KEY` is deliberately unset in production (Sahil's own call, Anthropic API
+ * budget — confirmed 2026-09-20, not a misconfiguration to fix) — every primary attempt fails
+ * this way, on purpose, and always will until that changes. Routes that through a distinct,
+ * expected-outcome log line instead of `logError`'s error-level path, so this known, intentional
+ * gap can never again be mistaken for (or bury) a genuine Claude API failure — a real auth/rate
+ * limit/timeout error still goes through `logError` below, unchanged. */
+function logPrimarySkippedOrFailed(stage: string, provider: StageProvider, model: string, primaryError: unknown) {
+  if (LoadAPIKeyError.isLoadAPIKeyError(primaryError)) {
+    console.log(`[ai-harness] ${stage} primary skipped — no API key configured for ${provider} (expected, not an error)`)
+    return
+  }
+  // Structured, not just the raw error object — a viewer scanning Vercel's function logs or
+  // Sentry (once NEXT_PUBLIC_SENTRY_DSN is actually set, see sentry.server.config.ts) can see
+  // errorName/errorMessage directly without expanding a stack trace.
+  logError(`[ai-harness] ${stage} primary failed, retrying fallback`, primaryError, {
+    provider,
+    model,
+    errorName: primaryError instanceof Error ? primaryError.name : typeof primaryError,
+    errorMessage: primaryError instanceof Error ? primaryError.message : String(primaryError),
+  })
 }
 
 /** Runs one pipeline stage through the Claude-primary/OpenAI-fallback harness
@@ -30,10 +52,7 @@ export async function runStage<T>(
     logAiProvider(stage, config.primary.provider, config.primary.model, false)
     return { object, provider: config.primary.provider, model: config.primary.model, usedFallback: false }
   } catch (primaryError) {
-    logError(`[ai-harness] ${stage} primary failed, retrying fallback`, primaryError, {
-      provider: config.primary.provider,
-      model: config.primary.model,
-    })
+    logPrimarySkippedOrFailed(stage, config.primary.provider, config.primary.model, primaryError)
 
     const { object } = await generateObject({
       model: resolveModel(config.fallback.provider, config.fallback.model),
@@ -69,10 +88,7 @@ export async function runStageText(
     logAiProvider(stage, config.primary.provider, config.primary.model, false)
     return { text, provider: config.primary.provider, model: config.primary.model, usedFallback: false, usage }
   } catch (primaryError) {
-    logError(`[ai-harness] ${stage} primary failed, retrying fallback`, primaryError, {
-      provider: config.primary.provider,
-      model: config.primary.model,
-    })
+    logPrimarySkippedOrFailed(stage, config.primary.provider, config.primary.model, primaryError)
 
     const { text, usage } = await generateText({
       model: resolveModel(config.fallback.provider, config.fallback.model),

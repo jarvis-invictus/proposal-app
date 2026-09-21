@@ -8,6 +8,29 @@ export type BrandKitContext = {
   personality: string | null
 }
 
+// System-font-stack tokens, not real declared brand fonts — a real, confirmed extraction defect
+// (Firecrawl's own branding-scrape response, not this codebase's code) has produced these
+// verbatim as fonts.heading/fonts.body. Using one directly as a CSS font-family value doesn't
+// fail cleanly: several of these (e.g. "Apple Color Emoji") are genuinely installed system fonts,
+// so the browser successfully resolves them — just with no real glyphs for ordinary Latin text,
+// rendering as garbled, wide-spaced text rather than falling through to a sane default.
+const REJECTED_FONT_TOKENS = new Set([
+  '-apple-system', 'blinkmacsystemfont', 'system-ui', 'segoe ui', 'apple color emoji',
+  'segoe ui emoji', 'segoe ui symbol', 'noto color emoji', 'ui-sans-serif', 'ui-serif',
+  'ui-monospace', 'sans-serif', 'serif', 'monospace', 'none', '',
+])
+
+/** Rejects system-font-stack tokens and placeholder strings a brand kit's stored font value
+ * should never be used as-is — see REJECTED_FONT_TOKENS. Falls back to `undefined` on rejection
+ * so every existing caller's own default (e.g. genericCodegenPrompt.ts's `|| 'Georgia'`) still
+ * runs, rather than this function inventing a new fallback. */
+export function sanitizeFontName(name: string | null | undefined): string | undefined {
+  if (!name) return undefined
+  const normalized = name.trim().toLowerCase()
+  if (REJECTED_FONT_TOKENS.has(normalized)) return undefined
+  return name.trim()
+}
+
 /** Server-side only. Re-resolves a brand kit by id, scoped to the caller's own account, rather
  * than trusting client-supplied color/font values verbatim. Returns null if the kit doesn't
  * exist, doesn't belong to this account, or no account/kit id was given at all. */
@@ -21,7 +44,15 @@ export async function resolveBrandKit(accountId: string | null, brandKitId: unkn
       .eq('id', brandKitId)
       .eq('account_id', accountId)
       .maybeSingle()
-    return (data as BrandKitContext) ?? null
+    if (!data) return null
+    const kit = data as BrandKitContext
+    return {
+      ...kit,
+      fonts: {
+        heading: sanitizeFontName(kit.fonts?.heading),
+        body: sanitizeFontName(kit.fonts?.body),
+      },
+    }
   } catch {
     return null
   }

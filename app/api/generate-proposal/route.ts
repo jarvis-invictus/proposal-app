@@ -86,7 +86,7 @@ ${contextBlock}`;
         model: openai(AI_MODEL),
         schema: PackagesSchema,
         prompt: buildPrompt('packages and add-ons', `- Typically 2-3 packages, unless the summary clearly calls for a different count.
-- originalPrice must be 0 unless the deal facts explicitly mention a discount, promo, or prior price for that package — never fabricate a markup just to show a crossed-out price. When a real discount is mentioned, originalPrice must be higher than discountedPrice.
+- originalPrice must be null unless the deal facts explicitly mention a discount, promo, or prior price for that package — never fabricate a markup just to show a crossed-out price, and never use 0 as a stand-in for null. When a real discount is mentioned, originalPrice must be higher than discountedPrice.
 - Ensure description text sounds professional and persuasive.`),
         maxTokens: 3000,
         abortSignal: AbortSignal.timeout(SECTION_TIMEOUT_MS),

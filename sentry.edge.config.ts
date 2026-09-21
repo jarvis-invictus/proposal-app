@@ -8,6 +8,7 @@ if (dsn) {
     tracesSampleRate: 0.1,
     debug: false,
   })
-} else if (process.env.NODE_ENV !== 'production') {
+} else {
+  // See sentry.server.config.ts for why this warning is no longer suppressed in production.
   console.warn('[sentry] NEXT_PUBLIC_SENTRY_DSN not set — edge runtime error tracking is disabled.')
 }
