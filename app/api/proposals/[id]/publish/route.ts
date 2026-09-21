@@ -108,7 +108,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   // mode flagged as unacceptable this session.
   let aiPageGenerated = false
   let aiPageError: string | null = null
-  if (updated.status === 'PUBLISHED' && isBetaAiEngineEnabled(userRecord.account_id)) {
+  // Distinguishes the three real outcomes of the gate below — deliberately put in the HTTP
+  // response itself (not just a server log), because a server log needs Vercel dashboard access
+  // to read, and every prior attempt this session to get real evidence out of a live invocation
+  // was blocked by exactly that access wall. This field needs nothing beyond the browser's own
+  // Network tab on the real Publish request to answer "did it even try, and why not" —
+  // 'not_published_yet': a drafter's submission, not the live moment (see approveProposal()).
+  // 'beta_not_enabled_for_account': isBetaAiEngineEnabled(account_id) returned false — the
+  //   account genuinely isn't on the BETA_AI_ENGINE_ACCOUNT_IDS allowlist in this environment.
+  // null: generation was actually attempted (aiPageGenerated/aiPageError report the real result).
+  let aiPageSkippedReason: 'not_published_yet' | 'beta_not_enabled_for_account' | null = null
+  const betaEnabledForAccount = isBetaAiEngineEnabled(userRecord.account_id)
+  console.log(`[publish] aiPage gate — proposalId=${id} accountId=${userRecord.account_id} status=${updated.status} betaEnabledForAccount=${betaEnabledForAccount}`)
+  if (updated.status !== 'PUBLISHED') {
+    aiPageSkippedReason = 'not_published_yet'
+  } else if (!betaEnabledForAccount) {
+    aiPageSkippedReason = 'beta_not_enabled_for_account'
+  } else {
     try {
       const brandKit = await resolveBrandKit(userRecord.account_id, proposal.brand_kit_id)
       await generateAndPublishPage(id, proposal.content as ProposalType, brandKit, accountCurrency)
@@ -119,5 +135,5 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
   }
 
-  return NextResponse.json({ status: updated.status, slug: updated.slug, aiPageGenerated, aiPageError })
+  return NextResponse.json({ status: updated.status, slug: updated.slug, aiPageGenerated, aiPageError, aiPageSkippedReason })
 }

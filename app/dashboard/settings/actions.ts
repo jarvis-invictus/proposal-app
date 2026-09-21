@@ -109,7 +109,7 @@ export async function changeMemberRole({ userId, role }: { userId: string; role:
  * can still change via "Request changes" before this point). Same reasoning as the other path:
  * never lets a generation failure block the actual publish (the status update is the real,
  * reliable guarantee), reports the outcome back instead of swallowing it — see the return type. */
-export async function approveProposal(proposalId: string): Promise<{ aiPageGenerated: boolean; aiPageError: string | null }> {
+export async function approveProposal(proposalId: string): Promise<{ aiPageGenerated: boolean; aiPageError: string | null; aiPageSkippedReason: 'beta_not_enabled_for_account' | null }> {
   const { supabase, user, role, accountId } = await requireAccount()
   if (role !== 'owner' && role !== 'approver') throw new Error('Only an owner or approver can release a proposal')
   const { data: updated, error } = await supabase
@@ -126,7 +126,14 @@ export async function approveProposal(proposalId: string): Promise<{ aiPageGener
 
   let aiPageGenerated = false
   let aiPageError: string | null = null
-  if (updated && isBetaAiEngineEnabled(accountId)) {
+  // Same reasoning as publish/route.ts's aiPageSkippedReason — a plain boolean gate here would
+  // make "not on the beta allowlist" and "generation crashed" look identical from the outside.
+  let aiPageSkippedReason: 'beta_not_enabled_for_account' | null = null
+  const betaEnabledForAccount = isBetaAiEngineEnabled(accountId)
+  console.log(`[approveProposal] aiPage gate — proposalId=${proposalId} accountId=${accountId} updated=${!!updated} betaEnabledForAccount=${betaEnabledForAccount}`)
+  if (updated && !betaEnabledForAccount) {
+    aiPageSkippedReason = 'beta_not_enabled_for_account'
+  } else if (updated) {
     try {
       const { data: accountRow } = await supabase.from('accounts').select('currency').eq('id', accountId).single()
       const brandKit = await resolveBrandKit(accountId, updated.brand_kit_id)
@@ -137,7 +144,7 @@ export async function approveProposal(proposalId: string): Promise<{ aiPageGener
       logError('AI page generation failed during approve-and-publish', genError, { proposalId })
     }
   }
-  return { aiPageGenerated, aiPageError }
+  return { aiPageGenerated, aiPageError, aiPageSkippedReason }
 }
 
 export async function requestChanges(proposalId: string) {
