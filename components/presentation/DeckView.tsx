@@ -153,7 +153,7 @@ function SlideContent({ slide, accent, currency, reduced, onExit, headingFamily 
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', minHeight: 36 }}>{pkg.description}</p>
               <div style={{ margin: '14px 0', display: 'flex', alignItems: 'baseline', gap: 8 }}>
                 <span style={{ fontSize: 26, fontWeight: 700 }}>{formatCurrency(pkg.discountedPrice, currency)}</span>
-                {pkg.originalPrice > pkg.discountedPrice && (
+                {pkg.originalPrice != null && pkg.originalPrice > pkg.discountedPrice && (
                   <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', textDecoration: 'line-through' }}>{formatCurrency(pkg.originalPrice, currency)}</span>
                 )}
               </div>

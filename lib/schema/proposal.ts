@@ -13,7 +13,7 @@ export const ProposalSchemaV1 = z.object({
     z.object({
       name: z.string().describe("Name of the tier/package, e.g., 'Core', 'Pro', 'Enterprise'"),
       description: z.string().describe("A brief summary of who this package is best for"),
-      originalPrice: z.number().describe("The higher, un-discounted price, shown crossed out next to discountedPrice. Set to 0 if the deal facts don't actually mention a discount or prior price — never invent a markup just to fill this field."),
+      originalPrice: z.number().nullable().describe("The higher, un-discounted price, shown crossed out next to discountedPrice. Set to null if the deal facts don't actually mention a discount or prior price — never invent a markup just to fill this field, and never use 0 as a stand-in for null here."),
       discountedPrice: z.number().describe("The actual selling price after discount"),
       popular: z.boolean().describe("Whether this package is highlighted as the 'Most Popular' choice"),
       deliverables: z.array(z.string()).describe("A checklist of specific deliverables included in this package")

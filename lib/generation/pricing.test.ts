@@ -4,12 +4,12 @@ import { correctPricing } from './pricing'
 describe('correctPricing', () => {
   it('drops a fabricated originalPrice that is not actually higher than discountedPrice (equal)', () => {
     const result = correctPricing({ packages: [{ originalPrice: 100, discountedPrice: 100 }] })
-    expect(result.packages![0].originalPrice).toBe(0)
+    expect(result.packages![0].originalPrice).toBeNull()
   })
 
   it('drops originalPrice when it is lower than discountedPrice', () => {
     const result = correctPricing({ packages: [{ originalPrice: 50, discountedPrice: 100 }] })
-    expect(result.packages![0].originalPrice).toBe(0)
+    expect(result.packages![0].originalPrice).toBeNull()
   })
 
   it('keeps a genuine discount (originalPrice higher than discountedPrice)', () => {
@@ -21,6 +21,11 @@ describe('correctPricing', () => {
   it('leaves a package with no originalPrice untouched', () => {
     const result = correctPricing({ packages: [{ originalPrice: undefined, discountedPrice: 100 }] })
     expect(result.packages![0].originalPrice).toBeUndefined()
+  })
+
+  it('leaves an explicit null originalPrice untouched — the schema-correct "no discount" value', () => {
+    const result = correctPricing({ packages: [{ originalPrice: null, discountedPrice: 100 }] })
+    expect(result.packages![0].originalPrice).toBeNull()
   })
 
   it('leaves a package with no discountedPrice untouched', () => {
@@ -40,7 +45,7 @@ describe('correctPricing', () => {
 
   it('handles negative prices the same as any other non-discount (originalPrice <= discountedPrice)', () => {
     const result = correctPricing({ packages: [{ originalPrice: -10, discountedPrice: -5 }] })
-    expect(result.packages![0].originalPrice).toBe(0)
+    expect(result.packages![0].originalPrice).toBeNull()
   })
 
   it('processes multiple packages independently', () => {
@@ -51,6 +56,6 @@ describe('correctPricing', () => {
       ],
     })
     expect(result.packages![0].originalPrice).toBe(150)
-    expect(result.packages![1].originalPrice).toBe(0)
+    expect(result.packages![1].originalPrice).toBeNull()
   })
 })

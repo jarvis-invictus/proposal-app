@@ -10,7 +10,7 @@ export type LayoutContext = {
   packages: Array<{
     name: string
     description: string
-    originalPrice: number
+    originalPrice: number | null
     discountedPrice: number
     popular: boolean
     deliverables: string[]

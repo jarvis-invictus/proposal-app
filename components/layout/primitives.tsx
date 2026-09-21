@@ -162,7 +162,7 @@ function PricingTablePrimitive({ node, ctx }: { node: Extract<LayoutPrimitive, {
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 24, minHeight: 40, whiteSpace: 'pre-wrap' }}>{pkg.description}</p>
             <div style={{ marginBottom: 24, display: 'flex', alignItems: 'baseline', gap: 8 }}>
               <span style={{ fontSize: 30, fontWeight: 700, color: 'var(--text-primary)' }}>{formatCurrency(pkg.discountedPrice, ctx.currency)}</span>
-              {pkg.originalPrice > 0 && (
+              {pkg.originalPrice != null && pkg.originalPrice > pkg.discountedPrice && (
                 <span style={{ fontSize: 'var(--text-body-lg)', textDecoration: 'line-through', color: 'var(--text-muted)' }}>{formatCurrency(pkg.originalPrice, ctx.currency)}</span>
               )}
             </div>

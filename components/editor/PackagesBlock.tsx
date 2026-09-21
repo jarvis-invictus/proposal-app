@@ -10,7 +10,7 @@ import { currencySymbol, formatAmount } from '@/lib/formatCurrency'
 export type PackageItem = {
   name: string
   description: string
-  originalPrice: number
+  originalPrice: number | null
   discountedPrice: number
   popular: boolean
   deliverables: string[]
@@ -23,7 +23,7 @@ export interface PackagesBlockProps {
 }
 
 const BLANK_PACKAGE: PackageItem = {
-  name: 'New package', description: '', originalPrice: 0, discountedPrice: 0, popular: false, deliverables: [],
+  name: 'New package', description: '', originalPrice: null, discountedPrice: 0, popular: false, deliverables: [],
 }
 
 /** Editable pricing tiers, bound directly to ProposalSchemaV1's packages array. */
@@ -94,10 +94,10 @@ export function PackagesBlock({ packages, onChange, currency = 'USD' }: Packages
               }} />
 
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 16 }}>
-              <PriceInput value={pkg.discountedPrice} onChange={(v) => updatePackage(idx, { discountedPrice: v })} size={30} weight={700} currency={currency}
+              <PriceInput value={pkg.discountedPrice} onChange={(v) => updatePackage(idx, { discountedPrice: v ?? 0 })} size={30} weight={700} currency={currency}
                 label={`${pkg.name || 'Package'} price`} />
-              <PriceInput value={pkg.originalPrice} onChange={(v) => updatePackage(idx, { originalPrice: v })} size={16} weight={400}
-                strike={pkg.originalPrice > pkg.discountedPrice} muted={pkg.originalPrice > pkg.discountedPrice} currency={currency}
+              <PriceInput value={pkg.originalPrice} onChange={(v) => updatePackage(idx, { originalPrice: v })} size={16} weight={400} allowEmpty placeholder="—"
+                strike={pkg.originalPrice != null && pkg.originalPrice > pkg.discountedPrice} muted={pkg.originalPrice != null && pkg.originalPrice > pkg.discountedPrice} currency={currency}
                 label={`${pkg.name || 'Package'} original price before discount`} />
             </div>
 
@@ -140,20 +140,40 @@ export function PackagesBlock({ packages, onChange, currency = 'USD' }: Packages
  * unreadable "450000" here while the client's own view showed "$450,000". The old `ch`-based
  * width also ignored the number spinner Chrome reserves space for inside the control, so the last
  * digit of a six-figure price was silently cut off — a ₹600,000 package displayed as "60000". */
-function PriceInput({ value, onChange, size, weight, strike, muted, currency, label }: {
-  value: number; onChange: (v: number) => void; size: number; weight: number; strike?: boolean; muted?: boolean; currency: string; label: string
+function PriceInput({ value, onChange, size, weight, strike, muted, currency, label, allowEmpty, placeholder }: {
+  value: number | null; onChange: (v: number | null) => void; size: number; weight: number; strike?: boolean; muted?: boolean; currency: string; label: string
+  /** When true (originalPrice only — discountedPrice stays a required number), a cleared input
+   * calls onChange(null) instead of defaulting to 0. Previously a null value was *displayed* as
+   * "0" here (formatAmount(value ?? 0, ...)) — confirmed live via document.querySelectorAll to
+   * render a real <input value="0">, not a blank one, on a proposal whose originalPrice was
+   * genuinely null the whole time. That's not just a cosmetic gap: it's the state a human editor
+   * sees and starts from, and clearing/retyping a field that already reads "0" naturally lands
+   * back on 0, not null — one keystroke away from silently re-committing the exact "Original
+   * Price: $0" bug the schema/render/flattenProposalFacts fix already closed once. Null now
+   * *displays* as genuinely blank (with a subtle placeholder), so there's no "0" starting point
+   * to accidentally preserve. */
+  allowEmpty?: boolean
+  placeholder?: string
 }) {
-  const formatted = formatAmount(value, currency)
+  const formatted = value == null ? '' : formatAmount(value, currency)
+  const widthBasis = formatted || placeholder || '0'
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 1 }}>
       <span style={{ fontSize: size, fontWeight: weight, color: muted ? 'var(--text-muted)' : 'var(--text-primary)' }}>{currencySymbol(currency)}</span>
-      <input type="text" inputMode="numeric" aria-label={label} value={formatted} maxLength={15}
-        onChange={(e) => onChange(Number(e.target.value.replace(/\D/g, '').slice(0, 12)) || 0)}
+      <input type="text" inputMode="numeric" aria-label={label} value={formatted} maxLength={15} placeholder={placeholder}
+        onChange={(e) => {
+          const digits = e.target.value.replace(/\D/g, '').slice(0, 12)
+          if (!digits) {
+            onChange(allowEmpty ? null : 0)
+            return
+          }
+          onChange(Number(digits))
+        }}
         style={{
           // +1ch of headroom for the caret, plus a few px: `ch` is the advance of "0", but bold
           // digits at the large size run slightly wider than that reference, which left the
           // headline price a pixel short of its own content.
-          width: `calc(${formatted.length + 1}ch + 4px)`, border: 'none', outline: 'none', background: 'transparent',
+          width: `calc(${widthBasis.length + 1}ch + 4px)`, border: 'none', outline: 'none', background: 'transparent',
           fontFamily: 'var(--font-sans)', fontSize: size, fontWeight: weight, fontVariantNumeric: 'tabular-nums',
           color: muted ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: strike ? 'line-through' : 'none',
         }} />

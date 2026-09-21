@@ -386,7 +386,7 @@ export default function PublicProposalView({
 
                   <div className="mb-6 flex items-baseline gap-2">
                     <span className="text-ink" style={{ fontSize: 30, fontWeight: 700 }}>{formatCurrency(pkg.discountedPrice, currency)}</span>
-                    {pkg.originalPrice > 0 && !pdfConfig.hideLineItemPrices && (
+                    {pkg.originalPrice != null && pkg.originalPrice > pkg.discountedPrice && !pdfConfig.hideLineItemPrices && (
                       <span className="text-mist" style={{ fontSize: 'var(--text-body-lg)', textDecoration: 'line-through' }}>
                         {formatCurrency(pkg.originalPrice, currency)}
                       </span>
